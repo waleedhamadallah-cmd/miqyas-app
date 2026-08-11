@@ -38,9 +38,10 @@ function openExerciseDetail(ex){
   const sessions = history.length;
   const first = history.length ? history[0].weight : 0;
   const latest = history.length ? history[history.length-1].weight : 0;
+  const estMax = latest ? calcOneRepMax(latest, ex.prReps||1) : 0;
   const body = document.getElementById('exDetailBody');
   body.innerHTML = `
-    <div class="ex-detail-head">${exAnimHtml(ex,'lg')}<div class="tx"><div class="exn" style="font-family:var(--font-d); font-weight:800; font-size:16px;">${escapeHtml(ex.group)}</div><div class="exhint" style="color:var(--text-mute); font-size:12px;">${sessions} جلسة مسجلة</div></div></div>
+    <div class="ex-detail-head">${exAnimHtml(ex,'lg')}<div class="tx"><div class="exn" style="font-family:var(--font-d); font-weight:800; font-size:16px;">${escapeHtml(ex.group)}</div><div class="exhint" style="color:var(--text-mute); font-size:12px;">${sessions} جلسة مسجلة</div>${estMax?`<div class="orm-badge">💪 تقدير أقصى وزن (1RM): ${estMax} كغ</div>`:''}</div></div>
     <div class="ex-detail-stats">
       <div class="ex-stat"><div class="sv tabular">${first||'-'}</div><div class="sl">أول وزن</div></div>
       <div class="ex-stat"><div class="sv tabular">${latest||'-'}</div><div class="sl">آخر وزن</div></div>
@@ -84,7 +85,12 @@ function renderWeightCard(){
 function openBodyWeightSheet(){
   const todayW = appState.bodyWeights[state.today];
   document.getElementById('bwInput').value = todayW || '';
+  const todayM = (appState.bodyMeasurements||{})[state.today] || {};
+  document.getElementById('measArm').value = todayM.arm || '';
+  document.getElementById('measWaist').value = todayM.waist || '';
+  document.getElementById('measChest').value = todayM.chest || '';
   renderBodyWeightSheetBody();
+  renderMeasurementCharts();
   openSheet('sheetBodyWeight');
 }
 
@@ -108,6 +114,42 @@ function renderBodyWeightSheetBody(){
     <div class="ex-stat"><div class="sv tabular">${min} - ${max}</div><div class="sl">أقل - أعلى</div></div>
   </div>`;
   chartWrap.innerHTML = buildChartSvg(history);
+}
+
+/* ============================================================
+   BODY MEASUREMENTS (arm / waist / chest)
+   ============================================================ */
+const MEASUREMENT_KEYS = {arm:'الذراع', waist:'الخصر', chest:'الصدر'};
+
+function getMeasurementHistory(key){
+  const m = appState.bodyMeasurements || {};
+  return Object.keys(m).sort().filter(date=> m[date][key]!==undefined).map(date=>({date, weight:m[date][key]}));
+}
+function saveMeasurements(){
+  const arm = parseFloat(document.getElementById('measArm').value);
+  const waist = parseFloat(document.getElementById('measWaist').value);
+  const chest = parseFloat(document.getElementById('measChest').value);
+  if(!appState.bodyMeasurements) appState.bodyMeasurements = {};
+  const entry = appState.bodyMeasurements[state.today] || {};
+  if(!isNaN(arm)) entry.arm = arm;
+  if(!isNaN(waist)) entry.waist = waist;
+  if(!isNaN(chest)) entry.chest = chest;
+  if(Object.keys(entry).length===0){ showToast('عبّي قياس وحد على الأقل'); return; }
+  appState.bodyMeasurements[state.today] = entry;
+  persist();
+  showToast('تم حفظ القياسات 📏');
+  renderMeasurementCharts();
+}
+function renderMeasurementCharts(){
+  const wrap = document.getElementById('measChartsWrap');
+  if(!wrap) return;
+  const parts = Object.keys(MEASUREMENT_KEYS).map(key=>{
+    const history = getMeasurementHistory(key);
+    if(history.length===0) return '';
+    const latest = history[history.length-1].weight;
+    return `<div class="section-title" style="margin-top:14px;">${MEASUREMENT_KEYS[key]} — آخر قياس: ${latest} سم</div><div class="chart-wrap">${buildChartSvg(history)}</div>`;
+  }).join('');
+  wrap.innerHTML = parts;
 }
 
 function renderSyncStatus(){

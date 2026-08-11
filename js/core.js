@@ -35,7 +35,11 @@ function persist(){
 }
 
 function defaultAppState(){
-  return { library:{foods:defaultFoods(), exercises:defaultExercises()}, goals:defaultGoals(), plan:null, logs:{}, bodyWeights:{}, updatedAt:0 };
+  return {
+    library:{foods:defaultFoods(), exercises:defaultExercises()}, goals:defaultGoals(), plan:null, logs:{},
+    bodyWeights:{}, bodyMeasurements:{}, mealTemplates:[], equipment:[...ALL_EQUIPMENT],
+    theme:'dark', onboarded:false, updatedAt:0
+  };
 }
 
 function rebindFromAppState(){
@@ -43,9 +47,27 @@ function rebindFromAppState(){
   state.goals = appState.goals;
   state.plan = appState.plan;
   state.selectedPresetType = state.plan.type || 'upper_lower_4';
-  if(!appState.logs[state.today]) appState.logs[state.today] = {meals:[], workouts:[]};
+  if(!appState.logs[state.today]) appState.logs[state.today] = {meals:[], workouts:[], waterMl:0};
+  if(appState.logs[state.today].waterMl===undefined) appState.logs[state.today].waterMl = 0;
   state.log = appState.logs[state.today];
   if(!appState.bodyWeights) appState.bodyWeights = {};
+  if(!appState.bodyMeasurements) appState.bodyMeasurements = {};
+  if(!appState.mealTemplates) appState.mealTemplates = [];
+  if(!appState.equipment) appState.equipment = [...ALL_EQUIPMENT];
+  if(!appState.theme) appState.theme = 'dark';
+  if(appState.onboarded===undefined) appState.onboarded = true; // existing users skip onboarding
+  if(appState.goals.water===undefined) appState.goals.water = 2500;
+  if(appState.goals.fiber===undefined) appState.goals.fiber = 30;
+  if(appState.goals.sodium===undefined) appState.goals.sodium = 2300;
+  (appState.library.exercises||[]).forEach(ex=>{
+    if(ex.equipment===undefined) ex.equipment = 'barbell';
+    if(ex.injured===undefined) ex.injured = false;
+  });
+  (appState.library.foods||[]).forEach(f=>{
+    if(f.fiber===undefined) f.fiber = 0;
+    if(f.sodium===undefined) f.sodium = 0;
+  });
+  applyTheme(appState.theme);
 }
 
 function getSyncConfig(){
@@ -113,40 +135,43 @@ function subscribeCloud(){
    ============================================================ */
 
 function defaultFoods(){
-  const mk = (name,category,calories,protein,carbs,fat)=>({id:uid(),name,category,calories,protein,carbs,fat,favorite:false,usageCount:0});
+  const mk = (name,category,calories,protein,carbs,fat,fiber,sodium)=>({id:uid(),name,category,calories,protein,carbs,fat,fiber:fiber||0,sodium:sodium||0,favorite:false,usageCount:0});
   return [
-    mk('بيض مسلوق (٢ حبة)','فطور',140,12,1,10),
-    mk('شوفان بالحليب','فطور',260,10,42,6),
-    mk('جبن قريش + خبز أسمر','فطور',230,18,28,6),
-    mk('زبادي يوناني بالعسل','فطور',180,15,20,4),
-    mk('صدر دجاج مشوي (١٥٠غ)','غدا',250,40,0,8),
-    mk('رز بسمتي مطبوخ (كوب)','غدا',205,4,45,0.5),
-    mk('سلطة خضار بزيت زيتون','غدا',120,2,8,9),
-    mk('لحم بقري مشوي (١٥٠غ)','غدا',320,38,0,18),
-    mk('سمك مشوي (١٥٠غ)','عشا',210,36,0,6),
-    mk('شوربة عدس','عشا',150,9,22,3),
-    mk('لبنة + خبز أسمر','عشا',220,10,20,11),
-    mk('تمر (٣ حبات)','سناك',70,0.5,18,0),
-    mk('لوز (١٠ حبات)','سناك',70,2.5,2.5,6),
-    mk('موزة','سناك',105,1.3,27,0.4),
-    mk('بروتين شيك','سناك',130,25,4,2),
+    mk('بيض مسلوق (٢ حبة)','فطور',140,12,1,10,0,140),
+    mk('شوفان بالحليب','فطور',260,10,42,6,4,90),
+    mk('جبن قريش + خبز أسمر','فطور',230,18,28,6,3,420),
+    mk('زبادي يوناني بالعسل','فطور',180,15,20,4,0,60),
+    mk('صدر دجاج مشوي (١٥٠غ)','غدا',250,40,0,8,0,320),
+    mk('رز بسمتي مطبوخ (كوب)','غدا',205,4,45,0.5,0.6,2),
+    mk('سلطة خضار بزيت زيتون','غدا',120,2,8,9,3,90),
+    mk('لحم بقري مشوي (١٥٠غ)','غدا',320,38,0,18,0,300),
+    mk('سمك مشوي (١٥٠غ)','عشا',210,36,0,6,0,260),
+    mk('شوربة عدس','عشا',150,9,22,3,6,540),
+    mk('لبنة + خبز أسمر','عشا',220,10,20,11,2,380),
+    mk('تمر (٣ حبات)','سناك',70,0.5,18,0,1.6,1),
+    mk('لوز (١٠ حبات)','سناك',70,2.5,2.5,6,1.5,0),
+    mk('موزة','سناك',105,1.3,27,0.4,3.1,1),
+    mk('بروتين شيك','سناك',130,25,4,2,0,110),
   ];
 }
 
 function defaultExercises(){
-  const mk = (name,group,movementType)=>({id:uid(),name,group,movementType,favorite:false,usageCount:0,lastWeight:0,lastReps:0,prWeight:0,prReps:0,prVolume:0,prDate:null});
+  const mk = (name,group,movementType,equipment)=>({id:uid(),name,group,movementType,equipment:equipment||'barbell',injured:false,favorite:false,usageCount:0,lastWeight:0,lastReps:0,prWeight:0,prReps:0,prVolume:0,prDate:null});
   return [
-    mk('بنش برس','صدر','press'), mk('ضغط صدر بالدمبل','صدر','press'), mk('بينش مائل','صدر','press'),
-    mk('سحب أمامي','ظهر','pull'), mk('بار عريض','ظهر','pull'), mk('تجديف بالبار','ظهر','pull'),
-    mk('سكوات','أرجل','squat'), mk('لنجز','أرجل','squat'), mk('ضغط أرجل','أرجل','squat'),
-    mk('ضغط أكتاف','أكتاف','press'), mk('رفرفة جانبية','أكتاف','raise'),
-    mk('كيرل بار','بايسبس','curl'), mk('كيرل دمبل تبادلي','بايسبس','curl'),
-    mk('بوش داون','ترايسبس','press'), mk('ديبس','ترايسبس','press'),
-    mk('كرنش','بطن','core'), mk('بلانك','بطن','core'), mk('رفع أرجل معلق','بطن','core'),
+    mk('بنش برس','صدر','press','barbell'), mk('ضغط صدر بالدمبل','صدر','press','dumbbell'), mk('بينش مائل','صدر','press','barbell'),
+    mk('سحب أمامي','ظهر','pull','machine'), mk('بار عريض','ظهر','pull','bodyweight'), mk('تجديف بالبار','ظهر','pull','barbell'),
+    mk('سكوات','أرجل','squat','barbell'), mk('لنجز','أرجل','squat','dumbbell'), mk('ضغط أرجل','أرجل','squat','machine'),
+    mk('ضغط أكتاف','أكتاف','press','dumbbell'), mk('رفرفة جانبية','أكتاف','raise','dumbbell'),
+    mk('كيرل بار','بايسبس','curl','barbell'), mk('كيرل دمبل تبادلي','بايسبس','curl','dumbbell'),
+    mk('بوش داون','ترايسبس','press','machine'), mk('ديبس','ترايسبس','press','bodyweight'),
+    mk('كرنش','بطن','core','bodyweight'), mk('بلانك','بطن','core','bodyweight'), mk('رفع أرجل معلق','بطن','core','bodyweight'),
   ];
 }
 
-function defaultGoals(){ return {calories:2200, protein:150, carbs:220, fat:70}; }
+function defaultGoals(){ return {calories:2200, protein:150, carbs:220, fat:70, water:2500, fiber:30, sodium:2300}; }
+
+const EQUIPMENT_LABELS = {barbell:'بار حديد', dumbbell:'دمبل', machine:'أجهزة', bodyweight:'وزن الجسم'};
+const ALL_EQUIPMENT = ['barbell','dumbbell','machine','bodyweight'];
 
 /* ============================================================
    MUSCLE GROUP COLORS + WEEKLY SPLIT PRESETS
@@ -218,6 +243,7 @@ const state = {
   activeFoodCat: 'الكل',
   activeSheetFoodCat: 'الكل',
   activeExGroup: 'الكل',
+  activeEquipFilter: null,
   viewedPlanDay: new Date().getDay(),
   selectedPresetType: 'upper_lower_4',
   activeField: 'weight',
@@ -260,7 +286,7 @@ function pickExercisesForDay(groups, library){
   const usedPerGroup = {};
   groups.forEach(g=>{
     usedPerGroup[g] = usedPerGroup[g]||0;
-    const candidates = lib.exercises.filter(e=>e.group===g)
+    const candidates = lib.exercises.filter(e=>e.group===g && !e.injured)
       .sort((a,b)=> (b.favorite - a.favorite) || (b.usageCount - a.usageCount));
     const pick = candidates[usedPerGroup[g]] || candidates[0];
     if(pick && !chosen.includes(pick.id)) chosen.push(pick.id);
@@ -405,12 +431,138 @@ function escapeHtml(s){
 }
 
 /* ============================================================
+   HAPTICS
+   ============================================================ */
+function vibrate(pattern){
+  try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){}
+}
+
+/* ============================================================
+   THEME (dark / light)
+   ============================================================ */
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme==='light' ? 'light' : 'dark');
+}
+function toggleTheme(){
+  appState.theme = appState.theme==='light' ? 'dark' : 'light';
+  applyTheme(appState.theme);
+  persist();
+}
+
+/* ============================================================
+   NUTRITION / TRAINING FORMULAS
+   ============================================================ */
+// Mifflin-St Jeor: estimates daily calorie needs from body stats + activity.
+function calcSmartGoals({sex, age, heightCm, weightKg, activity, goal}){
+  let bmr;
+  if(sex==='female') bmr = 10*weightKg + 6.25*heightCm - 5*age - 161;
+  else bmr = 10*weightKg + 6.25*heightCm - 5*age + 5;
+  const activityFactors = {low:1.2, medium:1.55, high:1.725};
+  let tdee = bmr * (activityFactors[activity] || 1.375);
+  if(goal==='lose') tdee -= 400;
+  else if(goal==='gain') tdee += 350;
+  const calories = Math.round(tdee/10)*10;
+  const protein = Math.round(weightKg*1.9);
+  const fat = Math.round((calories*0.27)/9);
+  const carbs = Math.round((calories - protein*4 - fat*9)/4);
+  return {calories, protein, carbs:Math.max(carbs,50), fat};
+}
+// Epley formula: estimated one-rep max from any logged set.
+function calcOneRepMax(weight, reps){
+  if(reps<=0) return weight;
+  if(reps===1) return weight;
+  return Math.round(weight * (1 + reps/30) * 10) / 10;
+}
+
+/* ============================================================
+   EXPORT / IMPORT BACKUP
+   ============================================================ */
+function exportDataFile(){
+  const blob = new Blob([JSON.stringify(appState, null, 2)], {type:'application/json'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a');
+  a.href = url; a.download = `miqyas-backup-${state.today}.json`;
+  document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  URL.revokeObjectURL(url);
+}
+function importDataFile(file, onDone){
+  const reader = new FileReader();
+  reader.onload = ()=>{
+    try{
+      const parsed = JSON.parse(reader.result);
+      if(!parsed.library || !parsed.logs){ showToast('الملف مو نسخة احتياطية صحيحة'); return; }
+      appState = parsed;
+      appState.updatedAt = Date.now();
+      saveLocalOnly();
+      rebindFromAppState();
+      computeStreak();
+      renderAll();
+      showToast('تم استرجاع النسخة الاحتياطية 🎉');
+      if(onDone) onDone();
+    }catch(e){ showToast('فشل قراءة الملف، تأكد إنه JSON صحيح'); }
+  };
+  reader.readAsText(file);
+}
+
+/* ============================================================
+   UNDO TOAST
+   ============================================================ */
+function showUndoToast(msg, restoreFn){
+  const t = document.getElementById('toast');
+  const msgEl = document.getElementById('toastMsg');
+  msgEl.innerHTML = escapeHtml(msg) + ' <span id="toastUndoBtn" style="color:var(--accent-2); font-weight:800; cursor:pointer; margin-inline-start:8px;">تراجع</span>';
+  t.classList.add('show');
+  clearTimeout(showToast._tm);
+  let undone = false;
+  document.getElementById('toastUndoBtn').addEventListener('click', ()=>{
+    if(undone) return;
+    undone = true;
+    restoreFn();
+    t.classList.remove('show');
+  });
+  showToast._tm = setTimeout(()=>{ t.classList.remove('show'); }, 5000);
+}
+
+/* ============================================================
+   SWIPE TO DELETE
+   ============================================================ */
+function attachSwipeToDelete(rowEl, onConfirmDelete){
+  let startX = 0, curX = 0, dragging = false;
+  const threshold = 70;
+  function onStart(x){ startX = x; curX = x; dragging = true; rowEl.style.transition = 'none'; }
+  function onMove(x){
+    if(!dragging) return;
+    curX = x;
+    const dx = curX - startX;
+    rowEl.style.transform = `translateX(${dx}px)`;
+    rowEl.style.opacity = String(1 - Math.min(Math.abs(dx)/220, 0.5));
+  }
+  function onEnd(){
+    if(!dragging) return;
+    dragging = false;
+    rowEl.style.transition = 'transform .2s ease, opacity .2s ease';
+    const dx = curX - startX;
+    if(Math.abs(dx) > threshold){
+      rowEl.style.transform = `translateX(${dx>0?260:-260}px)`;
+      rowEl.style.opacity = '0';
+      setTimeout(()=> onConfirmDelete(), 180);
+    } else {
+      rowEl.style.transform = 'translateX(0)';
+      rowEl.style.opacity = '1';
+    }
+  }
+  rowEl.addEventListener('touchstart', e=> onStart(e.touches[0].clientX), {passive:true});
+  rowEl.addEventListener('touchmove', e=> onMove(e.touches[0].clientX), {passive:true});
+  rowEl.addEventListener('touchend', onEnd);
+}
+
+/* ============================================================
    SHEETS CONTROL
    ============================================================ */
 
 const overlay = document.getElementById('overlay');
 
-const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetWorkoutPick','sheetNewEx','sheetSets','sheetSettings','sheetPlanEdit','sheetSwap','sheetPRs','sheetExDetail','sheetBodyWeight'];
+const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetWorkoutPick','sheetNewEx','sheetSets','sheetSettings','sheetPlanEdit','sheetSwap','sheetPRs','sheetExDetail','sheetBodyWeight','sheetOnboarding','sheetRecipeBuilder','sheetMealTemplates','sheetShareCard'];
 
 function openSheet(id){
   closeAllSheets();
@@ -423,6 +575,7 @@ function closeAllSheets(){
   allSheets.forEach(id=>document.getElementById(id).classList.remove('show'));
   document.getElementById('fab').classList.remove('rot');
   stopSessionTimer();
+  stopRestTimer();
 }
 
 /* ============================================================

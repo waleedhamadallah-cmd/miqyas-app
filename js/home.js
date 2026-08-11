@@ -150,6 +150,20 @@ function renderTodaySummary(){
   });
 }
 
+function renderWaterCard(){
+  const ml = state.log.waterMl || 0;
+  const goal = state.goals.water || 2500;
+  document.getElementById('waterValText').textContent = `${ml.toLocaleString('en-US')} / ${goal.toLocaleString('en-US')} مل`;
+  const pct = Math.min((ml/Math.max(goal,1))*100, 100);
+  document.getElementById('waterFill').style.width = pct+'%';
+}
+function addWater(deltaMl){
+  state.log.waterMl = Math.max(0, (state.log.waterMl||0) + deltaMl);
+  persist();
+  renderWaterCard();
+  vibrate(12);
+}
+
 /* ============================================================
    RENDER: FOOD VIEW
    ============================================================ */

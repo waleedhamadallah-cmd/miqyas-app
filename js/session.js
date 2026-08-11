@@ -22,6 +22,7 @@ function startSession(exercises){
   _lastPlateCount = decomposePlates(Math.max(0,(state.weightVal-20)/2)).length;
   renderSetChips();
   startSessionTimer();
+  stopRestTimer();
   openSheet('sheetSets');
 }
 
@@ -108,6 +109,51 @@ function stopSessionTimer(){
   if(state.sessionTimerHandle){ clearInterval(state.sessionTimerHandle); state.sessionTimerHandle=null; }
 }
 
+/* ============================================================
+   REST TIMER
+   ============================================================ */
+let restTimerHandle = null;
+let restTimerRemaining = 90;
+const REST_DEFAULT = 90;
+
+function startRestTimer(seconds){
+  restTimerRemaining = seconds != null ? seconds : REST_DEFAULT;
+  const box = document.getElementById('restTimerBox');
+  if(!box) return;
+  box.classList.add('show');
+  updateRestTimerDisplay();
+  if(restTimerHandle) clearInterval(restTimerHandle);
+  restTimerHandle = setInterval(()=>{
+    restTimerRemaining--;
+    if(restTimerRemaining<=0){
+      clearInterval(restTimerHandle);
+      restTimerHandle = null;
+      updateRestTimerDisplay();
+      vibrate([100,50,100]);
+      showToast('⏱ خلصت الراحة، جاهز للجولة الجاية 💪');
+      setTimeout(()=> box.classList.remove('show'), 1200);
+      return;
+    }
+    updateRestTimerDisplay();
+  }, 1000);
+}
+function updateRestTimerDisplay(){
+  const el = document.getElementById('restTimerVal');
+  if(!el) return;
+  const m = Math.floor(Math.max(restTimerRemaining,0)/60);
+  const s = Math.max(restTimerRemaining,0)%60;
+  el.textContent = `${m}:${String(s).padStart(2,'0')}`;
+}
+function adjustRestTimer(delta){
+  restTimerRemaining = Math.max(0, restTimerRemaining+delta);
+  updateRestTimerDisplay();
+}
+function stopRestTimer(){
+  if(restTimerHandle){ clearInterval(restTimerHandle); restTimerHandle=null; }
+  const box = document.getElementById('restTimerBox');
+  if(box) box.classList.remove('show');
+}
+
 function updateFieldDisplay(){
   document.getElementById('fieldWeightVal').textContent = state.weightVal;
   document.getElementById('fieldRepsVal').textContent = state.repsVal;
@@ -176,6 +222,7 @@ function checkAndApplyPR(ex, sets){
 }
 
 function showPRCelebration(names){
+  vibrate([60,40,60,40,120]);
   document.getElementById('prTitle').textContent = 'رقم قياسي جديد! 🎉';
   document.getElementById('prSub').textContent = names.join(' + ') + ' — استمر على هالمستوى';
   const overlay = document.getElementById('prOverlay');
