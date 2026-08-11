@@ -10,7 +10,7 @@ const config: CapacitorConfig = {
   appName: 'مقياس',
   webDir: 'www',
   server: {
-    url: 'https://YOUR-GITHUB-USERNAME.github.io/miqyas-app/',
+    url: 'https://waleedhamadallah-cmd.github.io/miqyas-app/',
     cleartext: false
   }
 };
