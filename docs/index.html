@@ -129,9 +129,12 @@ input{font-family:inherit; color:inherit;}
 .macro-pill .val{font-size:12px; font-weight:700; font-family:var(--font-d);}
 .macro-track{height:6px; border-radius:var(--r-pill); background:var(--border-soft); overflow:hidden;}
 .macro-fill{height:100%; border-radius:var(--r-pill); transition:width .5s cubic-bezier(.2,.8,.2,1);}
-.macro-pill.protein .val, .macro-pill.protein .macro-fill{color:var(--protein); background:var(--protein);}
-.macro-pill.carb .val, .macro-pill.carb .macro-fill{color:var(--carb); background:var(--carb);}
-.macro-pill.fat .val, .macro-pill.fat .macro-fill{color:var(--fat); background:var(--fat);}
+.macro-pill.protein .val{color:var(--protein);}
+.macro-pill.protein .macro-fill{background:var(--protein);}
+.macro-pill.carb .val{color:var(--carb);}
+.macro-pill.carb .macro-fill{background:var(--carb);}
+.macro-pill.fat .val{color:var(--fat);}
+.macro-pill.fat .macro-fill{background:var(--fat);}
 
 /* ============ STREAK & WEEK PROGRESS ============ */
 .streak-card{
@@ -436,6 +439,25 @@ input{font-family:inherit; color:inherit;}
 .ex-stat .sl{font-size:10.5px; color:var(--text-mute); margin-top:3px;}
 .chart-wrap{background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:16px 10px;}
 
+/* ============ BODY WEIGHT CARD ============ */
+.weight-card{
+  margin-top:12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg);
+  padding:16px 18px; display:flex; align-items:center; gap:14px; cursor:pointer;
+}
+.weight-card .wc-icon{
+  width:44px; height:44px; border-radius:14px; background:var(--shoulder-soft); color:var(--shoulder);
+  display:flex; align-items:center; justify-content:center; font-size:20px; flex:0 0 auto;
+}
+.weight-card .wc-tx{flex:1; min-width:0;}
+.weight-card .wc-tx .w1{font-size:13px; font-weight:700;}
+.weight-card .wc-tx .w2{font-size:11.5px; color:var(--text-mute); margin-top:2px;}
+.weight-card .wc-num{font-family:var(--font-d); font-weight:900; font-size:22px; color:var(--text); flex:0 0 auto;}
+.weight-card .wc-num span{font-size:11px; color:var(--text-mute); font-weight:600; margin-inline-start:3px;}
+
+.weight-input-row{display:flex; gap:10px; align-items:flex-end; margin-bottom:16px;}
+.weight-input-row .form-field{flex:1; margin-bottom:0;}
+.weight-input-row .btn-primary{width:auto; padding:14px 20px; margin-top:0; white-space:nowrap;}
+
 .btn-primary{
   width:100%; padding:15px; border:none; border-radius:var(--r-pill); background:var(--accent); color:#161113;
   font-weight:800; font-size:15px; cursor:pointer; margin-top:6px; transition:transform .12s ease, opacity .2s;
@@ -565,21 +587,19 @@ input{font-family:inherit; color:inherit;}
       <div class="wtrack"><div class="wfill" id="weekProgressFill" style="width:0%"></div></div>
     </div>
 
-    <div class="insight-card" id="insightCard"></div>
-
-    <div class="section-title">إضافة سريعة <span class="link" id="goFoodLib">المكتبة كاملة ←</span></div>
+    <div class="section-title">⚡ إضافة سريعة <span class="link" id="goFoodLib">المكتبة كاملة ←</span></div>
     <div class="chip-scroll" id="quickChips"></div>
 
-    <div class="section-title">اليوم</div>
+    <div class="section-title">📝 اليوم</div>
     <div class="entry-list" id="todaySummary"></div>
   </section>
 
   <!-- FOOD VIEW -->
   <section class="view" id="view-food">
-    <div class="section-title" style="margin-top:16px;">وجبات اليوم</div>
+    <div class="section-title" style="margin-top:16px;">🍽️ وجبات اليوم</div>
     <div class="entry-list" id="mealsToday"></div>
 
-    <div class="section-title">المكتبة</div>
+    <div class="section-title">📚 المكتبة</div>
     <div class="search-wrap">
       <input type="text" id="foodSearch" placeholder="ابحث عن وجبة...">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
@@ -591,17 +611,28 @@ input{font-family:inherit; color:inherit;}
 
   <!-- GYM VIEW -->
   <section class="view" id="view-gym">
-    <div class="section-title" style="margin-top:16px;">خطتك الأسبوعية <span class="link" id="btnEditPlan">تعديل ✏️</span></div>
+    <div class="section-title" style="margin-top:16px;">🗓️ خطتك الأسبوعية <span class="link" id="btnEditPlan">تعديل ✏️</span></div>
     <div class="day-strip" id="dayStrip"></div>
     <div class="plan-card" id="planCard"></div>
-    <button class="btn-secondary" id="btnShowPRs" style="margin-top:10px;">🏆 أرقامي القياسية</button>
 
-    <div class="section-title">سجل اليوم</div>
+    <div class="section-title">📋 سجل اليوم</div>
     <div class="entry-list" id="workoutsToday"></div>
     <button class="btn-secondary" id="btnStartWorkout">+ تسجيل تمرين إضافي</button>
 
-    <div class="section-title">آخر الأيام</div>
+    <div class="section-title">📅 آخر الأيام</div>
     <div id="gymHistory"></div>
+  </section>
+
+  <!-- PROGRESS VIEW -->
+  <section class="view" id="view-progress">
+    <div class="section-title" style="margin-top:16px;">⚖️ وزن الجسم</div>
+    <div class="weight-card" id="weightCard"></div>
+
+    <div class="section-title">📊 نظرة على الشهر</div>
+    <div class="insight-card" id="insightCard"></div>
+
+    <div class="section-title">🏆 الإنجازات</div>
+    <button class="btn-secondary" id="btnShowPRs" style="margin-top:0;">🏆 أرقامي القياسية</button>
   </section>
 
   <nav class="bottomnav">
@@ -616,6 +647,10 @@ input{font-family:inherit; color:inherit;}
     <button class="nav-btn" data-tab="food">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
       <span>الأكل</span>
+    </button>
+    <button class="nav-btn" data-tab="progress">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M18.7 8l-5.1 5.1-3-3-3.6 3.6"></path></svg>
+      <span>التقدم</span>
     </button>
   </nav>
 
@@ -636,6 +671,10 @@ input{font-family:inherit; color:inherit;}
     <div class="qa-option" id="qaWorkout">
       <div class="ic" style="background:var(--carb-soft); color:var(--carb);">🏋️</div>
       <div class="tx"><b>تسجيل تمرين</b><span>اختر التمرين وسجل الجولات</span></div>
+    </div>
+    <div class="qa-option" id="qaWeight">
+      <div class="ic" style="background:var(--shoulder-soft); color:var(--shoulder);">⚖️</div>
+      <div class="tx"><b>تسجيل وزن الجسم</b><span>تابع تقدمك بمنحنى بياني</span></div>
     </div>
   </div>
 </div>
@@ -772,7 +811,7 @@ input{font-family:inherit; color:inherit;}
   <div class="sheet-handle"></div>
   <div class="sheet-head"><h3>الإعدادات</h3><div class="sheet-close" data-close>✕</div></div>
   <div class="sheet-body">
-    <div class="section-title" style="margin-top:0;">الأهداف اليومية</div>
+    <div class="section-title" style="margin-top:0;">🎯 الأهداف اليومية</div>
     <div class="form-field"><label>السعرات</label><input type="number" id="goalCal" inputmode="numeric"></div>
     <div class="form-grid">
       <div class="form-field"><label>بروتين (غ)</label><input type="number" id="goalP" inputmode="numeric"></div>
@@ -781,7 +820,7 @@ input{font-family:inherit; color:inherit;}
     </div>
     <button class="btn-primary" id="btnSaveGoals">حفظ الأهداف</button>
 
-    <div class="section-title">المزامنة بين الأجهزة</div>
+    <div class="section-title">☁️ المزامنة بين الأجهزة</div>
     <div id="syncStatusBox"></div>
   </div>
 </div>
@@ -812,6 +851,19 @@ input{font-family:inherit; color:inherit;}
   <div class="sheet-handle"></div>
   <div class="sheet-head"><h3 id="exDetailTitle">تفاصيل التمرين</h3><div class="sheet-close" data-close>✕</div></div>
   <div class="sheet-body"><div id="exDetailBody"></div></div>
+</div>
+
+<div class="sheet" id="sheetBodyWeight" style="max-height:90vh;">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head"><h3>⚖️ وزن الجسم</h3><div class="sheet-close" data-close>✕</div></div>
+  <div class="sheet-body">
+    <div class="weight-input-row">
+      <div class="form-field"><label>وزنك اليوم (كغ)</label><input type="number" id="bwInput" step="0.1" inputmode="decimal" placeholder="مثال: 78.5"></div>
+      <button class="btn-primary" id="btnSaveBodyWeight">حفظ</button>
+    </div>
+    <div id="bwStatsWrap"></div>
+    <div class="chart-wrap" id="bwChartWrap"></div>
+  </div>
 </div>
 
 <div id="toast"><span class="tick">✓</span><span id="toastMsg"></span></div>
@@ -863,7 +915,7 @@ function persist(){
   }
 }
 function defaultAppState(){
-  return { library:{foods:defaultFoods(), exercises:defaultExercises()}, goals:defaultGoals(), plan:null, logs:{}, updatedAt:0 };
+  return { library:{foods:defaultFoods(), exercises:defaultExercises()}, goals:defaultGoals(), plan:null, logs:{}, bodyWeights:{}, updatedAt:0 };
 }
 function rebindFromAppState(){
   state.library = appState.library;
@@ -872,6 +924,7 @@ function rebindFromAppState(){
   state.selectedPresetType = state.plan.type || 'upper_lower_4';
   if(!appState.logs[state.today]) appState.logs[state.today] = {meals:[], workouts:[]};
   state.log = appState.logs[state.today];
+  if(!appState.bodyWeights) appState.bodyWeights = {};
 }
 
 function getSyncConfig(){
@@ -1115,37 +1168,43 @@ async function init(){
 
   appState = loadLocalState() || defaultAppState();
   if(!appState.plan) appState.plan = generatePlan('upper_lower_4', appState.library);
+  if(!appState.bodyWeights) appState.bodyWeights = {};
   rebindFromAppState();
   state.viewedPlanDay = new Date().getDay();
 
+  // Render immediately from local cache so the app feels instant.
+  // Cloud sync (if configured) happens quietly in the background after.
+  computeStreak();
+  renderAll();
+  bindEvents();
+
   const cfg = getSyncConfig();
   if(cfg){
-    const ok = await connectCloud(cfg);
-    if(ok){
-      try{
-        const snap = await cloudDoc.get();
+    connectCloud(cfg).then((ok)=>{
+      if(!ok) return;
+      cloudDoc.get().then((snap)=>{
         if(snap.exists){
           const cloudState = snap.data();
           if((cloudState.updatedAt||0) > (appState.updatedAt||0)){
             appState = cloudState;
+            if(!appState.bodyWeights) appState.bodyWeights = {};
             saveLocalOnly();
             rebindFromAppState();
+            computeStreak();
+            renderAll();
+            showToast('تم تحديث بياناتك من جهاز ثاني 🔄');
           } else if((appState.updatedAt||0) > (cloudState.updatedAt||0)){
-            await cloudDoc.set(appState);
+            cloudDoc.set(appState);
           }
         } else {
-          await cloudDoc.set(appState);
+          cloudDoc.set(appState);
         }
         subscribeCloud();
-      }catch(e){ console.error('initial cloud sync failed', e); }
-    }
+      }).catch((e)=> console.error('initial cloud sync failed', e));
+    });
   } else {
     saveLocalOnly();
   }
-
-  computeStreak();
-  renderAll();
-  bindEvents();
 }
 
 function setGreeting(){
@@ -1581,6 +1640,61 @@ function openExerciseDetail(ex){
   openSheet('sheetExDetail');
 }
 
+/* ============================================================
+   BODY WEIGHT TRACKING
+   ============================================================ */
+function getBodyWeightHistory(){
+  return Object.keys(appState.bodyWeights).sort().map(date=>({date, weight: appState.bodyWeights[date]}));
+}
+function renderWeightCard(){
+  const wrap = document.getElementById('weightCard');
+  wrap.onclick = openBodyWeightSheet;
+  const history = getBodyWeightHistory();
+  if(history.length===0){
+    wrap.innerHTML = `<div class="wc-icon">⚖️</div>
+      <div class="wc-tx"><div class="w1">وزن الجسم</div><div class="w2">ما سجلت وزنك بعد — اضغط للبدء</div></div>`;
+    return;
+  }
+  const latest = history[history.length-1];
+  let trendTxt = 'أول تسجيل لك';
+  if(history.length>1){
+    const first = history[0];
+    const diff = Math.round((latest.weight-first.weight)*10)/10;
+    if(diff===0) trendTxt = 'ثابت من أول تسجيل';
+    else trendTxt = `${diff>0?'▲':'▼'} ${Math.abs(diff)} كغ من أول تسجيل`;
+  }
+  wrap.innerHTML = `<div class="wc-icon">⚖️</div>
+    <div class="wc-tx"><div class="w1">وزن الجسم</div><div class="w2">${trendTxt}</div></div>
+    <div class="wc-num tabular">${latest.weight}<span>كغ</span></div>`;
+}
+function openBodyWeightSheet(){
+  const todayW = appState.bodyWeights[state.today];
+  document.getElementById('bwInput').value = todayW || '';
+  renderBodyWeightSheetBody();
+  openSheet('sheetBodyWeight');
+}
+function renderBodyWeightSheetBody(){
+  const history = getBodyWeightHistory();
+  const statsWrap = document.getElementById('bwStatsWrap');
+  const chartWrap = document.getElementById('bwChartWrap');
+  if(history.length===0){
+    statsWrap.innerHTML = '';
+    chartWrap.innerHTML = '<div class="empty-hint">سجّل وزنك اليوم عشان يبدأ المنحنى 📈</div>';
+    return;
+  }
+  const weights = history.map(h=>h.weight);
+  const first = history[0].weight;
+  const latest = history[history.length-1].weight;
+  const min = Math.min(...weights);
+  const max = Math.max(...weights);
+  statsWrap.innerHTML = `<div class="ex-detail-stats">
+    <div class="ex-stat"><div class="sv tabular">${first}</div><div class="sl">أول وزن</div></div>
+    <div class="ex-stat"><div class="sv tabular">${latest}</div><div class="sl">آخر وزن</div></div>
+    <div class="ex-stat"><div class="sv tabular">${min} - ${max}</div><div class="sl">أقل - أعلى</div></div>
+  </div>`;
+  chartWrap.innerHTML = buildChartSvg(history);
+}
+
 function renderSyncStatus(){
   const cfg = getSyncConfig();
   const box = document.getElementById('syncStatusBox');
@@ -1590,7 +1704,9 @@ function renderSyncStatus(){
       <div class="entry-row" style="margin-bottom:12px;">
         <div class="entry-main"><div class="t1">رمز المزامنة</div><div class="t2 tabular" style="direction:ltr; text-align:right;">${escapeHtml(cfg.syncCode)}</div></div>
       </div>
-      <div class="empty-hint" style="padding:0 0 10px; text-align:right;">استخدم نفس الرمز وبيانات Firebase بأي جهاز ثاني عشان يشوف نفس بياناتك.</div>
+      <div class="empty-hint" style="padding:0 0 10px; text-align:right;">لازم يكون عندك نفس الرمز <b>ونفس كود Firebase بالحرف</b> بالجهازين. تأكد ما فيه مسافة زايدة أول أو آخر الرمز.</div>
+      <div id="syncTestResult"></div>
+      <button class="btn-secondary" id="btnTestSync" style="margin-top:0;">🔄 مزامنة الآن واختبار الاتصال</button>
       <button class="btn-secondary" id="btnDisableSync">فصل المزامنة عن هذا الجهاز</button>
     `;
     document.getElementById('btnDisableSync').addEventListener('click', ()=>{
@@ -1600,6 +1716,29 @@ function renderSyncStatus(){
       showToast('تم فصل المزامنة، بياناتك محفوظة محلياً بس الحين');
       renderSyncStatus();
     });
+    document.getElementById('btnTestSync').addEventListener('click', async ()=>{
+      const resEl = document.getElementById('syncTestResult');
+      resEl.innerHTML = '<div class="empty-hint" style="padding:8px 0;">جاري الاختبار...</div>';
+      try{
+        const snap = await cloudDoc.get();
+        if(snap.exists){
+          const cloudState = snap.data();
+          const cloudDate = cloudState.updatedAt ? new Date(cloudState.updatedAt).toLocaleString('ar') : 'غير معروف';
+          if((cloudState.updatedAt||0) > (appState.updatedAt||0)){
+            appState = cloudState; saveLocalOnly(); rebindFromAppState(); computeStreak(); renderAll();
+          } else if((appState.updatedAt||0) > (cloudState.updatedAt||0)){
+            await cloudDoc.set(appState);
+          }
+          resEl.innerHTML = `<div class="sync-badge" style="width:100%; box-sizing:border-box;">✅ الاتصال شغال. آخر تحديث بالسحابة: ${cloudDate}</div>`;
+        } else {
+          await cloudDoc.set(appState);
+          resEl.innerHTML = `<div class="sync-badge" style="width:100%; box-sizing:border-box;">✅ الاتصال شغال، وأول نسخة اترفعت الحين</div>`;
+        }
+      }catch(e){
+        console.error(e);
+        resEl.innerHTML = `<div class="sync-badge off" style="width:100%; box-sizing:border-box; color:var(--danger);">❌ فشل: ${escapeHtml(e.code||e.message||'خطأ غير معروف')}</div>`;
+      }
+    });
   } else {
     box.innerHTML = `
       <div class="sync-badge off"><span class="sync-dot"></span>غير متصل — بياناتك على هذا الجهاز بس</div>
@@ -1608,10 +1747,20 @@ function renderSyncStatus(){
         ١. افتح <a href="https://console.firebase.google.com" target="_blank" style="color:var(--accent-2);">console.firebase.google.com</a> وسوّي مشروع جديد (مجاني)<br>
         ٢. من القائمة الجانبية: Build ← Firestore Database ← Create database ← اختر Start in test mode<br>
         ٣. من إعدادات المشروع ⚙️ ← General ← اضغط أيقونة الويب (&lt;/&gt;) لتسجيل تطبيق ويب<br>
-        ٤. انسخ كود firebaseConfig كامل (يبدأ بـ { ) والصقه بالمربع تحت
+        ٤. انسخ كود firebaseConfig كامل (يبدأ بـ { ) والصقه بالمربع تحت<br>
+        ٥. <b>مهم:</b> من Firestore Database ← تبويب Rules، استبدل المحتوى بهذا واضغط Publish:
       </div>
-      <div class="form-field"><label>رمز مزامنة سري (اختاره بنفسك، ونفس الرمز بالجهاز الثاني)</label><input type="text" id="syncCode" placeholder="مثال: sara-gym-2026" style="direction:ltr; text-align:left;"></div>
+      <div class="chart-wrap" style="direction:ltr; text-align:left; font-family:monospace; font-size:11.5px; padding:12px; margin-bottom:12px; white-space:pre-wrap;">rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /miqyas_sync/{docId} {
+      allow read, write: if true;
+    }
+  }
+}</div>
+      <div class="form-field"><label>رمز مزامنة سري (اختاره بنفسك، ونفس الرمز بالجهاز الثاني بالحرف)</label><input type="text" id="syncCode" placeholder="مثال: sara-gym-2026" style="direction:ltr; text-align:left;"></div>
       <div class="form-field"><label>إعدادات Firebase</label><textarea id="syncConfig" rows="6" placeholder='{"apiKey":"...","projectId":"...","..."}'></textarea></div>
+      <div id="syncTestResult"></div>
       <button class="btn-primary" id="btnEnableSync">تفعيل المزامنة</button>
     `;
     document.getElementById('btnEnableSync').addEventListener('click', onEnableSyncClick);
@@ -1621,6 +1770,8 @@ function renderSyncStatus(){
 async function onEnableSyncClick(){
   const code = (document.getElementById('syncCode').value||'').trim();
   const raw = (document.getElementById('syncConfig').value||'').trim();
+  const resEl = document.getElementById('syncTestResult');
+  resEl.innerHTML = '';
   if(!code){ showToast('اختر رمز مزامنة أول'); return; }
   const parsed = parseFirebaseConfigInput(raw);
   if(!parsed || !parsed.apiKey || !parsed.projectId){ showToast('تأكد إنك نسخت كود Firebase كامل وصحيح'); return; }
@@ -1651,7 +1802,8 @@ async function onEnableSyncClick(){
     renderAll();
   }catch(e){
     console.error(e);
-    showToast('صار خطأ بالاتصال، راجع صلاحيات Firestore (Rules)');
+    showToast('صار خطأ: ' + (e.code || e.message || 'غير معروف') + ' — راجع صلاحيات Firestore (Rules)');
+    if(resEl) resEl.innerHTML = `<div class="sync-badge off" style="width:100%; box-sizing:border-box; color:var(--danger);">❌ ${escapeHtml(e.code||e.message||'خطأ غير معروف')}</div>`;
   }
 }
 
@@ -1678,6 +1830,7 @@ function renderAll(){
   renderStreak();
   renderWeekProgress();
   renderInsightCard();
+  renderWeightCard();
   renderQuickChips();
   renderTodaySummary();
   renderMealsToday();
@@ -1718,7 +1871,7 @@ function escapeHtml(s){
    SHEETS CONTROL
    ============================================================ */
 const overlay = document.getElementById('overlay');
-const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetWorkoutPick','sheetNewEx','sheetSets','sheetSettings','sheetPlanEdit','sheetSwap','sheetPRs','sheetExDetail'];
+const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetWorkoutPick','sheetNewEx','sheetSets','sheetSettings','sheetPlanEdit','sheetSwap','sheetPRs','sheetExDetail','sheetBodyWeight'];
 function openSheet(id){
   closeAllSheets();
   overlay.classList.add('show');
@@ -2019,6 +2172,18 @@ function bindEvents(){
     state.supersetPickMode=false; state.supersetPicks=[];
     renderExGroupBar(); renderExList(); renderSupersetBar();
     openSheet('sheetWorkoutPick');
+  });
+  document.getElementById('qaWeight').addEventListener('click', ()=>{
+    openBodyWeightSheet();
+  });
+  document.getElementById('btnSaveBodyWeight').addEventListener('click', ()=>{
+    const val = parseFloat(document.getElementById('bwInput').value);
+    if(!val || val<=0){ showToast('اكتب وزن صحيح أول'); return; }
+    appState.bodyWeights[state.today] = Math.round(val*10)/10;
+    persist();
+    renderWeightCard();
+    renderBodyWeightSheetBody();
+    showToast('تم حفظ وزنك 💪');
   });
   document.getElementById('btnStartWorkout').addEventListener('click', ()=>{
     state.activeExGroup='الكل';
