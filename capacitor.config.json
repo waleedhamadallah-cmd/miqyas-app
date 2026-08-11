@@ -1,0 +1,9 @@
+{
+     "appId": "com.miqyas.app",
+     "appName": "مقياس",
+     "webDir": "www",
+     "server": {
+       "url": "https://waleedhamadallah-cmd.github.io/miqyas-app/",
+       "cleartext": false
+     }
+   }
