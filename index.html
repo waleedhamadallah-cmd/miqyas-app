@@ -101,6 +101,8 @@
 
   <!-- GYM VIEW -->
   <section class="view" id="view-gym">
+    <div class="gym-stats-row" id="gymStatsRow"></div>
+
     <div class="heatmap-card">
       <div class="heatmap-head">
         <div class="hh-title">🔥 خريطة الإجهاد العضلي</div>
@@ -114,7 +116,12 @@
     <div class="day-strip" id="dayStrip"></div>
     <div class="plan-card" id="planCard"></div>
 
-    <div class="section-title">📋 سجل اليوم</div>
+    <div id="gymFavSection" style="display:none;">
+      <div class="section-title">⭐ المفضلة <span class="link" style="color:var(--text-mute); cursor:default;">بدء سريع بضغطة</span></div>
+      <div class="chip-scroll" id="gymFavRow"></div>
+    </div>
+
+    <div class="section-title">📋 سجل اليوم <span class="link" id="gymTodayVolume"></span></div>
     <div class="entry-list" id="workoutsToday"></div>
     <button class="btn-secondary" id="btnStartWorkout">+ تسجيل تمرين إضافي</button>
 

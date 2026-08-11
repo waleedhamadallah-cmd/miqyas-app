@@ -427,6 +427,26 @@ input{font-family:inherit; color:inherit;}
 .chart-wrap{background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:16px 10px;}
 
 /* ============ MUSCLE HEAT MAP ============ */
+/* ============ GYM STATS ROW ============ */
+.gym-stats-row{display:flex; gap:10px; margin-top:4px;}
+.gstat{
+  flex:1; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg);
+  padding:12px 10px; text-align:center;
+}
+.gstat .gv{font-family:var(--font-d); font-weight:900; font-size:19px; color:var(--text);}
+.gstat .gl{font-size:10.5px; color:var(--text-mute); margin-top:3px;}
+
+/* ============ FAVORITE STAR (exercise picker) ============ */
+.fav-star{font-size:19px; color:var(--text-mute); padding:4px; cursor:pointer; flex:0 0 auto; line-height:1; transition:transform .12s ease;}
+.fav-star.on{color:var(--fat);}
+.fav-star:active{transform:scale(1.3);}
+
+/* ============ PLAN META + HISTORY VOLUME ============ */
+.plan-meta{font-size:11px; color:var(--text-mute); font-weight:600; margin-inline-start:8px;}
+.day-card .dvol{font-size:11px; color:var(--text-mute);}
+.day-card .dgroups{display:flex; gap:4px; margin-top:6px;}
+.day-card .dgroups span{width:7px; height:7px; border-radius:50%;}
+
 .heatmap-card{
   background:linear-gradient(180deg, var(--surface) 0%, var(--bg-elev) 100%);
   border:1px solid var(--border); border-radius:var(--r-xl); padding:18px 16px 16px; margin-top:16px;
