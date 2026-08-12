@@ -77,7 +77,6 @@ function renderAll(){
   renderGymHistory();
   renderDayStrip();
   renderPlanCard();
-  renderMuscleHeatmap();
   renderOvertrainWarning();
   renderVolumeLandmarks();
   renderGymStatsRow();
@@ -105,10 +104,15 @@ function bindEvents(){
 
   document.getElementById('qaFood').addEventListener('click', ()=>{
     state.activeSheetFoodCat='الكل';
+    state.mealBuilderMode = false;
+    state.mealBuilderStep = 'protein';
+    state.mealBuilderPicks = {protein:null, carb:null};
     document.getElementById('sheetFoodSearch').value='';
-    renderSheetFoodCatBar(); renderSheetFoodList();
+    document.getElementById('mealBuilderToggle').classList.remove('on');
+    renderSheetFoodCatBar(); renderMealBuilderBar(); renderSheetFoodList();
     openSheet('sheetFood');
   });
+  document.getElementById('mealBuilderToggle').addEventListener('click', toggleMealBuilder);
   document.getElementById('qaWorkout').addEventListener('click', ()=>{
     state.activeExGroup='الكل';
     document.getElementById('exSearch').value='';
@@ -123,9 +127,15 @@ function bindEvents(){
     const val = parseFloat(document.getElementById('bwInput').value);
     if(!val || val<=0){ showToast('اكتب وزن صحيح أول'); return; }
     appState.bodyWeights[state.today] = Math.round(val*10)/10;
+    const bfVal = parseFloat(document.getElementById('bfInput').value);
+    if(bfVal && bfVal>0){
+      if(!appState.bodyFat) appState.bodyFat = {};
+      appState.bodyFat[state.today] = Math.round(bfVal*10)/10;
+    }
     persist();
     renderWeightCard();
     renderBodyWeightSheetBody();
+    renderBodyFatChart();
     showToast('تم حفظ وزنك 💪');
   });
   document.getElementById('btnStartWorkout').addEventListener('click', ()=>{
@@ -289,6 +299,13 @@ function bindEvents(){
   /* ---------- Water tracker ---------- */
   document.querySelectorAll('[data-water]').forEach(btn=>{
     btn.addEventListener('click', ()=> addWater(parseInt(btn.getAttribute('data-water'),10)));
+  });
+  document.getElementById('btnAddCustomWater').addEventListener('click', ()=>{
+    const input = document.getElementById('waterCustomInput');
+    const val = parseInt(input.value,10);
+    if(!val || val<=0){ showToast('اكتب كمية صحيحة بالمل'); return; }
+    addWater(val);
+    input.value = '';
   });
 
   /* ---------- Rest timer controls ---------- */

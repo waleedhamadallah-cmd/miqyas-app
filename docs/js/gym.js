@@ -137,46 +137,6 @@ function computeMuscleHeat(){
   return heat;
 }
 
-function renderMuscleHeatmap(){
-  const heat = computeMuscleHeat();
-  const maxV = Math.max(...Object.values(heat), 1);
-  const op = (g)=> (0.10 + (heat[g]/maxV)*0.85).toFixed(2);
-  const armsHeat = Math.max(heat['بايسبس']||0, heat['ترايسبس']||0);
-  const armsOp = (0.10 + (armsHeat/maxV)*0.85).toFixed(2);
-
-  const svg = `
-  <svg viewBox="0 0 200 300" width="118" height="177">
-    <ellipse cx="100" cy="26" rx="17" ry="19" fill="var(--border-soft)"/>
-    <rect x="90" y="42" width="20" height="14" rx="4" fill="var(--border-soft)"/>
-    <path d="M76 54 h48 l6 20 h-60 z" fill="${GROUP_COLOR_VAR['ظهر'].solid}" fill-opacity="${op('ظهر')}"/>
-    <circle cx="60" cy="72" r="15" fill="${GROUP_COLOR_VAR['أكتاف'].solid}" fill-opacity="${op('أكتاف')}"/>
-    <circle cx="140" cy="72" r="15" fill="${GROUP_COLOR_VAR['أكتاف'].solid}" fill-opacity="${op('أكتاف')}"/>
-    <rect x="68" y="70" width="64" height="52" rx="16" fill="${GROUP_COLOR_VAR['صدر'].solid}" fill-opacity="${op('صدر')}"/>
-    <rect x="40" y="76" width="19" height="95" rx="9.5" fill="${GROUP_COLOR_VAR['بايسبس'].solid}" fill-opacity="${armsOp}"/>
-    <rect x="141" y="76" width="19" height="95" rx="9.5" fill="${GROUP_COLOR_VAR['بايسبس'].solid}" fill-opacity="${armsOp}"/>
-    <rect x="72" y="124" width="56" height="60" rx="12" fill="${GROUP_COLOR_VAR['بطن'].solid}" fill-opacity="${op('بطن')}"/>
-    <rect x="70" y="188" width="26" height="105" rx="13" fill="${GROUP_COLOR_VAR['أرجل'].solid}" fill-opacity="${op('أرجل')}"/>
-    <rect x="104" y="188" width="26" height="105" rx="13" fill="${GROUP_COLOR_VAR['أرجل'].solid}" fill-opacity="${op('أرجل')}"/>
-  </svg>`;
-
-  const legendGroups = ['صدر','ظهر','أكتاف','بايسبس','ترايسبس','بطن','أرجل'];
-  const legend = legendGroups.map(g=>{
-    const t = Math.round((heat[g]/maxV)*100);
-    return `<div class="hl-row"><span class="hl-dot" style="background:${GROUP_COLOR_VAR[g].solid}; opacity:${(0.25+t/100*0.75).toFixed(2)}"></span><span class="hl-tx">${g} <b>${t>0?t+'٪':'—'}</b></span></div>`;
-  }).join('');
-
-  document.getElementById('heatmapBody').innerHTML = `${svg}<div class="heatmap-legend">${legend}</div>`;
-
-  const sorted = Object.entries(heat).sort((a,b)=>b[1]-a[1]);
-  const hot = sorted.filter(([g,v])=> v>0 && v/maxV>0.55).map(([g])=>g);
-  const cold = HEAT_ZONE_GROUPS.filter(g=> (heat[g]/maxV) < 0.2);
-  let summary = '';
-  if(hot.length) summary += `🔥 مجهدة، تحتاج راحة: <b>${hot.join('، ')}</b><br>`;
-  if(cold.length) summary += `✅ جاهزة للتمرين: <b>${cold.join('، ')}</b>`;
-  if(!hot.length && !cold.length) summary = 'وزّع تمارينك أكثر خلال الأسبوع عشان تشوف الخريطة تتلوّن 🎨';
-  document.getElementById('heatmapSummary').innerHTML = summary;
-}
-
 function renderOvertrainWarning(){
   const wrap = document.getElementById('overtrainWarnWrap');
   const heat = computeMuscleHeat();

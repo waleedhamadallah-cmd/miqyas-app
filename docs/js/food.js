@@ -215,6 +215,8 @@ function saveRecipe(){
 
 function renderSheetFoodCatBar(){
   const bar = document.getElementById('sheetFoodCatBar');
+  if(state.mealBuilderMode){ bar.innerHTML=''; bar.style.display='none'; return; }
+  bar.style.display='';
   bar.innerHTML = '';
   FOOD_CATS.forEach(cat=>{
     const chip = document.createElement('div');
@@ -230,7 +232,11 @@ function renderSheetFoodList(){
   const q = (document.getElementById('sheetFoodSearch').value||'').trim();
   wrap.innerHTML = '';
   let list = state.library.foods;
-  if(state.activeSheetFoodCat!=='الكل') list = list.filter(f=>f.category===state.activeSheetFoodCat);
+  if(state.mealBuilderMode){
+    list = list.filter(f=>f.foodType===state.mealBuilderStep);
+  } else if(state.activeSheetFoodCat!=='الكل'){
+    list = list.filter(f=>f.category===state.activeSheetFoodCat);
+  }
   if(q) list = list.filter(f=>f.name.includes(q));
   if(list.length===0){ wrap.innerHTML = '<div class="empty-hint">ما فيه نتائج، جرب اسم ثاني أو ضيف وجبة جديدة</div>'; return; }
   list.forEach(food=>{
@@ -238,9 +244,77 @@ function renderSheetFoodList(){
     row.className = 'lib-row';
     row.innerHTML = `<div class="lm"><div class="n">${escapeHtml(food.name)}</div><div class="d">${food.category} · ${food.calories} سعرة · ب${food.protein} ك${food.carbs} د${food.fat}</div></div>
       <div class="lib-add">+</div>`;
-    row.addEventListener('click', async ()=>{ await quickAddFood(food, null); closeAllSheets(); });
+    row.addEventListener('click', async ()=>{
+      if(state.mealBuilderMode){ pickMealBuilderFood(food); }
+      else{ await quickAddFood(food, null); closeAllSheets(); }
+    });
     wrap.appendChild(row);
   });
+}
+
+/* ============================================================
+   MEAL BUILDER (combine a protein pick + a carb pick into ONE meal)
+   ============================================================ */
+function toggleMealBuilder(){
+  state.mealBuilderMode = !state.mealBuilderMode;
+  state.mealBuilderStep = 'protein';
+  state.mealBuilderPicks = {protein:null, carb:null};
+  document.getElementById('mealBuilderToggle').classList.toggle('on', state.mealBuilderMode);
+  renderSheetFoodCatBar();
+  renderMealBuilderBar();
+  renderSheetFoodList();
+}
+function pickMealBuilderFood(food){
+  state.mealBuilderPicks[state.mealBuilderStep] = food;
+  if(state.mealBuilderStep==='protein') state.mealBuilderStep = 'carb';
+  renderMealBuilderBar();
+  renderSheetFoodList();
+}
+function skipMealBuilderStep(){
+  if(state.mealBuilderStep==='protein'){ state.mealBuilderStep = 'carb'; renderMealBuilderBar(); renderSheetFoodList(); }
+  else{ finishMealBuilder(); }
+}
+function renderMealBuilderBar(){
+  const wrap = document.getElementById('mealBuilderBar');
+  if(!state.mealBuilderMode){ wrap.style.display='none'; wrap.innerHTML=''; return; }
+  wrap.style.display='block';
+  const p = state.mealBuilderPicks.protein, c = state.mealBuilderPicks.carb;
+  const bothPicked = p && c;
+  wrap.innerHTML = `<div class="mb-bar">
+    <div class="mb-steps">
+      <div class="mb-step ${state.mealBuilderStep==='protein'?'active':(p?'done':'')}">١. البروتين ${p?'✓':''}</div>
+      <div class="mb-step ${state.mealBuilderStep==='carb'?'active':(c?'done':'')}">٢. الكارب ${c?'✓':''}</div>
+    </div>
+    <div class="mb-picks">${p?`🥩 <b>${escapeHtml(p.name)}</b>`:'اختر بروتين من القائمة تحت'}${c?`<br>🍚 <b>${escapeHtml(c.name)}</b>`:(p?'<br>اختر كارب، أو خلص بدونه':'')}</div>
+    <div class="mb-actions">
+      ${(p||c) ? `<button class="btn-secondary" id="btnFinishMealBuilder">✅ خلّصها وجبة وحدة${bothPicked?'':' (بس اللي اخترته)'}</button>` : `<button class="btn-secondary" id="btnSkipMealStep">تخطي هالخطوة</button>`}
+    </div>
+  </div>`;
+  const finishBtn = document.getElementById('btnFinishMealBuilder');
+  if(finishBtn) finishBtn.addEventListener('click', finishMealBuilder);
+  const skipBtn = document.getElementById('btnSkipMealStep');
+  if(skipBtn) skipBtn.addEventListener('click', skipMealBuilderStep);
+}
+async function finishMealBuilder(){
+  const p = state.mealBuilderPicks.protein, c = state.mealBuilderPicks.carb;
+  if(!p && !c){ showToast('اختر عنصر وحد على الأقل'); return; }
+  const items = [p,c].filter(Boolean);
+  const name = items.map(i=>i.name).join(' + ');
+  const totals = items.reduce((acc,f)=>({
+    calories:acc.calories+f.calories, protein:acc.protein+f.protein, carbs:acc.carbs+f.carbs,
+    fat:acc.fat+f.fat, fiber:acc.fiber+(f.fiber||0), sodium:acc.sodium+(f.sodium||0)
+  }), {calories:0,protein:0,carbs:0,fat:0,fiber:0,sodium:0});
+  const entry = {id:uid(), foodId:null, name, category:'غدا',
+    calories:Math.round(totals.calories), protein:Math.round(totals.protein), carbs:Math.round(totals.carbs),
+    fat:Math.round(totals.fat), fiber:Math.round(totals.fiber), sodium:Math.round(totals.sodium), time:Date.now()};
+  state.log.meals.push(entry);
+  items.forEach(f=> f.usageCount = (f.usageCount||0)+1);
+  persist();
+  vibrate(10);
+  showToast(`أضيفت ${name} 🍽️`);
+  renderAll();
+  toggleMealBuilder(); // reset for next time
+  closeAllSheets();
 }
 
 /* ============================================================

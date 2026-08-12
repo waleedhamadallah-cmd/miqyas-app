@@ -85,13 +85,29 @@ function renderWeightCard(){
 function openBodyWeightSheet(){
   const todayW = appState.bodyWeights[state.today];
   document.getElementById('bwInput').value = todayW || '';
+  const todayBF = (appState.bodyFat||{})[state.today];
+  document.getElementById('bfInput').value = todayBF || '';
   const todayM = (appState.bodyMeasurements||{})[state.today] || {};
   document.getElementById('measArm').value = todayM.arm || '';
   document.getElementById('measWaist').value = todayM.waist || '';
   document.getElementById('measChest').value = todayM.chest || '';
   renderBodyWeightSheetBody();
   renderMeasurementCharts();
+  renderBodyFatChart();
   openSheet('sheetBodyWeight');
+}
+
+function getBodyFatHistory(){
+  if(!appState.bodyFat) return [];
+  return Object.keys(appState.bodyFat).sort().map(date=>({date, weight: appState.bodyFat[date]}));
+}
+function renderBodyFatChart(){
+  const wrap = document.getElementById('bfChartWrap');
+  if(!wrap) return;
+  const history = getBodyFatHistory();
+  if(history.length===0){ wrap.innerHTML = ''; return; }
+  const latest = history[history.length-1].weight;
+  wrap.innerHTML = `<div class="section-title" style="margin-top:14px;">نسبة الدهون — آخر قياس: ${latest}٪</div><div class="chart-wrap">${buildChartSvg(history)}</div>`;
 }
 
 function renderBodyWeightSheetBody(){
