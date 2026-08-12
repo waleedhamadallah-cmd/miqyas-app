@@ -106,22 +106,24 @@
     <div class="section-title" style="margin-top:16px;">🍽️ وجبات اليوم</div>
     <div class="entry-list" id="mealsToday"></div>
 
-    <div style="display:flex; gap:10px; margin-top:12px;">
-      <button class="btn-secondary" id="btnOpenTemplates" style="margin-top:0;">📋 قوالب الوجبات</button>
-      <button class="btn-secondary" id="btnOpenRecipeBuilder" style="margin-top:0;">🍲 بناء وصفة</button>
+    <div class="qa-row">
+      <button class="btn-secondary" id="btnOpenTemplates">📋 قوالب الوجبات</button>
+      <button class="btn-secondary" id="btnOpenRecipeBuilder">🍲 بناء وصفة</button>
     </div>
 
     <div class="section-title">📊 توزيع السعرات اليوم</div>
     <div class="chart-wrap" id="calDistWrap"></div>
 
-    <div class="section-title">📚 المكتبة</div>
-    <div class="search-wrap">
-      <input type="text" id="foodSearch" placeholder="ابحث عن وجبة...">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+    <div class="section-title">📚 مكتبة الأكل</div>
+    <div class="lib-card">
+      <div class="search-wrap">
+        <input type="text" id="foodSearch" placeholder="ابحث عن وجبة...">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
+      </div>
+      <div class="chipbar" id="foodCatBar"></div>
+      <div id="foodLibList"></div>
+      <button class="btn-secondary" id="btnAddCustomFood">+ إضافة وجبة جديدة للمكتبة</button>
     </div>
-    <div class="chipbar" id="foodCatBar"></div>
-    <div id="foodLibList"></div>
-    <button class="btn-secondary" id="btnAddCustomFood">+ إضافة وجبة جديدة للمكتبة</button>
   </section>
 
   <!-- GYM VIEW -->
@@ -157,6 +159,9 @@
 
     <div class="section-title">📊 نظرة على الشهر</div>
     <div class="insight-card" id="insightCard"></div>
+
+    <div class="section-title">📅 ملخص الأسبوع الغذائي</div>
+    <div class="insight-card" id="weeklyFoodInsight"></div>
 
     <div class="section-title">🏆 الإنجازات</div>
     <button class="btn-secondary" id="btnShowPRs" style="margin-top:0;">🏆 أرقامي القياسية</button>
@@ -224,7 +229,7 @@
 
 <div class="sheet" id="sheetNewFood">
   <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>وجبة جديدة</h3><div class="sheet-close" data-close>✕</div></div>
+  <div class="sheet-head"><h3 id="sheetNewFoodTitle">وجبة جديدة</h3><div class="sheet-close" data-close>✕</div></div>
   <div class="sheet-body">
     <div class="form-field"><label>اسم الوجبة</label><input type="text" id="nfName" placeholder="مثال: صدر دجاج مشوي"></div>
     <div class="form-field"><label>الفئة</label>
@@ -243,7 +248,7 @@
       <div class="form-field"><label>ألياف (غ) — اختياري</label><input type="number" id="nfFiber" placeholder="0" inputmode="numeric"></div>
       <div class="form-field"><label>صوديوم (مغ) — اختياري</label><input type="number" id="nfSodium" placeholder="0" inputmode="numeric"></div>
     </div>
-    <button class="btn-primary" id="btnSaveNewFood">حفظ وإضافة لليوم</button>
+    <button class="btn-primary" id="btnSaveNewFood"><span id="btnSaveNewFoodLabel">حفظ وإضافة لليوم</span></button>
   </div>
 </div>
 
