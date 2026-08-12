@@ -418,6 +418,28 @@ input{font-family:inherit; color:inherit;}
 }
 .superset-toggle.on{background:var(--carb-soft); border-color:var(--carb); color:var(--carb);}
 
+/* ============ MEAL BUILDER (protein + carb combo) ============ */
+.meal-builder-toggle{
+  display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:var(--r-pill);
+  background:var(--surface); border:1px solid var(--border); font-size:12.5px; font-weight:700; color:var(--text-dim);
+  cursor:pointer; margin-bottom:12px;
+}
+.meal-builder-toggle.on{background:var(--protein-soft); border-color:var(--protein); color:var(--protein);}
+.mb-bar{
+  background:var(--bg-elev); border:1px solid var(--border); border-radius:var(--r-lg); padding:12px 14px; margin-bottom:12px;
+}
+.mb-steps{display:flex; gap:8px; margin-bottom:10px;}
+.mb-step{
+  flex:1; padding:8px; border-radius:var(--r-md); background:var(--surface); border:1px solid var(--border-soft);
+  text-align:center; font-size:11.5px; color:var(--text-mute);
+}
+.mb-step.active{border-color:var(--accent); color:var(--accent); background:rgba(255,107,74,.08); font-weight:700;}
+.mb-step.done{color:var(--carb); border-color:var(--carb);}
+.mb-picks{font-size:12px; color:var(--text-dim); margin-bottom:8px; line-height:1.8;}
+.mb-picks b{color:var(--text);}
+.mb-actions{display:flex; gap:8px;}
+.mb-actions .btn-secondary, .mb-actions .btn-primary{margin-top:0; flex:1;}
+
 /* ============ EXERCISE DETAIL CHART ============ */
 .ex-detail-head{display:flex; align-items:center; gap:14px; margin-bottom:16px;}
 .ex-detail-stats{display:flex; gap:10px; margin-bottom:16px;}
@@ -426,7 +448,6 @@ input{font-family:inherit; color:inherit;}
 .ex-stat .sl{font-size:10.5px; color:var(--text-mute); margin-top:3px;}
 .chart-wrap{background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:16px 10px;}
 
-/* ============ MUSCLE HEAT MAP ============ */
 /* ============ GYM STATS ROW ============ */
 .gym-stats-row{display:flex; gap:10px; margin-top:4px;}
 .gstat{
@@ -446,23 +467,6 @@ input{font-family:inherit; color:inherit;}
 .day-card .dvol{font-size:11px; color:var(--text-mute);}
 .day-card .dgroups{display:flex; gap:4px; margin-top:6px;}
 .day-card .dgroups span{width:7px; height:7px; border-radius:50%;}
-
-.heatmap-card{
-  background:linear-gradient(180deg, var(--surface) 0%, var(--bg-elev) 100%);
-  border:1px solid var(--border); border-radius:var(--r-xl); padding:18px 16px 16px; margin-top:16px;
-}
-.heatmap-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;}
-.heatmap-head .hh-title{font-family:var(--font-d); font-weight:800; font-size:14.5px;}
-.heatmap-head .hh-sub{font-size:11px; color:var(--text-mute);}
-.heatmap-body{display:flex; align-items:center; gap:16px;}
-.heatmap-body svg{flex:0 0 auto;}
-.heatmap-legend{flex:1; display:flex; flex-direction:column; gap:8px; min-width:0;}
-.hl-row{display:flex; align-items:center; gap:8px;}
-.hl-dot{width:9px; height:9px; border-radius:50%; flex:0 0 auto;}
-.hl-tx{font-size:11.5px; color:var(--text-dim); flex:1; min-width:0;}
-.hl-tx b{color:var(--text); font-weight:700;}
-.heatmap-summary{margin-top:12px; padding-top:12px; border-top:1px solid var(--border-soft); font-size:11.5px; color:var(--text-dim); line-height:1.9;}
-.heatmap-summary b{color:var(--text);}
 
 /* ============ VISUAL WEIGHT PLATES (BARBELL) ============ */
 .barbell{display:flex; align-items:flex-end; justify-content:center; gap:0; margin:14px 0; height:52px; transition:transform .15s ease;}
@@ -633,6 +637,18 @@ html[data-theme="light"] #toast{ color:var(--text); }
   text-align:center; font-size:12px; font-weight:700; color:var(--shoulder); cursor:pointer;
 }
 .water-btn:active{transform:scale(.95);}
+.water-custom-row{display:flex; gap:8px; margin-top:8px;}
+.water-custom-row input{
+  flex:1; background:var(--bg-elev); border:1px solid var(--border-soft); border-radius:var(--r-md);
+  padding:9px 12px; font-size:12.5px; color:var(--text); outline:none;
+}
+.water-custom-row input:focus{border-color:var(--shoulder);}
+.water-custom-btn{
+  padding:9px 16px; border-radius:var(--r-md); background:var(--shoulder); color:#12161A;
+  font-size:12px; font-weight:800; cursor:pointer; display:flex; align-items:center;
+}
+.water-custom-btn:active{transform:scale(.95);}
+
 
 /* ============ REST TIMER ============ */
 .rest-timer-box{
