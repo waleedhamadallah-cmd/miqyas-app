@@ -361,6 +361,8 @@ const state = {
   supersetPicks: [],
   // set to a food id while editing an existing custom food, null when adding new
   editingFoodId: null,
+  // date key (YYYY-MM-DD) of the past day currently being edited via the home "past days" strip
+  dayEditTarget: null,
 };
 
 function todayKey(d){
@@ -665,7 +667,7 @@ function attachSwipeToDelete(rowEl, onConfirmDelete){
 
 const overlay = document.getElementById('overlay');
 
-const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetWorkoutPick','sheetNewEx','sheetSets','sheetSettings','sheetPlanEdit','sheetSwap','sheetPRs','sheetExDetail','sheetBodyWeight','sheetOnboarding','sheetRecipeBuilder','sheetMealTemplates','sheetShareCard'];
+const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetWorkoutPick','sheetNewEx','sheetSets','sheetSettings','sheetPlanEdit','sheetSwap','sheetPRs','sheetExDetail','sheetBodyWeight','sheetOnboarding','sheetRecipeBuilder','sheetMealTemplates','sheetShareCard','sheetDayEdit'];
 
 function openSheet(id){
   closeAllSheets();
