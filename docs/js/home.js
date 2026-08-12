@@ -165,6 +165,25 @@ function addWater(deltaMl){
 }
 
 /* ============================================================
+   PAST DAYS STRIP — pick an old day to edit its meals
+   ============================================================ */
+function renderPastDaysStrip(){
+  const wrap = document.getElementById('pastDaysStrip');
+  if(!wrap) return;
+  wrap.innerHTML = '';
+  for(let i=1;i<=14;i++){
+    const key = dateKeyOffset(i);
+    const d = new Date(key+'T00:00:00');
+    const dayLog = appState.logs[key];
+    const hasMeals = !!(dayLog && dayLog.meals && dayLog.meals.length>0);
+    const pill = document.createElement('div');
+    pill.className = 'date-pill'+(hasMeals ? ' logged' : '');
+    pill.innerHTML = `<div class="dpl">${DAY_LABELS[d.getDay()]}</div><div class="dpn tabular">${d.getDate()}</div><div class="dpdot"></div>`;
+    pill.addEventListener('click', ()=> openDayEdit(key));
+    wrap.appendChild(pill);
+  }
+}
+
+/* ============================================================
    RENDER: FOOD VIEW
    ============================================================ */
-
