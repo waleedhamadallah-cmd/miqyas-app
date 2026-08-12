@@ -74,6 +74,10 @@
         <div class="water-btn" data-water="500">+500 مل</div>
         <div class="water-btn" data-water="-250">-250 مل</div>
       </div>
+      <div class="water-custom-row">
+        <input type="number" id="waterCustomInput" placeholder="كمية بالمل" inputmode="numeric">
+        <div class="water-custom-btn" id="btnAddCustomWater">إضافة</div>
+      </div>
     </div>
 
     <div class="streak-card">
@@ -123,15 +127,6 @@
   <!-- GYM VIEW -->
   <section class="view" id="view-gym">
     <div class="gym-stats-row" id="gymStatsRow"></div>
-
-    <div class="heatmap-card">
-      <div class="heatmap-head">
-        <div class="hh-title">🔥 خريطة الإجهاد العضلي</div>
-        <div class="hh-sub">آخر 7 أيام</div>
-      </div>
-      <div class="heatmap-body" id="heatmapBody"></div>
-      <div class="heatmap-summary" id="heatmapSummary"></div>
-    </div>
 
     <div id="overtrainWarnWrap"></div>
 
@@ -215,6 +210,8 @@
   <div class="sheet-handle"></div>
   <div class="sheet-head"><h3>إضافة وجبة</h3><div class="sheet-close" data-close>✕</div></div>
   <div class="sheet-body">
+    <div class="meal-builder-toggle" id="mealBuilderToggle">🍽️ ابنِ وجبة (بروتين + كارب)</div>
+    <div id="mealBuilderBar" style="display:none;"></div>
     <div class="search-wrap">
       <input type="text" id="sheetFoodSearch" placeholder="ابحث عن وجبة...">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
@@ -429,8 +426,10 @@
       <div class="form-field"><label>وزنك اليوم (كغ)</label><input type="number" id="bwInput" step="0.1" inputmode="decimal" placeholder="مثال: 78.5"></div>
       <button class="btn-primary" id="btnSaveBodyWeight">حفظ</button>
     </div>
+    <div class="form-field"><label>نسبة الدهون (%) — اختياري</label><input type="number" id="bfInput" step="0.1" inputmode="decimal" placeholder="مثال: 18.5"></div>
     <div id="bwStatsWrap"></div>
     <div class="chart-wrap" id="bwChartWrap"></div>
+    <div id="bfChartWrap"></div>
 
     <div class="section-title">📏 قياسات الجسم</div>
     <div class="form-grid">
