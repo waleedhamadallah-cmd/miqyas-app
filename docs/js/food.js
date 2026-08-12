@@ -56,11 +56,100 @@ function renderFoodLibList(){
   list.forEach(food=>{
     const row = document.createElement('div');
     row.className = 'lib-row';
-    row.innerHTML = `<div class="lm"><div class="n">${escapeHtml(food.name)} ${food.favorite?'<span class="star">★</span>':''}</div><div class="d">${food.category} · ${food.calories} سعرة · ب${food.protein} ك${food.carbs} د${food.fat}</div></div>
-      <div class="lib-add">+</div>`;
+    const customTag = food.isCustom ? '<span class="custom-tag">مخصصة</span>' : '';
+    row.innerHTML = `<div class="lm"><div class="n">${escapeHtml(food.name)} ${food.favorite?'<span class="star">★</span>':''}${customTag}</div><div class="d">${food.category} · ${food.calories} سعرة · ب${food.protein} ك${food.carbs} د${food.fat}</div></div>
+      <div class="lib-actions">
+        ${food.isCustom ? `<div class="lib-edit" data-edit-food="${food.id}">✏️</div><div class="lib-del" data-del-food="${food.id}">🗑️</div>` : ''}
+        <div class="lib-add">+</div>
+      </div>`;
     row.querySelector('.lib-add').addEventListener('click', (e)=>{ e.stopPropagation(); quickAddFood(food, null); });
+    const editBtn = row.querySelector('[data-edit-food]');
+    if(editBtn) editBtn.addEventListener('click', (e)=>{ e.stopPropagation(); openEditFood(food); });
+    const delBtn = row.querySelector('[data-del-food]');
+    if(delBtn) delBtn.addEventListener('click', (e)=>{ e.stopPropagation(); deleteCustomFood(food); });
     wrap.appendChild(row);
   });
+}
+
+/* ============================================================
+   EDIT / DELETE CUSTOM FOODS
+   ============================================================ */
+function openEditFood(food){
+  state.editingFoodId = food.id;
+  document.getElementById('sheetNewFoodTitle').textContent = 'تعديل الوجبة';
+  document.getElementById('btnSaveNewFoodLabel').textContent = 'حفظ التعديلات';
+  document.getElementById('nfName').value = food.name;
+  document.getElementById('nfCat').value = food.category;
+  document.getElementById('nfCal').value = food.calories;
+  document.getElementById('nfP').value = food.protein;
+  document.getElementById('nfC').value = food.carbs;
+  document.getElementById('nfF').value = food.fat;
+  document.getElementById('nfFiber').value = food.fiber || 0;
+  document.getElementById('nfSodium').value = food.sodium || 0;
+  openSheet('sheetNewFood');
+}
+
+function resetNewFoodSheet(){
+  state.editingFoodId = null;
+  document.getElementById('sheetNewFoodTitle').textContent = 'وجبة جديدة';
+  document.getElementById('btnSaveNewFoodLabel').textContent = 'حفظ وإضافة لليوم';
+  ['nfName','nfCal','nfP','nfC','nfF','nfFiber','nfSodium'].forEach(id=> document.getElementById(id).value='');
+}
+
+function deleteCustomFood(food){
+  const idx = state.library.foods.findIndex(f=>f.id===food.id);
+  if(idx<0) return;
+  state.library.foods.splice(idx,1);
+  persist();
+  renderAll();
+  showUndoToast(`حذفت ${food.name} من المكتبة`, ()=>{
+    state.library.foods.splice(idx,0,food);
+    persist();
+    renderAll();
+  });
+}
+
+/* ============================================================
+   WEEKLY FOOD SUMMARY (progress tab)
+   ============================================================ */
+function renderWeeklyFoodSummary(){
+  const wrap = document.getElementById('weeklyFoodInsight');
+  if(!wrap) return;
+  const days = [];
+  for(let i=0;i<7;i++){
+    const d = new Date();
+    d.setDate(d.getDate()-i);
+    days.push(todayKey(d));
+  }
+  const catSums = {'فطور':0,'غدا':0,'عشا':0,'سناك':0};
+  let totalCal = 0, loggedDays = 0;
+  days.forEach(dateKey=>{
+    const dayLog = appState.logs[dateKey];
+    const meals = dayLog ? (dayLog.meals||[]) : [];
+    if(meals.length===0) return;
+    loggedDays++;
+    meals.forEach(m=>{
+      totalCal += m.calories;
+      if(catSums[m.category]!==undefined) catSums[m.category] += m.calories;
+    });
+  });
+
+  if(loggedDays===0){
+    wrap.innerHTML = `<div class="insight-row"><div class="insight-icon" style="background:var(--carb-soft); color:var(--carb);">📅</div>
+      <div class="insight-tx"><div class="it1">ما فيه بيانات كافية هالأسبوع</div><div class="it2">سجل وجباتك عشان يبين لك ملخص أسبوعي</div></div></div>`;
+    return;
+  }
+
+  const avgCal = Math.round(totalCal/loggedDays);
+  const avgHtml = `<div class="insight-row"><div class="insight-icon" style="background:var(--protein-soft); color:var(--protein);">📊</div>
+    <div class="insight-tx"><div class="it1">متوسط سعراتك ${avgCal.toLocaleString('en-US')} سعرة باليوم</div><div class="it2">على أساس ${loggedDays} من آخر 7 أيام سجلتها</div></div></div>`;
+
+  const topCat = Object.keys(catSums).reduce((a,b)=> catSums[b]>catSums[a] ? b : a);
+  const topCatPct = totalCal ? Math.round((catSums[topCat]/totalCal)*100) : 0;
+  const catHtml = totalCal ? `<div class="insight-row"><div class="insight-icon" style="background:var(--fat-soft); color:var(--fat);">🍽️</div>
+    <div class="insight-tx"><div class="it1">أكثر فئة تاكل منها: ${topCat}</div><div class="it2">${topCatPct}٪ من سعرات الأسبوع</div></div></div>` : '';
+
+  wrap.innerHTML = avgHtml + catHtml;
 }
 
 /* ============================================================
@@ -320,4 +409,3 @@ async function finishMealBuilder(){
 /* ============================================================
    EXERCISE PICKER SHEET
    ============================================================ */
-
