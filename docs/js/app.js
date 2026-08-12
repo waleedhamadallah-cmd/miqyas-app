@@ -65,6 +65,7 @@ function renderAll(){
   renderStreak();
   renderWeekProgress();
   renderInsightCard();
+  renderWeeklyFoodSummary();
   renderWeightCard();
   renderWaterCard();
   renderQuickChips();
@@ -161,8 +162,8 @@ function bindEvents(){
   document.getElementById('foodSearch').addEventListener('input', renderFoodLibList);
   document.getElementById('exSearch').addEventListener('input', renderExList);
 
-  document.getElementById('btnAddCustomFood').addEventListener('click', ()=> openSheet('sheetNewFood'));
-  document.getElementById('btnAddCustomFood2').addEventListener('click', ()=> openSheet('sheetNewFood'));
+  document.getElementById('btnAddCustomFood').addEventListener('click', ()=> { resetNewFoodSheet(); openSheet('sheetNewFood'); });
+  document.getElementById('btnAddCustomFood2').addEventListener('click', ()=> { resetNewFoodSheet(); openSheet('sheetNewFood'); });
 
   document.getElementById('btnSaveNewFood').addEventListener('click', async ()=>{
     const name = document.getElementById('nfName').value.trim();
@@ -174,9 +175,23 @@ function bindEvents(){
     const fiber = parseFloat(document.getElementById('nfFiber').value)||0;
     const sodium = parseFloat(document.getElementById('nfSodium').value)||0;
     if(!name){ showToast('اكتب اسم الوجبة أول'); return; }
+
+    if(state.editingFoodId){
+      const food = state.library.foods.find(fd=>fd.id===state.editingFoodId);
+      if(food){
+        Object.assign(food, {name, category:cat, calories:cal, protein:p, carbs:c, fat:f, fiber, sodium});
+        persist();
+        showToast(`تم تحديث ${name} ✏️`);
+      }
+      resetNewFoodSheet();
+      closeAllSheets();
+      renderAll();
+      return;
+    }
+
     const food = {id:uid(), name, category:cat, calories:cal, protein:p, carbs:c, fat:f, fiber, sodium, favorite:false, usageCount:0, isCustom:true};
     state.library.foods.push(food);
-    ['nfName','nfCal','nfP','nfC','nfF','nfFiber','nfSodium'].forEach(id=> document.getElementById(id).value='');
+    resetNewFoodSheet();
     await quickAddFood(food, null);
     closeAllSheets();
   });
