@@ -258,12 +258,21 @@ function bindEvents(){
     else{ showToast(`تم حفظ ${savedNames.join(' + ')} 💪`); }
   });
 
+  document.querySelectorAll('.acc-head').forEach(head=>{
+    head.addEventListener('click', (e)=>{
+      if(e.target.closest('.link')) return;
+      head.parentElement.classList.toggle('open');
+    });
+  });
+
   document.getElementById('btnSettings').addEventListener('click', ()=>{
     document.getElementById('goalCal').value = state.goals.calories;
     document.getElementById('goalP').value = state.goals.protein;
     document.getElementById('goalC').value = state.goals.carbs;
     document.getElementById('goalF').value = state.goals.fat;
     renderSyncStatus();
+    const syncItem = document.querySelector('.acc-item[data-acc="sync"]');
+    if(syncItem) syncItem.classList.toggle('open', !!getSyncConfig());
     openSheet('sheetSettings');
   });
   document.getElementById('btnSaveGoals').addEventListener('click', ()=>{
