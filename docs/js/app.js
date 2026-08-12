@@ -70,6 +70,7 @@ function renderAll(){
   renderWaterCard();
   renderQuickChips();
   renderTodaySummary();
+  renderPastDaysStrip();
   renderMealsToday();
   renderFoodCatBar();
   renderFoodLibList();
@@ -161,6 +162,7 @@ function bindEvents(){
   document.getElementById('sheetFoodSearch').addEventListener('input', renderSheetFoodList);
   document.getElementById('foodSearch').addEventListener('input', renderFoodLibList);
   document.getElementById('exSearch').addEventListener('input', renderExList);
+  document.getElementById('dayEditFoodSearch').addEventListener('input', renderDayEditFoodList);
 
   document.getElementById('btnAddCustomFood').addEventListener('click', ()=> { resetNewFoodSheet(); openSheet('sheetNewFood'); });
   document.getElementById('btnAddCustomFood2').addEventListener('click', ()=> { resetNewFoodSheet(); openSheet('sheetNewFood'); });
