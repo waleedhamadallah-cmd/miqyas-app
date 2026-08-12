@@ -1,568 +1,584 @@
-<!DOCTYPE html>
-<html lang="ar" dir="rtl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-<title>مِقياس — النادي والأكل</title>
-<link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
-<link rel="stylesheet" href="./css/styles.css">
-<link rel="manifest" href="./manifest.json">
-<link rel="icon" href="./icon-192.png">
-<meta name="theme-color" content="#12161A">
-
-</head>
-<body>
-
-<div id="app">
-
-  <div class="topbar">
-    <div class="greet">
-      <div class="hi" id="greetText">مرحباً 👋</div>
-      <div class="date" id="dateText">—</div>
-    </div>
-    <button class="icon-btn" id="btnSettings" aria-label="الإعدادات">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"></circle><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"></path></svg>
-    </button>
-  </div>
-
-  <!-- HOME VIEW -->
-  <section class="view active" id="view-home">
-    <div class="hero-card">
-      <div class="ring-wrap">
-        <svg id="ringSvg" width="200" height="200" viewBox="0 0 200 200">
-          <circle cx="100" cy="100" r="86" fill="none" stroke="#232B32" stroke-width="14"/>
-          <circle id="ringProgress" cx="100" cy="100" r="86" fill="none" stroke="url(#ringGrad)" stroke-width="14" stroke-linecap="round" transform="rotate(-90 100 100)"/>
-          <defs>
-            <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#FF6B4A"/>
-              <stop offset="100%" stop-color="#F2B84B"/>
-            </linearGradient>
-          </defs>
-        </svg>
-        <div class="ring-center">
-          <div class="num tabular" id="calRemain">0</div>
-          <div class="lbl">سعرة متبقية</div>
-          <div class="sub tabular" id="calSub">0 من 0</div>
-        </div>
-      </div>
-      <div class="macro-row">
-        <div class="macro-pill protein">
-          <div class="top"><span class="name">بروتين</span><span class="val tabular" id="pVal">0/0</span></div>
-          <div class="macro-track"><div class="macro-fill" id="pFill" style="width:0%"></div></div>
-        </div>
-        <div class="macro-pill carb">
-          <div class="top"><span class="name">كارب</span><span class="val tabular" id="cVal">0/0</span></div>
-          <div class="macro-track"><div class="macro-fill" id="cFill" style="width:0%"></div></div>
-        </div>
-        <div class="macro-pill fat">
-          <div class="top"><span class="name">دهون</span><span class="val tabular" id="fVal">0/0</span></div>
-          <div class="macro-track"><div class="macro-fill" id="fFill" style="width:0%"></div></div>
-        </div>
-      </div>
-    </div>
-
-    <div class="water-card">
-      <div class="water-head">
-        <div class="wh-title">💧 الماء</div>
-        <div class="wh-val tabular" id="waterValText">0 / 2500 مل</div>
-      </div>
-      <div class="water-track"><div class="water-fill" id="waterFill" style="width:0%"></div></div>
-      <div class="water-btns">
-        <div class="water-btn" data-water="250">+250 مل</div>
-        <div class="water-btn" data-water="500">+500 مل</div>
-        <div class="water-btn" data-water="-250">-250 مل</div>
-      </div>
-      <div class="water-custom-row">
-        <input type="number" id="waterCustomInput" placeholder="كمية بالمل" inputmode="numeric">
-        <div class="water-custom-btn" id="btnAddCustomWater">إضافة</div>
-      </div>
-    </div>
-
-    <div class="stats-combo">
-      <div class="streak-card">
-        <div class="streak-flame">🔥</div>
-        <div class="streak-info">
-          <div class="n"><span id="streakN">0</span> أيام متتالية</div>
-          <div class="t">استمر عشان ما تنكسر</div>
-        </div>
-        <div class="streak-dots" id="streakDots"></div>
-      </div>
-
-      <div class="week-progress">
-        <div class="wt"><span>تمارين هذا الأسبوع</span><b id="weekProgressText">0 من 0</b></div>
-        <div class="wtrack"><div class="wfill" id="weekProgressFill" style="width:0%"></div></div>
-      </div>
-    </div>
-
-    <div class="section-title">⚡ إضافة سريعة <span class="link" id="goFoodLib">المكتبة كاملة ←</span></div>
-    <div class="chip-scroll" id="quickChips"></div>
-
-    <div class="section-title">📝 اليوم</div>
-    <div class="entry-list" id="todaySummary"></div>
-  </section>
-
-  <!-- FOOD VIEW -->
-  <section class="view" id="view-food">
-    <div class="section-title" style="margin-top:16px;">🍽️ وجبات اليوم</div>
-    <div class="entry-list" id="mealsToday"></div>
-
-    <div class="qa-row">
-      <button class="btn-secondary" id="btnOpenTemplates">📋 قوالب الوجبات</button>
-      <button class="btn-secondary" id="btnOpenRecipeBuilder">🍲 بناء وصفة</button>
-    </div>
-
-    <div class="section-title">📊 توزيع السعرات اليوم</div>
-    <div class="chart-wrap" id="calDistWrap"></div>
-
-    <div class="section-title">📚 مكتبة الأكل</div>
-    <div class="lib-card">
-      <div class="search-wrap">
-        <input type="text" id="foodSearch" placeholder="ابحث عن وجبة...">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
-      </div>
-      <div class="chipbar" id="foodCatBar"></div>
-      <div id="foodLibList"></div>
-      <button class="btn-secondary" id="btnAddCustomFood">+ إضافة وجبة جديدة للمكتبة</button>
-    </div>
-  </section>
-
-  <!-- GYM VIEW -->
-  <section class="view" id="view-gym">
-    <div class="gym-stats-row" id="gymStatsRow"></div>
-
-    <div id="overtrainWarnWrap"></div>
-
-    <div class="section-title" style="margin-top:16px;">📐 توزيع الحجم الأسبوعي</div>
-    <div class="landmark-card" id="landmarkCard"></div>
-
-    <div class="section-title" style="margin-top:16px;">🗓️ خطتك الأسبوعية <span class="link" id="btnEditPlan">تعديل ✏️</span></div>
-    <div class="day-strip" id="dayStrip"></div>
-    <div class="plan-card" id="planCard"></div>
-
-    <div id="gymFavSection" style="display:none;">
-      <div class="section-title">⭐ المفضلة <span class="link" style="color:var(--text-mute); cursor:default;">بدء سريع بضغطة</span></div>
-      <div class="chip-scroll" id="gymFavRow"></div>
-    </div>
-
-    <div class="section-title">📋 سجل اليوم <span class="link" id="gymTodayVolume"></span></div>
-    <div class="entry-list" id="workoutsToday"></div>
-    <button class="btn-secondary" id="btnStartWorkout">+ تسجيل تمرين إضافي</button>
-
-    <div class="section-title">📅 آخر الأيام</div>
-    <div id="gymHistory"></div>
-  </section>
-
-  <!-- PROGRESS VIEW -->
-  <section class="view" id="view-progress">
-    <div class="section-title" style="margin-top:16px;">⚖️ وزن الجسم</div>
-    <div class="weight-card" id="weightCard"></div>
-
-    <div class="section-title">📊 نظرة على الشهر</div>
-    <div class="insight-card" id="insightCard"></div>
-
-    <div class="section-title">📅 ملخص الأسبوع الغذائي</div>
-    <div class="insight-card" id="weeklyFoodInsight"></div>
-
-    <div class="section-title">🏆 الإنجازات</div>
-    <button class="btn-secondary" id="btnShowPRs" style="margin-top:0;">🏆 أرقامي القياسية</button>
-  </section>
-
-  <nav class="bottomnav">
-    <button class="nav-btn active" data-tab="home">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="M9 22V12h6v10"></path></svg>
-      <span>الرئيسية</span>
-    </button>
-    <button class="nav-btn" data-tab="gym">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5l11 11"></path><path d="M21 21l-3-3M3 3l3 3"></path><path d="M18 6l-2 2M8 16l-2 2"></path><rect x="15.5" y="2.5" width="4" height="4" rx="1" transform="rotate(45 17.5 4.5)"></rect><rect x="4.5" y="17.5" width="4" height="4" rx="1" transform="rotate(45 6.5 19.5)"></rect></svg>
-      <span>النادي</span>
-    </button>
-    <button class="nav-btn" data-tab="food">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
-      <span>الأكل</span>
-    </button>
-    <button class="nav-btn" data-tab="progress">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 3v18h18"></path><path d="M18.7 8l-5.1 5.1-3-3-3.6 3.6"></path></svg>
-      <span>التقدم</span>
-    </button>
-  </nav>
-
-  <button class="fab" id="fab" aria-label="إضافة">+</button>
-
-</div>
-
-<div id="overlay"></div>
-
-<div class="sheet" id="sheetQuick">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>إضافة سريعة</h3><div class="sheet-close" data-close>✕</div></div>
-  <div class="sheet-body">
-    <div class="qa-option" id="qaFood">
-      <div class="ic" style="background:var(--protein-soft); color:var(--protein);">🍽️</div>
-      <div class="tx"><b>إضافة وجبة</b><span>من مكتبتك أو وجبة جديدة</span></div>
-    </div>
-    <div class="qa-option" id="qaWorkout">
-      <div class="ic" style="background:var(--carb-soft); color:var(--carb);">🏋️</div>
-      <div class="tx"><b>تسجيل تمرين</b><span>اختر التمرين وسجل الجولات</span></div>
-    </div>
-    <div class="qa-option" id="qaWeight">
-      <div class="ic" style="background:var(--shoulder-soft); color:var(--shoulder);">⚖️</div>
-      <div class="tx"><b>تسجيل وزن الجسم</b><span>تابع تقدمك بمنحنى بياني</span></div>
-    </div>
-  </div>
-</div>
-
-<div class="sheet" id="sheetFood" style="max-height:92vh;">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>إضافة وجبة</h3><div class="sheet-close" data-close>✕</div></div>
-  <div class="sheet-body">
-    <div class="meal-builder-toggle" id="mealBuilderToggle">🍽️ ابنِ وجبة (بروتين + كارب)</div>
-    <div id="mealBuilderBar" style="display:none;"></div>
-    <div class="search-wrap">
-      <input type="text" id="sheetFoodSearch" placeholder="ابحث عن وجبة...">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
-    </div>
-    <div class="chipbar" id="sheetFoodCatBar"></div>
-    <div id="sheetFoodList"></div>
-    <button class="btn-secondary" id="btnAddCustomFood2">+ إضافة وجبة جديدة للمكتبة</button>
-  </div>
-</div>
-
-<div class="sheet" id="sheetNewFood">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3 id="sheetNewFoodTitle">وجبة جديدة</h3><div class="sheet-close" data-close>✕</div></div>
-  <div class="sheet-body">
-    <div class="form-field"><label>اسم الوجبة</label><input type="text" id="nfName" placeholder="مثال: صدر دجاج مشوي"></div>
-    <div class="form-field"><label>الفئة</label>
-      <select id="nfCat">
-        <option value="فطور">فطور</option>
-        <option value="غدا">غدا</option>
-        <option value="عشا">عشا</option>
-        <option value="سناك">سناك</option>
-      </select>
-    </div>
-    <div class="form-grid">
-      <div class="form-field"><label>سعرات</label><input type="number" id="nfCal" placeholder="0" inputmode="numeric"></div>
-      <div class="form-field"><label>بروتين (غ)</label><input type="number" id="nfP" placeholder="0" inputmode="numeric"></div>
-      <div class="form-field"><label>كارب (غ)</label><input type="number" id="nfC" placeholder="0" inputmode="numeric"></div>
-      <div class="form-field"><label>دهون (غ)</label><input type="number" id="nfF" placeholder="0" inputmode="numeric"></div>
-      <div class="form-field"><label>ألياف (غ) — اختياري</label><input type="number" id="nfFiber" placeholder="0" inputmode="numeric"></div>
-      <div class="form-field"><label>صوديوم (مغ) — اختياري</label><input type="number" id="nfSodium" placeholder="0" inputmode="numeric"></div>
-    </div>
-    <button class="btn-primary" id="btnSaveNewFood"><span id="btnSaveNewFoodLabel">حفظ وإضافة لليوم</span></button>
-  </div>
-</div>
-
-<div class="sheet" id="sheetWorkoutPick" style="max-height:92vh;">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>اختر تمرين</h3><div class="sheet-close" data-close>✕</div></div>
-  <div class="sheet-body">
-    <div class="superset-toggle" id="supersetToggle">🔗 وضع السوبرست (تمرينين بدون راحة)</div>
-    <div class="search-wrap">
-      <input type="text" id="exSearch" placeholder="ابحث عن تمرين...">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
-    </div>
-    <div class="chipbar" id="exGroupBar"></div>
-    <div class="chipbar" id="exEquipBar"></div>
-    <div id="exList"></div>
-    <div class="superset-bar" id="supersetBar" style="display:none;">
-      <div class="sb-tx" id="supersetBarText">اختر تمرينين</div>
-      <button class="lib-add" id="btnStartSuperset" style="width:auto; border-radius:var(--r-pill); padding:0 16px; height:36px; background:var(--accent); color:#161113; font-size:12.5px; font-weight:800;" disabled>ابدأ ▶</button>
-    </div>
-    <button class="btn-secondary" id="btnAddCustomEx">+ إضافة تمرين جديد للمكتبة</button>
-  </div>
-</div>
-
-<div class="sheet" id="sheetNewEx">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>تمرين جديد</h3><div class="sheet-close" data-close>✕</div></div>
-  <div class="sheet-body">
-    <div class="form-field"><label>اسم التمرين</label><input type="text" id="neName" placeholder="مثال: ضغط صدر بالدمبل"></div>
-    <div class="form-field"><label>الفئة</label>
-      <select id="neGroup">
-        <option value="صدر">صدر</option>
-        <option value="ظهر">ظهر</option>
-        <option value="أرجل">أرجل</option>
-        <option value="أكتاف">أكتاف</option>
-        <option value="بايسبس">بايسبس</option>
-        <option value="ترايسبس">ترايسبس</option>
-        <option value="بطن">بطن</option>
-      </select>
-    </div>
-    <div class="form-field"><label>نوع الحركة (للأيقونة المتحركة)</label>
-      <select id="neMovement">
-        <option value="press">ضغط</option>
-        <option value="pull">سحب</option>
-        <option value="squat">سكوات</option>
-        <option value="curl">كيرل</option>
-        <option value="raise">رفرفة</option>
-        <option value="core">بطن / كور</option>
-      </select>
-    </div>
-    <button class="btn-primary" id="btnSaveNewEx">حفظ واختيار</button>
-  </div>
-</div>
-
-<div class="sheet" id="sheetSets" style="max-height:94vh;">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>تسجيل الجولات</h3><div class="sheet-close" data-close>✕</div></div>
-  <div class="sheet-body">
-    <div id="sessionTabsWrap"></div>
-    <div class="ex-picked-card">
-      <div id="pickedExIcon"></div>
-      <div class="tx">
-        <div class="exn" id="pickedExName">—</div>
-        <div class="exhint" id="pickedExHint">أول مرة تسجل هذا التمرين</div>
-      </div>
-      <div class="session-timer" id="sessionTimer">⏱ ٠:٠٠</div>
-    </div>
-
-    <div id="progressionHintWrap"></div>
-
-    <div class="field-toggle">
-      <div class="field-btn active" id="fieldWeightBtn">
-        <div class="fl">الوزن (كغ)</div>
-        <div class="fv tabular" id="fieldWeightVal">0</div>
-      </div>
-      <div class="field-btn" id="fieldRepsBtn">
-        <div class="fl">التكرارات</div>
-        <div class="fv tabular" id="fieldRepsVal">0</div>
-      </div>
-    </div>
-
-    <div id="barbellWrap"></div>
-
-    <div class="keypad" id="keypad">
-      <div class="key" data-k="1">1</div><div class="key" data-k="2">2</div><div class="key" data-k="3">3</div>
-      <div class="key" data-k="4">4</div><div class="key" data-k="5">5</div><div class="key" data-k="6">6</div>
-      <div class="key" data-k="7">7</div><div class="key" data-k="8">8</div><div class="key" data-k="9">9</div>
-      <div class="key wide" data-k="clear">مسح</div><div class="key" data-k="0">0</div><div class="key wide" data-k="back">⌫</div>
-    </div>
-
-    <button class="btn-primary" id="btnAddSet" style="margin-top:16px;">+ إضافة الجولة</button>
-
-    <div class="rest-timer-box" id="restTimerBox">
-      <div class="rt-time tabular" id="restTimerVal">1:30</div>
-      <div class="rt-tx">راحة قبل الجولة الجاية</div>
-      <div class="rt-btn" id="restTimerMinus">-15</div>
-      <div class="rt-btn" id="restTimerPlus">+15</div>
-      <div class="rt-btn" id="restTimerSkip">⏭</div>
-    </div>
-
-    <div class="set-chip-row" id="setChips"></div>
-
-    <button class="btn-primary" id="btnFinishWorkout" style="background:var(--carb);">حفظ وإنهاء التمرين</button>
-  </div>
-</div>
-
-<div class="sheet" id="sheetSettings" style="max-height:92vh;">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>الإعدادات</h3><div class="sheet-close" data-close>✕</div></div>
-  <div class="sheet-body">
-    <div class="section-title" style="margin-top:0;">🌗 المظهر</div>
-    <div class="theme-toggle">
-      <div class="theme-opt" id="themeDarkBtn">🌙 داكن</div>
-      <div class="theme-opt" id="themeLightBtn">☀️ فاتح</div>
-    </div>
-
-    <div class="section-title">🎯 الأهداف اليومية <span class="link" id="btnOpenSmartGoals">احسبها لي 🧮</span></div>
-    <div class="form-field"><label>السعرات</label><input type="number" id="goalCal" inputmode="numeric"></div>
-    <div class="form-grid">
-      <div class="form-field"><label>بروتين (غ)</label><input type="number" id="goalP" inputmode="numeric"></div>
-      <div class="form-field"><label>كارب (غ)</label><input type="number" id="goalC" inputmode="numeric"></div>
-      <div class="form-field"><label>دهون (غ)</label><input type="number" id="goalF" inputmode="numeric"></div>
-      <div class="form-field"><label>ماء (مل)</label><input type="number" id="goalWater" inputmode="numeric"></div>
-      <div class="form-field"><label>ألياف (غ)</label><input type="number" id="goalFiber" inputmode="numeric"></div>
-      <div class="form-field"><label>صوديوم (مغ)</label><input type="number" id="goalSodium" inputmode="numeric"></div>
-    </div>
-    <button class="btn-primary" id="btnSaveGoals">حفظ الأهداف</button>
-
-    <div class="section-title">🏋️ المعدات المتوفرة عندي</div>
-    <div class="equip-row" id="equipRow"></div>
-    <div class="empty-hint" style="padding:6px 0 0; text-align:right;">تُستخدم لتصفية تمارين المكتبة حسب اللي متوفر عندك.</div>
-
-    <div class="section-title">💾 نسخة احتياطية</div>
-    <div style="display:flex; gap:10px;">
-      <button class="btn-secondary" id="btnExportData" style="margin-top:0;">تصدير بياناتي ⬇️</button>
-      <button class="btn-secondary" id="btnImportData" style="margin-top:0;">استيراد نسخة ⬆️</button>
-    </div>
-    <input type="file" id="importFileInput" accept="application/json" style="display:none;">
-
-    <div class="section-title">📤 مشاركة</div>
-    <button class="btn-secondary" id="btnOpenShareCard" style="margin-top:0;">بطاقة ملخص الأسبوع</button>
-
-    <div class="section-title">☁️ المزامنة بين الأجهزة</div>
-    <div id="syncStatusBox"></div>
-  </div>
-</div>
-
-<div class="sheet" id="sheetPlanEdit" style="max-height:90vh;">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>تعديل خطة النادي</h3><div class="sheet-close" data-close>✕</div></div>
-  <div class="sheet-body">
-    <div id="planPresetList"></div>
-    <button class="btn-primary" id="btnApplyPlan">توليد الخطة</button>
-    <div class="empty-hint" style="padding-top:10px;">توليد خطة جديدة بيستبدل أي تعديلات سويتها يدوياً على الأيام.</div>
-  </div>
-</div>
-
-<div class="sheet" id="sheetSwap" style="max-height:80vh;">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3 id="swapTitle">بدائل</h3><div class="sheet-close" data-close>✕</div></div>
-  <div class="sheet-body"><div id="swapList"></div></div>
-</div>
-
-<div class="sheet" id="sheetPRs" style="max-height:88vh;">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>🏆 أرقامي القياسية</h3><div class="sheet-close" data-close>✕</div></div>
-  <div class="sheet-body"><div id="prList"></div></div>
-</div>
-
-<div class="sheet" id="sheetExDetail" style="max-height:88vh;">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3 id="exDetailTitle">تفاصيل التمرين</h3><div class="sheet-close" data-close>✕</div></div>
-  <div class="sheet-body"><div id="exDetailBody"></div></div>
-</div>
-
-<div class="sheet" id="sheetBodyWeight" style="max-height:90vh;">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>⚖️ وزن الجسم</h3><div class="sheet-close" data-close>✕</div></div>
-  <div class="sheet-body">
-    <div class="weight-input-row">
-      <div class="form-field"><label>وزنك اليوم (كغ)</label><input type="number" id="bwInput" step="0.1" inputmode="decimal" placeholder="مثال: 78.5"></div>
-      <button class="btn-primary" id="btnSaveBodyWeight">حفظ</button>
-    </div>
-    <div class="form-field"><label>نسبة الدهون (%) — اختياري</label><input type="number" id="bfInput" step="0.1" inputmode="decimal" placeholder="مثال: 18.5"></div>
-    <div id="bwStatsWrap"></div>
-    <div class="chart-wrap" id="bwChartWrap"></div>
-    <div id="bfChartWrap"></div>
-
-    <div class="section-title">📏 قياسات الجسم</div>
-    <div class="form-grid">
-      <div class="form-field"><label>الذراع (سم)</label><input type="number" id="measArm" step="0.5" inputmode="decimal"></div>
-      <div class="form-field"><label>الخصر (سم)</label><input type="number" id="measWaist" step="0.5" inputmode="decimal"></div>
-      <div class="form-field"><label>الصدر (سم)</label><input type="number" id="measChest" step="0.5" inputmode="decimal"></div>
-    </div>
-    <button class="btn-secondary" id="btnSaveMeasurements" style="margin-top:0;">حفظ القياسات</button>
-    <div id="measChartsWrap"></div>
-  </div>
-</div>
-
-<div class="sheet" id="sheetOnboarding" style="max-height:94vh;">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>مرحباً بك 👋</h3><div class="sheet-close" data-close>✕</div></div>
-  <div class="sheet-body">
-    <div class="ob-progress"><span id="obDot1"></span><span id="obDot2"></span><span id="obDot3"></span></div>
-
-    <div class="ob-step active" id="obStep1">
-      <div class="section-title" style="margin-top:0;">وش هدفك؟</div>
-      <div class="ob-choice" data-goal="lose"><span class="oc-emoji">📉</span><div class="oc-tx"><b>نزول وزن</b><span>عجز بسيط بالسعرات</span></div></div>
-      <div class="ob-choice" data-goal="maintain"><span class="oc-emoji">⚖️</span><div class="oc-tx"><b>ثبات الوزن</b><span>حافظ على وزنك الحالي</span></div></div>
-      <div class="ob-choice" data-goal="gain"><span class="oc-emoji">📈</span><div class="oc-tx"><b>زيادة وزن / عضل</b><span>فائض بسيط بالسعرات</span></div></div>
-    </div>
-
-    <div class="ob-step" id="obStep2">
-      <div class="section-title" style="margin-top:0;">بياناتك الأساسية</div>
-      <div class="form-grid">
-        <div class="form-field"><label>الجنس</label>
-          <select id="obSex"><option value="male">ذكر</option><option value="female">أنثى</option></select>
-        </div>
-        <div class="form-field"><label>العمر</label><input type="number" id="obAge" inputmode="numeric" placeholder="25"></div>
-        <div class="form-field"><label>الطول (سم)</label><input type="number" id="obHeight" inputmode="numeric" placeholder="175"></div>
-        <div class="form-field"><label>الوزن (كغ)</label><input type="number" id="obWeight" inputmode="decimal" placeholder="75"></div>
-      </div>
-      <div class="form-field"><label>مستوى نشاطك</label>
-        <select id="obActivity">
-          <option value="low">قليل (شغل مكتبي، تمرين خفيف)</option>
-          <option value="medium" selected>متوسط (تمرين ٣-٤ أيام أسبوعياً)</option>
-          <option value="high">عالي (تمرين مكثف يومي)</option>
-        </select>
-      </div>
-    </div>
-
-    <div class="ob-step" id="obStep3">
-      <div class="section-title" style="margin-top:0;">أهدافك المقترحة</div>
-      <div class="ob-result">
-        <div class="orv tabular" id="obCalResult">0</div>
-        <div class="orl">سعرة يومياً</div>
-        <div class="ob-macros-mini">
-          <div><div class="omv tabular" id="obPResult">0</div><div class="oml">بروتين</div></div>
-          <div><div class="omv tabular" id="obCResult">0</div><div class="oml">كارب</div></div>
-          <div><div class="omv tabular" id="obFResult">0</div><div class="oml">دهون</div></div>
-        </div>
-      </div>
-      <div class="empty-hint">تقدير مبدئي، تقدر تعدله أي وقت من الإعدادات.</div>
-    </div>
-
-    <div class="ob-nav">
-      <button class="btn-secondary" id="obBackBtn" style="display:none;">رجوع</button>
-      <button class="btn-primary" id="obNextBtn">التالي</button>
-    </div>
-  </div>
-</div>
-
-<div class="sheet" id="sheetMealTemplates" style="max-height:88vh;">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>📋 قوالب الوجبات</h3><div class="sheet-close" data-close>✕</div></div>
-  <div class="sheet-body">
-    <button class="btn-primary" id="btnSaveTodayAsTemplate">💾 احفظ وجبات اليوم كقالب</button>
-    <div class="section-title">قوالبك</div>
-    <div id="templateList"></div>
-  </div>
-</div>
-
-<div class="sheet" id="sheetRecipeBuilder" style="max-height:90vh;">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>🍲 بناء وصفة</h3><div class="sheet-close" data-close>✕</div></div>
-  <div class="sheet-body">
-    <div class="empty-hint" style="padding:0 0 10px; text-align:right;">اختر مكونات من مكتبتك، والتطبيق يجمع لك القيم تلقائياً.</div>
-    <div class="search-wrap"><input type="text" id="recipeSearch" placeholder="ابحث عن مكوّن..."></div>
-    <div id="recipePickList"></div>
-    <div class="recipe-totals" id="recipeTotals"></div>
-    <div class="form-field"><label>اسم الوصفة</label><input type="text" id="recipeName" placeholder="مثال: صحن الدجاج والرز"></div>
-    <div class="form-field"><label>الفئة</label>
-      <select id="recipeCat"><option value="فطور">فطور</option><option value="غدا">غدا</option><option value="عشا">عشا</option><option value="سناك">سناك</option></select>
-    </div>
-    <button class="btn-primary" id="btnSaveRecipe">حفظ الوصفة بالمكتبة</button>
-  </div>
-</div>
-
-<div class="sheet" id="sheetShareCard" style="max-height:90vh;">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>📤 بطاقة ملخص الأسبوع</h3><div class="sheet-close" data-close>✕</div></div>
-  <div class="sheet-body">
-    <div class="share-preview"><canvas id="shareCanvas" width="600" height="750"></canvas></div>
-    <button class="btn-primary" id="btnDownloadShareCard">تحميل الصورة 💾</button>
-  </div>
-</div>
-
-<div id="toast"><span class="tick">✓</span><span id="toastMsg"></span></div>
-
-
-<div id="prOverlay">
-  <div class="pr-card" id="prCard">
-    <span class="emoji">🎉</span>
-    <h4 id="prTitle">رقم قياسي جديد!</h4>
-    <p id="prSub">استمر على هالمستوى</p>
-    <button class="btn-primary" id="btnPrClose" style="margin-top:0;">تمام 💪</button>
-  </div>
-</div>
-
-
-<script src="./js/core.js"></script>
-<script src="./js/home.js"></script>
-<script src="./js/food.js"></script>
-<script src="./js/gym.js"></script>
-<script src="./js/progress.js"></script>
-<script src="./js/session.js"></script>
-<script src="./js/app.js"></script>
-<script>
-if('serviceWorker' in navigator){
-  window.addEventListener('load', ()=>{
-    navigator.serviceWorker.register('./sw.js').catch(()=>{});
+/* ============================================================
+   APP BOOTSTRAP: init(), greeting, master renderAll(), all event
+   bindings. Loaded last, starts the app.
+   ============================================================ */
+async function init(){
+  state.today = todayKey();
+  document.getElementById('dateText').textContent = formatDateHuman(new Date());
+  setGreeting();
+
+  appState = loadLocalState() || defaultAppState();
+  if(!appState.plan) appState.plan = generatePlan('upper_lower_4', appState.library);
+  if(!appState.bodyWeights) appState.bodyWeights = {};
+  rebindFromAppState();
+  state.viewedPlanDay = new Date().getDay();
+
+  // Render immediately from local cache so the app feels instant.
+  // Cloud sync (if configured) happens quietly in the background after.
+  computeStreak();
+  renderAll();
+  bindEvents();
+
+  if(!appState.onboarded){
+    setTimeout(()=>{ startOnboarding(); }, 400);
+  }
+
+  const cfg = getSyncConfig();
+  if(cfg){
+    connectCloud(cfg).then((ok)=>{
+      if(!ok) return;
+      cloudDoc.get().then((snap)=>{
+        if(snap.exists){
+          const cloudState = snap.data();
+          if((cloudState.updatedAt||0) > (appState.updatedAt||0)){
+            appState = cloudState;
+            if(!appState.bodyWeights) appState.bodyWeights = {};
+            saveLocalOnly();
+            rebindFromAppState();
+            computeStreak();
+            renderAll();
+            showToast('تم تحديث بياناتك من جهاز ثاني 🔄');
+          } else if((appState.updatedAt||0) > (cloudState.updatedAt||0)){
+            cloudDoc.set(appState);
+          }
+        } else {
+          cloudDoc.set(appState);
+        }
+        subscribeCloud();
+      }).catch((e)=> console.error('initial cloud sync failed', e));
+    });
+  } else {
+    saveLocalOnly();
+  }
+}
+
+function setGreeting(){
+  const h = new Date().getHours();
+  let g = 'مساء الخير 🌙';
+  if(h < 12) g = 'صباح الخير ☀️';
+  else if(h < 17) g = 'نهارك سعيد 👋';
+  document.getElementById('greetText').textContent = g;
+}
+
+function renderAll(){
+  renderRing();
+  renderStreak();
+  renderWeekProgress();
+  renderInsightCard();
+  renderWeeklyFoodSummary();
+  renderWeightCard();
+  renderWaterCard();
+  renderQuickChips();
+  renderTodaySummary();
+  renderMealsToday();
+  renderFoodCatBar();
+  renderFoodLibList();
+  renderCalDist();
+  renderWorkoutsToday();
+  renderGymHistory();
+  renderDayStrip();
+  renderPlanCard();
+  renderOvertrainWarning();
+  renderVolumeLandmarks();
+  renderGymStatsRow();
+  renderGymFavorites();
+}
+
+/* ============================================================
+   ACTIONS
+   ============================================================ */
+
+function bindEvents(){
+  document.querySelectorAll('.nav-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> switchTab(btn.getAttribute('data-tab')));
+  });
+  document.getElementById('goFoodLib').addEventListener('click', ()=> switchTab('food'));
+
+  const fab = document.getElementById('fab');
+  fab.addEventListener('click', ()=>{
+    if(document.getElementById('sheetQuick').classList.contains('show')) closeAllSheets();
+    else{ openSheet('sheetQuick'); fab.classList.add('rot'); }
+  });
+
+  overlay.addEventListener('click', closeAllSheets);
+  document.querySelectorAll('[data-close]').forEach(b=> b.addEventListener('click', closeAllSheets));
+
+  document.getElementById('qaFood').addEventListener('click', ()=>{
+    state.activeSheetFoodCat='الكل';
+    state.mealBuilderMode = false;
+    state.mealBuilderStep = 'protein';
+    state.mealBuilderPicks = {protein:null, carb:null};
+    document.getElementById('sheetFoodSearch').value='';
+    document.getElementById('mealBuilderToggle').classList.remove('on');
+    renderSheetFoodCatBar(); renderMealBuilderBar(); renderSheetFoodList();
+    openSheet('sheetFood');
+  });
+  document.getElementById('mealBuilderToggle').addEventListener('click', toggleMealBuilder);
+  document.getElementById('qaWorkout').addEventListener('click', ()=>{
+    state.activeExGroup='الكل';
+    document.getElementById('exSearch').value='';
+    state.supersetPickMode=false; state.supersetPicks=[];
+    renderExGroupBar(); renderExList(); renderSupersetBar();
+    openSheet('sheetWorkoutPick');
+  });
+  document.getElementById('qaWeight').addEventListener('click', ()=>{
+    openBodyWeightSheet();
+  });
+  document.getElementById('btnSaveBodyWeight').addEventListener('click', ()=>{
+    const val = parseFloat(document.getElementById('bwInput').value);
+    if(!val || val<=0){ showToast('اكتب وزن صحيح أول'); return; }
+    appState.bodyWeights[state.today] = Math.round(val*10)/10;
+    const bfVal = parseFloat(document.getElementById('bfInput').value);
+    if(bfVal && bfVal>0){
+      if(!appState.bodyFat) appState.bodyFat = {};
+      appState.bodyFat[state.today] = Math.round(bfVal*10)/10;
+    }
+    persist();
+    renderWeightCard();
+    renderBodyWeightSheetBody();
+    renderBodyFatChart();
+    showToast('تم حفظ وزنك 💪');
+  });
+  document.getElementById('btnStartWorkout').addEventListener('click', ()=>{
+    state.activeExGroup='الكل';
+    document.getElementById('exSearch').value='';
+    state.supersetPickMode=false; state.supersetPicks=[];
+    renderExGroupBar(); renderExList(); renderSupersetBar();
+    openSheet('sheetWorkoutPick');
+  });
+  document.getElementById('supersetToggle').addEventListener('click', (e)=>{
+    state.supersetPickMode = !state.supersetPickMode;
+    state.supersetPicks = [];
+    e.currentTarget.classList.toggle('on', state.supersetPickMode);
+    renderExList();
+    renderSupersetBar();
+  });
+  document.getElementById('btnStartSuperset').addEventListener('click', ()=>{
+    if(state.supersetPicks.length!==2) return;
+    startSession([...state.supersetPicks]);
+  });
+
+  document.getElementById('sheetFoodSearch').addEventListener('input', renderSheetFoodList);
+  document.getElementById('foodSearch').addEventListener('input', renderFoodLibList);
+  document.getElementById('exSearch').addEventListener('input', renderExList);
+
+  document.getElementById('btnAddCustomFood').addEventListener('click', ()=> { resetNewFoodSheet(); openSheet('sheetNewFood'); });
+  document.getElementById('btnAddCustomFood2').addEventListener('click', ()=> { resetNewFoodSheet(); openSheet('sheetNewFood'); });
+
+  document.getElementById('btnSaveNewFood').addEventListener('click', async ()=>{
+    const name = document.getElementById('nfName').value.trim();
+    const cat = document.getElementById('nfCat').value;
+    const cal = parseFloat(document.getElementById('nfCal').value)||0;
+    const p = parseFloat(document.getElementById('nfP').value)||0;
+    const c = parseFloat(document.getElementById('nfC').value)||0;
+    const f = parseFloat(document.getElementById('nfF').value)||0;
+    const fiber = parseFloat(document.getElementById('nfFiber').value)||0;
+    const sodium = parseFloat(document.getElementById('nfSodium').value)||0;
+    if(!name){ showToast('اكتب اسم الوجبة أول'); return; }
+
+    if(state.editingFoodId){
+      const food = state.library.foods.find(fd=>fd.id===state.editingFoodId);
+      if(food){
+        Object.assign(food, {name, category:cat, calories:cal, protein:p, carbs:c, fat:f, fiber, sodium});
+        persist();
+        showToast(`تم تحديث ${name} ✏️`);
+      }
+      resetNewFoodSheet();
+      closeAllSheets();
+      renderAll();
+      return;
+    }
+
+    const food = {id:uid(), name, category:cat, calories:cal, protein:p, carbs:c, fat:f, fiber, sodium, favorite:false, usageCount:0, isCustom:true};
+    state.library.foods.push(food);
+    resetNewFoodSheet();
+    await quickAddFood(food, null);
+    closeAllSheets();
+  });
+
+  document.getElementById('btnAddCustomEx').addEventListener('click', ()=> openSheet('sheetNewEx'));
+  document.getElementById('btnSaveNewEx').addEventListener('click', ()=>{
+    const name = document.getElementById('neName').value.trim();
+    const group = document.getElementById('neGroup').value;
+    const movementType = document.getElementById('neMovement').value;
+    if(!name){ showToast('اكتب اسم التمرين أول'); return; }
+    const ex = {id:uid(), name, group, movementType, equipment:'barbell', injured:false, favorite:false, usageCount:0, lastWeight:0, lastReps:0, prWeight:0, prReps:0, prVolume:0, prDate:null};
+    state.library.exercises.push(ex);
+    persist();
+    document.getElementById('neName').value='';
+    startSession([ex]);
+  });
+
+  document.getElementById('fieldWeightBtn').addEventListener('click', ()=>{ state.activeField='weight'; updateFieldDisplay(); });
+  document.getElementById('fieldRepsBtn').addEventListener('click', ()=>{ state.activeField='reps'; updateFieldDisplay(); });
+
+  document.getElementById('keypad').addEventListener('click', (e)=>{
+    const k = e.target.closest('.key');
+    if(!k) return;
+    keypadPress(k.getAttribute('data-k'));
+  });
+
+  document.getElementById('btnAddSet').addEventListener('click', ()=>{
+    if(state.weightVal<=0 && state.repsVal<=0){ showToast('حدد الوزن أو التكرارات'); return; }
+    const ex = activeSessionExercise();
+    state.sessionSets[ex.id].push({weight:state.weightVal, reps:state.repsVal});
+    renderSetChips();
+    renderSessionTabs();
+    vibrate(15);
+    startRestTimer(90);
+    if(state.activeField==='weight'){ state.activeField='reps'; updateFieldDisplay(); }
+  });
+
+  document.getElementById('btnFinishWorkout').addEventListener('click', ()=>{
+    const totalSets = state.sessionExercises.reduce((n,ex)=> n + state.sessionSets[ex.id].length, 0);
+    if(totalSets===0){ showToast('ضيف جولة وحدة على الأقل'); return; }
+    stopSessionTimer();
+    stopRestTimer();
+    const durationSec = Math.floor((Date.now()-state.sessionStartTime)/1000);
+    const supersetId = state.sessionExercises.length>1 ? uid() : null;
+    const prNames = [];
+    const savedNames = [];
+    state.sessionExercises.forEach(ex=>{
+      const sets = state.sessionSets[ex.id];
+      if(sets.length===0) return;
+      const {isPR, volume} = checkAndApplyPR(ex, sets);
+      const entry = {id:uid(), exerciseId:ex.id, name:ex.name, group:ex.group, movementType:ex.movementType,
+        sets:[...sets], time:Date.now(), durationSec, supersetId, volume, isPR};
+      state.log.workouts.push(entry);
+      const last = sets[sets.length-1];
+      ex.lastWeight = last.weight; ex.lastReps = last.reps; ex.usageCount = (ex.usageCount||0)+1;
+      savedNames.push(ex.name);
+      if(isPR) prNames.push(ex.name);
+    });
+    persist();
+    computeStreak();
+    closeAllSheets();
+    renderAll();
+    if(prNames.length>0){ showPRCelebration(prNames); }
+    else{ showToast(`تم حفظ ${savedNames.join(' + ')} 💪`); }
+  });
+
+  document.querySelectorAll('.acc-head').forEach(head=>{
+    head.addEventListener('click', (e)=>{
+      if(e.target.closest('.link')) return;
+      head.parentElement.classList.toggle('open');
+    });
+  });
+
+  document.getElementById('btnSettings').addEventListener('click', ()=>{
+    document.getElementById('goalCal').value = state.goals.calories;
+    document.getElementById('goalP').value = state.goals.protein;
+    document.getElementById('goalC').value = state.goals.carbs;
+    document.getElementById('goalF').value = state.goals.fat;
+    renderSyncStatus();
+    const syncItem = document.querySelector('.acc-item[data-acc="sync"]');
+    if(syncItem) syncItem.classList.toggle('open', !!getSyncConfig());
+    openSheet('sheetSettings');
+  });
+  document.getElementById('btnSaveGoals').addEventListener('click', ()=>{
+    state.goals = {
+      calories: parseInt(document.getElementById('goalCal').value,10) || defaultGoals().calories,
+      protein: parseInt(document.getElementById('goalP').value,10) || defaultGoals().protein,
+      carbs: parseInt(document.getElementById('goalC').value,10) || defaultGoals().carbs,
+      fat: parseInt(document.getElementById('goalF').value,10) || defaultGoals().fat,
+    };
+    appState.goals = state.goals;
+    persist();
+    showToast('تم تحديث الأهداف');
+    closeAllSheets();
+    renderAll();
+  });
+
+  document.getElementById('btnEditPlan').addEventListener('click', ()=>{
+    state.selectedPresetType = state.plan.type || 'upper_lower_4';
+    renderPlanPresetList();
+    openSheet('sheetPlanEdit');
+  });
+  document.getElementById('btnApplyPlan').addEventListener('click', ()=>{
+    state.plan = generatePlan(state.selectedPresetType);
+    appState.plan = state.plan;
+    persist();
+    computeStreak();
+    closeAllSheets();
+    renderAll();
+    showToast('تم تحديث خطتك');
+  });
+
+  document.getElementById('btnShowPRs').addEventListener('click', ()=>{
+    renderPRList();
+    openSheet('sheetPRs');
+  });
+  document.getElementById('btnPrClose').addEventListener('click', ()=>{
+    document.getElementById('prOverlay').classList.remove('show');
+  });
+
+  /* ---------- Theme ---------- */
+  document.getElementById('themeDarkBtn').addEventListener('click', ()=>{ if(appState.theme!=='dark') toggleTheme(); renderThemeButtons(); });
+  document.getElementById('themeLightBtn').addEventListener('click', ()=>{ if(appState.theme!=='light') toggleTheme(); renderThemeButtons(); });
+
+  /* ---------- Equipment filter (exercise picker) ---------- */
+  document.getElementById('qaWorkout').addEventListener('click', ()=> renderExEquipBar());
+  document.getElementById('btnStartWorkout').addEventListener('click', ()=> renderExEquipBar());
+
+  /* ---------- Water tracker ---------- */
+  document.querySelectorAll('[data-water]').forEach(btn=>{
+    btn.addEventListener('click', ()=> addWater(parseInt(btn.getAttribute('data-water'),10)));
+  });
+  document.getElementById('btnAddCustomWater').addEventListener('click', ()=>{
+    const input = document.getElementById('waterCustomInput');
+    const val = parseInt(input.value,10);
+    if(!val || val<=0){ showToast('اكتب كمية صحيحة بالمل'); return; }
+    addWater(val);
+    input.value = '';
+  });
+
+  /* ---------- Rest timer controls ---------- */
+  document.getElementById('restTimerMinus').addEventListener('click', ()=> adjustRestTimer(-15));
+  document.getElementById('restTimerPlus').addEventListener('click', ()=> adjustRestTimer(15));
+  document.getElementById('restTimerSkip').addEventListener('click', ()=> stopRestTimer());
+
+  /* ---------- Extended goals fields ---------- */
+  document.getElementById('btnSettings').addEventListener('click', ()=>{
+    document.getElementById('goalWater').value = state.goals.water;
+    document.getElementById('goalFiber').value = state.goals.fiber;
+    document.getElementById('goalSodium').value = state.goals.sodium;
+    renderThemeButtons();
+    renderEquipRow();
+  });
+  document.getElementById('btnSaveGoals').addEventListener('click', ()=>{
+    state.goals.water = parseInt(document.getElementById('goalWater').value,10) || defaultGoals().water;
+    state.goals.fiber = parseInt(document.getElementById('goalFiber').value,10) || defaultGoals().fiber;
+    state.goals.sodium = parseInt(document.getElementById('goalSodium').value,10) || defaultGoals().sodium;
+    appState.goals = state.goals;
+    persist();
+    renderWaterCard();
+  });
+
+  /* ---------- Smart goal calculator (opens onboarding flow) ---------- */
+  document.getElementById('btnOpenSmartGoals').addEventListener('click', ()=> startOnboarding(true));
+
+  /* ---------- Backup export / import ---------- */
+  document.getElementById('btnExportData').addEventListener('click', ()=> exportDataFile());
+  document.getElementById('btnImportData').addEventListener('click', ()=> document.getElementById('importFileInput').click());
+  document.getElementById('importFileInput').addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(file) importDataFile(file, ()=>{ e.target.value=''; closeAllSheets(); });
+  });
+
+  /* ---------- Share card ---------- */
+  document.getElementById('btnOpenShareCard').addEventListener('click', ()=>{
+    openSheet('sheetShareCard');
+    setTimeout(drawShareCard, 50);
+  });
+  document.getElementById('btnDownloadShareCard').addEventListener('click', ()=>{
+    const canvas = document.getElementById('shareCanvas');
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = `miqyas-week-${state.today}.png`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  });
+
+  /* ---------- Meal templates ---------- */
+  document.getElementById('btnOpenTemplates').addEventListener('click', ()=>{
+    renderTemplateList();
+    openSheet('sheetMealTemplates');
+  });
+  document.getElementById('btnSaveTodayAsTemplate').addEventListener('click', ()=> saveTodayAsTemplate());
+
+  /* ---------- Recipe builder ---------- */
+  document.getElementById('btnOpenRecipeBuilder').addEventListener('click', ()=>{
+    recipeSelectedIds = [];
+    document.getElementById('recipeSearch').value = '';
+    renderRecipePickList();
+    renderRecipeTotals();
+    openSheet('sheetRecipeBuilder');
+  });
+  document.getElementById('recipeSearch').addEventListener('input', renderRecipePickList);
+  document.getElementById('btnSaveRecipe').addEventListener('click', ()=> saveRecipe());
+
+  /* ---------- Body measurements ---------- */
+  document.getElementById('btnSaveMeasurements').addEventListener('click', ()=> saveMeasurements());
+
+  /* ---------- Onboarding ---------- */
+  bindOnboardingEvents();
+}
+
+/* ============================================================
+   THEME BUTTONS
+   ============================================================ */
+function renderThemeButtons(){
+  document.getElementById('themeDarkBtn').classList.toggle('active', appState.theme!=='light');
+  document.getElementById('themeLightBtn').classList.toggle('active', appState.theme==='light');
+}
+
+/* ============================================================
+   EQUIPMENT SETTINGS ROW
+   ============================================================ */
+function renderEquipRow(){
+  const wrap = document.getElementById('equipRow');
+  wrap.innerHTML = '';
+  ALL_EQUIPMENT.forEach(eq=>{
+    const chip = document.createElement('div');
+    const on = (appState.equipment||[]).includes(eq);
+    chip.className = 'equip-chip'+(on?' on':'');
+    chip.textContent = EQUIPMENT_LABELS[eq];
+    chip.addEventListener('click', ()=>{
+      const list = appState.equipment || [];
+      if(list.includes(eq)){
+        if(list.length===1){ showToast('لازم يبقى معدة وحدة على الأقل'); return; }
+        appState.equipment = list.filter(x=>x!==eq);
+      } else {
+        appState.equipment = [...list, eq];
+      }
+      persist();
+      renderEquipRow();
+    });
+    wrap.appendChild(chip);
   });
 }
-</script>
-</body>
-</html>
+
+/* ============================================================
+   SHARE CARD (canvas)
+   ============================================================ */
+function drawShareCard(){
+  const canvas = document.getElementById('shareCanvas');
+  const ctx = canvas.getContext('2d');
+  const w = canvas.width, h = canvas.height;
+
+  // background gradient
+  const grad = ctx.createLinearGradient(0,0,0,h);
+  grad.addColorStop(0, '#171C21'); grad.addColorStop(1, '#12161A');
+  ctx.fillStyle = grad; ctx.fillRect(0,0,w,h);
+
+  // week stats
+  let totalCal=0, mealDays=0, workouts=0, volume=0;
+  const seen = new Set();
+  for(let i=0;i<=6;i++){
+    const key = dateKeyOffset(i);
+    const dayLog = (i===0) ? state.log : (appState.logs[key] || {meals:[],workouts:[]});
+    if((dayLog.meals||[]).length>0){ mealDays++; totalCal += dayLog.meals.reduce((s,m)=>s+m.calories,0); }
+    (dayLog.workouts||[]).forEach(wk=>{ workouts++; volume += (wk.sets||[]).reduce((s,x)=>s+x.weight*x.reps,0); });
+  }
+  const avgCal = mealDays ? Math.round(totalCal/mealDays) : 0;
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#F3F1EA';
+  ctx.font = '900 34px Arial';
+  ctx.fillText('ملخص أسبوعي — مِقياس', w/2, 70);
+  ctx.font = '500 16px Arial';
+  ctx.fillStyle = '#8A9199';
+  ctx.fillText(formatDateHuman(new Date()), w/2, 100);
+
+  // ring-ish stat blocks
+  const stats = [
+    {label:'تمارين', value:workouts, color:'#2FD3A6'},
+    {label:'حجم التدريب (كغ)', value:Math.round(volume).toLocaleString('en-US'), color:'#FF6B4A'},
+    {label:'متوسط السعرات', value:avgCal.toLocaleString('en-US'), color:'#F2B84B'},
+    {label:'سلسلة الأيام', value:state.streak, color:'#5B9DFF'},
+  ];
+  const boxW = (w-80)/2, boxH = 130, gap=20;
+  stats.forEach((s,i)=>{
+    const col = i%2, row = Math.floor(i/2);
+    const x = 40 + col*(boxW+gap), y = 150 + row*(boxH+gap);
+    ctx.fillStyle = '#1C2329';
+    roundRect(ctx, x, y, boxW, boxH, 20); ctx.fill();
+    ctx.fillStyle = s.color;
+    ctx.font = '900 40px Arial';
+    ctx.fillText(String(s.value), x+boxW/2, y+65);
+    ctx.fillStyle = '#8A9199';
+    ctx.font = '500 15px Arial';
+    ctx.fillText(s.label, x+boxW/2, y+95);
+  });
+
+  // PR highlight
+  const prEx = state.library.exercises.filter(e=>e.prDate===state.today);
+  ctx.fillStyle = '#8A9199';
+  ctx.font = '600 16px Arial';
+  if(prEx.length>0){
+    ctx.fillStyle = '#F2B84B';
+    ctx.font = '800 20px Arial';
+    ctx.fillText(`🏆 رقم قياسي جديد: ${prEx[0].name}`, w/2, 470);
+  }
+
+  ctx.fillStyle = '#4A5058';
+  ctx.font = '500 13px Arial';
+  ctx.fillText('صُنع بتطبيق مِقياس', w/2, h-30);
+}
+function roundRect(ctx,x,y,width,height,radius){
+  ctx.beginPath();
+  ctx.moveTo(x+radius,y);
+  ctx.arcTo(x+width,y,x+width,y+height,radius);
+  ctx.arcTo(x+width,y+height,x,y+height,radius);
+  ctx.arcTo(x,y+height,x,y,radius);
+  ctx.arcTo(x,y,x+width,y,radius);
+  ctx.closePath();
+}
+
+/* ============================================================
+   ONBOARDING FLOW
+   ============================================================ */
+let obCurrentStep = 1;
+let obSelectedGoal = null;
+
+function startOnboarding(fromSettings){
+  obCurrentStep = 1;
+  obSelectedGoal = null;
+  document.querySelectorAll('.ob-choice').forEach(c=>c.classList.remove('active'));
+  renderOnboardingStep();
+  openSheet('sheetOnboarding');
+}
+function renderOnboardingStep(){
+  document.querySelectorAll('.ob-step').forEach(s=>s.classList.remove('active'));
+  document.getElementById('obStep'+obCurrentStep).classList.add('active');
+  ['obDot1','obDot2','obDot3'].forEach((id,i)=>{
+    document.getElementById(id).classList.toggle('done', i < obCurrentStep);
+  });
+  document.getElementById('obBackBtn').style.display = obCurrentStep>1 ? 'block' : 'none';
+  document.getElementById('obNextBtn').textContent = obCurrentStep===3 ? 'اعتمد الأهداف' : 'التالي';
+  if(obCurrentStep===3) computeAndShowOnboardingResult();
+}
+function computeAndShowOnboardingResult(){
+  const sex = document.getElementById('obSex').value;
+  const age = parseInt(document.getElementById('obAge').value,10) || 25;
+  const heightCm = parseFloat(document.getElementById('obHeight').value) || 175;
+  const weightKg = parseFloat(document.getElementById('obWeight').value) || 75;
+  const activity = document.getElementById('obActivity').value;
+  const goals = calcSmartGoals({sex, age, heightCm, weightKg, activity, goal: obSelectedGoal || 'maintain'});
+  document.getElementById('obCalResult').textContent = goals.calories.toLocaleString('en-US');
+  document.getElementById('obPResult').textContent = goals.protein;
+  document.getElementById('obCResult').textContent = goals.carbs;
+  document.getElementById('obFResult').textContent = goals.fat;
+}
+function bindOnboardingEvents(){
+  document.querySelectorAll('.ob-choice').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      document.querySelectorAll('.ob-choice').forEach(c=>c.classList.remove('active'));
+      el.classList.add('active');
+      obSelectedGoal = el.getAttribute('data-goal');
+    });
+  });
+  document.getElementById('obNextBtn').addEventListener('click', ()=>{
+    if(obCurrentStep===1 && !obSelectedGoal){ showToast('اختر هدفك أول'); return; }
+    if(obCurrentStep<3){ obCurrentStep++; renderOnboardingStep(); return; }
+    // finalize
+    const sex = document.getElementById('obSex').value;
+    const age = parseInt(document.getElementById('obAge').value,10) || 25;
+    const heightCm = parseFloat(document.getElementById('obHeight').value) || 175;
+    const weightKg = parseFloat(document.getElementById('obWeight').value) || 75;
+    const activity = document.getElementById('obActivity').value;
+    const goals = calcSmartGoals({sex, age, heightCm, weightKg, activity, goal: obSelectedGoal || 'maintain'});
+    state.goals = {...state.goals, ...goals};
+    appState.goals = state.goals;
+    appState.onboarded = true;
+    if(weightKg) appState.bodyWeights[state.today] = weightKg;
+    persist();
+    closeAllSheets();
+    renderAll();
+    showToast('تمام! أهدافك جاهزة 🎉');
+  });
+  document.getElementById('obBackBtn').addEventListener('click', ()=>{
+    if(obCurrentStep>1){ obCurrentStep--; renderOnboardingStep(); }
+  });
+}
+
+init();
