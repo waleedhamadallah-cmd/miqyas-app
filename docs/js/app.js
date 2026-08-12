@@ -164,7 +164,7 @@ function bindEvents(){
     const fiber = parseFloat(document.getElementById('nfFiber').value)||0;
     const sodium = parseFloat(document.getElementById('nfSodium').value)||0;
     if(!name){ showToast('اكتب اسم الوجبة أول'); return; }
-    const food = {id:uid(), name, category:cat, calories:cal, protein:p, carbs:c, fat:f, fiber, sodium, favorite:false, usageCount:0};
+    const food = {id:uid(), name, category:cat, calories:cal, protein:p, carbs:c, fat:f, fiber, sodium, favorite:false, usageCount:0, isCustom:true};
     state.library.foods.push(food);
     ['nfName','nfCal','nfP','nfC','nfF','nfFiber','nfSodium'].forEach(id=> document.getElementById(id).value='');
     await quickAddFood(food, null);

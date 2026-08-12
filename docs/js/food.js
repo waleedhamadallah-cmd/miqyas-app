@@ -203,7 +203,7 @@ function saveRecipe(){
   }), {calories:0,protein:0,carbs:0,fat:0,fiber:0,sodium:0});
   const food = {id:uid(), name, category:cat, calories:Math.round(totals.calories), protein:Math.round(totals.protein),
     carbs:Math.round(totals.carbs), fat:Math.round(totals.fat), fiber:Math.round(totals.fiber), sodium:Math.round(totals.sodium),
-    favorite:false, usageCount:0};
+    favorite:false, usageCount:0, isCustom:true};
   state.library.foods.push(food);
   persist();
   recipeSelectedIds = [];
