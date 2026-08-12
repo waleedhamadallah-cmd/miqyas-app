@@ -359,6 +359,8 @@ const state = {
   // superset picking (inside exercise picker sheet)
   supersetPickMode: false,
   supersetPicks: [],
+  // set to a food id while editing an existing custom food, null when adding new
+  editingFoodId: null,
 };
 
 function todayKey(d){
@@ -693,4 +695,3 @@ function switchTab(tab){
 /* ============================================================
    FOOD SHEET (picker within FAB flow)
    ============================================================ */
-
