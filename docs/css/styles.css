@@ -218,6 +218,20 @@ input{font-family:inherit; color:inherit;}
 .ex-anim--core .torso2{ animation:coreRot 1.7s ease-in-out infinite; }
 @keyframes coreRot{ 0%,100%{transform:translateX(-50%) rotate(0deg) translateY(0);} 50%{transform:translateX(-50%) rotate(-16deg) translateY(-5px);} }
 
+/* ============ PAST DAYS STRIP (home — edit old meal days) ============ */
+.date-strip{ display:flex; gap:8px; overflow-x:auto; padding:2px 2px 6px; scrollbar-width:none; }
+.date-strip::-webkit-scrollbar{display:none;}
+.date-pill{
+  flex:0 0 auto; width:52px; padding:10px 0 9px; border-radius:16px; background:var(--surface);
+  border:1px solid var(--border-soft); text-align:center; cursor:pointer; box-shadow:var(--shadow-2);
+  transition:border-color .15s, background .15s, transform .12s;
+}
+.date-pill:active{transform:scale(.95);}
+.date-pill .dpl{font-size:10.5px; color:var(--text-mute); font-weight:700; margin-bottom:5px;}
+.date-pill .dpn{font-family:var(--font-d); font-weight:800; font-size:15px;}
+.date-pill .dpdot{width:5px; height:5px; border-radius:50%; background:var(--accent); margin:6px auto 0; opacity:0;}
+.date-pill.logged .dpdot{opacity:1;}
+
 /* ============ WEEK STRIP + PLAN ============ */
 .day-strip{ display:flex; gap:8px; overflow-x:auto; padding:2px 2px 6px; scrollbar-width:none; }
 .day-strip::-webkit-scrollbar{display:none;}
