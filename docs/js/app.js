@@ -28,6 +28,7 @@ async function init(){
   renderAll();
   bindEvents();
   hideSplash();
+  syncWidget();
 
   if(!appState.onboarded){
     setTimeout(()=>{ startOnboarding(); }, 400);

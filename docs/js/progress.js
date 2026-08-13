@@ -67,7 +67,7 @@ function renderBodyWeightSheetBody(){
   const chartWrap = document.getElementById('bwChartWrap');
   if(history.length===0){
     statsWrap.innerHTML = '';
-    chartWrap.innerHTML = '<div class="empty-hint">سجّل وزنك اليوم عشان يبدأ المنحنى 📈</div>';
+    chartWrap.innerHTML = emptyStateHtml('chart', 'سجّل وزنك اليوم عشان يبدأ المنحنى');
     return;
   }
   const weights = history.map(h=>h.weight);
@@ -118,7 +118,7 @@ function renderWeightCalorieTrend(){
   const validWeights = weightPoints.filter(p=>p.value!=null);
   const validCals = calPoints.filter(p=>p.value!=null);
   if(validWeights.length<2 || validCals.length<2){
-    wrap.innerHTML = '<div class="empty-hint">سجّل وزنك وأكلك بانتظام لأسبوعين على الأقل عشان تشوف هنا هل نزولك أو ثباتك بالوزن يتماشى مع سعراتك 📊</div>';
+    wrap.innerHTML = emptyStateHtml('chart', 'سجّل وزنك وأكلك بانتظام لأسبوعين على الأقل عشان تشوف هنا هل نزولك أو ثباتك بالوزن يتماشى مع سعراتك');
     return;
   }
   const chart = buildDualChartSvg(weightPoints, calPoints, {colorA:'var(--shoulder)', colorB:'var(--protein)', labelA:'الوزن', labelB:'متوسط السعرات'});
@@ -478,3 +478,4 @@ async function onEnableSyncClick(){
     if(resEl) resEl.innerHTML = `<div class="sync-badge off" style="width:100%; box-sizing:border-box; color:var(--danger);">❌ ${escapeHtml(e.code||e.message||'خطأ غير معروف')}</div>`;
   }
 }
+

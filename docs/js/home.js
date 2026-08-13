@@ -11,9 +11,16 @@ function sumLog(){
 function renderRing(){
   const {cal,p,c,f} = sumLog();
   const goal = state.goals;
-  const remain = Math.max(goal.calories - cal, 0);
-  document.getElementById('calRemain').textContent = remain.toLocaleString('en-US');
+  const over = cal > goal.calories;
+  const remain = Math.abs(goal.calories - cal);
+
+  animateCount(document.getElementById('calRemain'), remain);
   document.getElementById('calSub').textContent = `${cal.toLocaleString('en-US')} من ${goal.calories.toLocaleString('en-US')}`;
+  const lblEl = document.querySelector('.ring-center .lbl');
+  if(lblEl) lblEl.textContent = over ? 'سعرة زيادة عن الهدف' : 'سعرة متبقية';
+  const centerEl = document.querySelector('.ring-center');
+  if(centerEl) centerEl.classList.toggle('over-goal', over);
+  document.getElementById('ringSvg').classList.toggle('over-goal', over);
 
   const pct = Math.min(cal / Math.max(goal.calories,1), 1);
   const r = 86, circumference = 2*Math.PI*r;
@@ -21,6 +28,7 @@ function renderRing(){
   el.style.strokeDasharray = `${circumference}`;
   el.style.strokeDashoffset = `${circumference * (1-pct)}`;
   el.style.transition = 'stroke-dashoffset .6s cubic-bezier(.2,.8,.2,1)';
+  el.setAttribute('stroke', over ? 'url(#ringGradOver)' : 'url(#ringGrad)');
 
   setMacro('p', p, goal.protein); setMacro('c', c, goal.carbs); setMacro('f', f, goal.fat);
 }
@@ -28,9 +36,13 @@ function renderRing(){
 function setMacro(key, val, goal){
   const map = {p:'pVal',c:'cVal',f:'fVal'};
   const fillMap = {p:'pFill',c:'cFill',f:'fFill'};
+  const over = val > goal;
   document.getElementById(map[key]).textContent = `${Math.round(val)}/${goal}`;
   const pct = Math.min((val/Math.max(goal,1))*100, 100);
-  document.getElementById(fillMap[key]).style.width = pct+'%';
+  const fillEl = document.getElementById(fillMap[key]);
+  fillEl.style.width = pct+'%';
+  const pillEl = fillEl.closest('.macro-pill');
+  if(pillEl) pillEl.classList.toggle('over', over);
 }
 
 function renderStreak(){
@@ -101,7 +113,7 @@ function renderQuickChips(){
   const wrap = document.getElementById('quickChips');
   wrap.innerHTML = '';
   if(state.library.foods.length===0){
-    wrap.innerHTML = '<div class="empty-hint">مكتبتك فاضية، ضيف وجبة عشان تبدأ</div>';
+    wrap.innerHTML = emptyStateHtml('meal', 'مكتبتك فاضية، ضيف وجبة عشان تبدأ');
     return;
   }
   const top = [...state.library.foods].sort((a,b)=>b.usageCount-a.usageCount).slice(0,8);
@@ -125,13 +137,14 @@ function renderTodaySummary(){
   wrap.innerHTML = '';
   const meals = [...state.log.meals].sort((a,b)=> (a.time||0) - (b.time||0));
   if(meals.length===0){
-    wrap.innerHTML = '<div class="empty-hint">لسا ما سجلت شي اليوم. اضغط + وابدأ 🍽️</div>';
+    wrap.innerHTML = emptyStateHtml('meal', 'لسا ما سجلت شي اليوم. اضغط + وابدأ');
     return;
   }
   meals.forEach(m=>{
     const row = document.createElement('div');
     row.className = 'entry-row';
-    row.innerHTML = `<div class="entry-dot" style="background:var(--protein)"></div>
+    const dotColor = MEAL_CAT_COLORS[m.category] || 'var(--protein)';
+    row.innerHTML = `<div class="entry-dot" style="background:${dotColor}"></div>
       <div class="entry-main"><div class="t1">${escapeHtml(m.name)}</div><div class="t2">${m.category} · ب${Math.round(m.protein)} ك${Math.round(m.carbs)} د${Math.round(m.fat)}</div></div>
       <div class="entry-side tabular">${m.calories}</div>`;
     wrap.appendChild(row);
@@ -229,3 +242,4 @@ function renderPastDaysStrip(){
 /* ============================================================
    RENDER: FOOD VIEW
    ============================================================ */
+

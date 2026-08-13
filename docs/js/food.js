@@ -4,7 +4,7 @@
 function renderMealsToday(){
   const wrap = document.getElementById('mealsToday');
   wrap.innerHTML = '';
-  if(state.log.meals.length===0){ wrap.innerHTML = '<div class="empty-hint">ولا وجبة مسجلة اليوم بعد</div>'; return; }
+  if(state.log.meals.length===0){ wrap.innerHTML = emptyStateHtml('meal', 'ولا وجبة مسجلة اليوم بعد'); return; }
   const deleteMeal = (id)=>{
     const idx = state.log.meals.findIndex(m=>m.id===id);
     if(idx<0) return;
@@ -21,10 +21,11 @@ function renderMealsToday(){
   state.log.meals.forEach(m=>{
     const row = document.createElement('div');
     row.className = 'entry-row';
-    row.innerHTML = `<div class="entry-dot" style="background:var(--protein)"></div>
+    const dotColor = MEAL_CAT_COLORS[m.category] || 'var(--protein)';
+    row.innerHTML = `<div class="entry-dot" style="background:${dotColor}"></div>
       <div class="entry-main"><div class="t1">${escapeHtml(m.name)}</div><div class="t2">${m.category} · ب${Math.round(m.protein)} ك${Math.round(m.carbs)} د${Math.round(m.fat)}</div></div>
       <div class="entry-side tabular">${m.calories}</div>
-      <div class="entry-del" data-del-meal="${m.id}">✕</div>`;
+      <div class="entry-del" data-del-meal="${m.id}" aria-label="حذف ${escapeHtml(m.name)}" role="button">✕</div>`;
     attachSwipeToDelete(row, ()=> deleteMeal(m.id));
     wrap.appendChild(row);
   });
@@ -66,23 +67,24 @@ function renderFoodLibList(){
   if(state.activeFoodCat!=='الكل') list = list.filter(f=>f.category===state.activeFoodCat);
   if(q) list = list.filter(f=>f.name.includes(q));
   list = sortFoodList(list);
-  if(list.length===0){ wrap.innerHTML = '<div class="empty-hint">ما فيه نتائج</div>'; return; }
+  if(list.length===0){ wrap.innerHTML = emptyStateHtml('search', 'ما فيه نتائج'); return; }
   list.forEach(food=>{
     const row = document.createElement('div');
     row.className = 'lib-row';
     const customTag = food.isCustom ? '<span class="custom-tag">مخصصة</span>' : '';
     row.innerHTML = `<div class="lm"><div class="n">${escapeHtml(food.name)}${customTag}</div><div class="d">${food.category} · ${food.calories} سعرة · ب${food.protein} ك${food.carbs} د${food.fat}</div></div>
       <div class="lib-actions">
-        <div class="fav-star${food.favorite?' on':''}" data-fav-food="${food.id}">${food.favorite?'★':'☆'}</div>
-        ${food.isCustom ? `<div class="lib-edit" data-edit-food="${food.id}">✏️</div><div class="lib-del" data-del-food="${food.id}">🗑️</div>` : ''}
-        <div class="lib-add">+</div>
+        <div class="fav-star${food.favorite?' on':''}" data-fav-food="${food.id}" aria-label="${food.favorite?'إزالة من المفضلة':'إضافة للمفضلة'}" role="button">${food.favorite?'★':'☆'}</div>
+        ${food.isCustom ? `<div class="lib-edit" data-edit-food="${food.id}" aria-label="تعديل" role="button">✏️</div>` : ''}
+        <div class="lib-add" aria-label="إضافة لليوم" role="button">+</div>
       </div>`;
     row.querySelector('.lib-add').addEventListener('click', (e)=>{ e.stopPropagation(); quickAddFood(food, null); });
     row.querySelector('[data-fav-food]').addEventListener('click', (e)=>{ e.stopPropagation(); toggleFoodFavorite(food); });
     const editBtn = row.querySelector('[data-edit-food]');
     if(editBtn) editBtn.addEventListener('click', (e)=>{ e.stopPropagation(); openEditFood(food); });
-    const delBtn = row.querySelector('[data-del-food]');
-    if(delBtn) delBtn.addEventListener('click', (e)=>{ e.stopPropagation(); deleteCustomFood(food); });
+    if(food.isCustom){
+      attachSwipeToDelete(row, ()=> deleteCustomFood(food));
+    }
     wrap.appendChild(row);
   });
 }
@@ -195,14 +197,13 @@ function renderCalDist(){
   const sums = {'فطور':0,'غدا':0,'عشا':0,'سناك':0};
   state.log.meals.forEach(m=> { if(sums[m.category]!==undefined) sums[m.category]+=m.calories; });
   const total = Object.values(sums).reduce((a,b)=>a+b,0);
-  if(total===0){ wrap.innerHTML = '<div class="empty-hint">سجل وجبة عشان يبين لك التوزيع</div>'; return; }
+  if(total===0){ wrap.innerHTML = emptyStateHtml('chart', 'سجل وجبة عشان يبين لك التوزيع'); return; }
   const order = ['فطور','غدا','عشا','سناك'];
-  const colors = {'فطور':'var(--fat)','غدا':'var(--protein)','عشا':'var(--carb)','سناك':'var(--shoulder)'};
   const rows = order.map(cat=>{
     const pct = Math.round((sums[cat]/total)*100);
     return `<div style="margin-bottom:10px;">
       <div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--text-dim); margin-bottom:4px;"><span>${cat}</span><span class="tabular">${sums[cat]} سعرة (${pct}٪)</span></div>
-      <div style="height:8px; background:var(--border-soft); border-radius:99px; overflow:hidden;"><div style="height:100%; width:${pct}%; background:${colors[cat]}; border-radius:99px;"></div></div>
+      <div style="height:8px; background:var(--border-soft); border-radius:99px; overflow:hidden;"><div style="height:100%; width:${pct}%; background:${MEAL_CAT_COLORS[cat]}; border-radius:99px;"></div></div>
     </div>`;
   }).join('');
   wrap.innerHTML = rows;
@@ -211,18 +212,33 @@ function renderCalDist(){
 /* ============================================================
    MEAL TEMPLATES
    ============================================================ */
+function deleteTemplate(id){
+  const templates = appState.mealTemplates || [];
+  const idx = templates.findIndex(x=>x.id===id);
+  if(idx<0) return;
+  const removed = templates[idx];
+  templates.splice(idx,1);
+  persist();
+  renderTemplateList();
+  showUndoToast(`حذفت قالب ${removed.name}`, ()=>{
+    templates.splice(idx,0,removed);
+    persist();
+    renderTemplateList();
+  });
+}
+
 function renderTemplateList(){
   const wrap = document.getElementById('templateList');
   const templates = appState.mealTemplates || [];
-  if(templates.length===0){ wrap.innerHTML = '<div class="empty-hint">ما عندك قوالب بعد. سجل وجبات يومك واحفظها كقالب.</div>'; return; }
+  if(templates.length===0){ wrap.innerHTML = emptyStateHtml('list', 'ما عندك قوالب بعد. سجل وجبات يومك واحفظها كقالب.'); return; }
   wrap.innerHTML = '';
   templates.forEach(t=>{
     const cal = t.foods.reduce((s,f)=>s+f.calories,0);
     const row = document.createElement('div');
     row.className = 'template-row';
     row.innerHTML = `<div class="tm"><div class="n">${escapeHtml(t.name)}</div><div class="d">${t.foods.length} وجبات · ${cal} سعرة</div></div>
-      <div class="tbtn" data-apply="${t.id}">تطبيق</div>
-      <div class="tdel" data-deltmpl="${t.id}">✕</div>`;
+      <div class="tbtn" data-apply="${t.id}" aria-label="تطبيق قالب ${escapeHtml(t.name)}" role="button">تطبيق</div>`;
+    attachSwipeToDelete(row, ()=> deleteTemplate(t.id));
     wrap.appendChild(row);
   });
   wrap.querySelectorAll('[data-apply]').forEach(btn=>{
@@ -237,13 +253,6 @@ function renderTemplateList(){
       renderAll();
       closeAllSheets();
       showToast(`تم تطبيق قالب ${t.name} 🎉`);
-    });
-  });
-  wrap.querySelectorAll('[data-deltmpl]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      appState.mealTemplates = templates.filter(x=>x.id!==btn.getAttribute('data-deltmpl'));
-      persist();
-      renderTemplateList();
     });
   });
 }
@@ -344,7 +353,7 @@ function renderSheetFoodList(){
   }
   if(q) list = list.filter(f=>f.name.includes(q));
   list = sortFoodList(list);
-  if(list.length===0){ wrap.innerHTML = '<div class="empty-hint">ما فيه نتائج، جرب اسم ثاني أو ضيف وجبة جديدة</div>'; return; }
+  if(list.length===0){ wrap.innerHTML = emptyStateHtml('search', 'ما فيه نتائج، جرب اسم ثاني أو ضيف وجبة جديدة'); return; }
   list.forEach(food=>{
     const row = document.createElement('div');
     row.className = 'lib-row';
@@ -426,3 +435,4 @@ async function finishMealBuilder(){
 /* ============================================================
    EXERCISE PICKER SHEET
    ============================================================ */
+

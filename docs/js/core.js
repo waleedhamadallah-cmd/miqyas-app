@@ -32,6 +32,29 @@ function persist(){
   if(cloudDoc){
     cloudDoc.set(appState).catch(e=> console.error('cloud push failed', e));
   }
+  syncWidget();
+}
+
+// Pushes today's real calorie/water totals (never whatever day the user
+// happens to be *viewing* via switchViewedDay) to the native home-screen
+// widget, if the app is running inside the installed Android build (this
+// plugin doesn't exist on the plain web/PWA, so it's a silent no-op there).
+function syncWidget(){
+  try{
+    if(!(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.MiqyasWidget)) return;
+    const key = todayKey(new Date());
+    const dayLog = (appState && appState.logs && appState.logs[key]) || {meals:[], waterMl:0};
+    const cal = (dayLog.meals||[]).reduce((s,m)=>s+(m.calories||0),0);
+    const water = dayLog.waterMl || 0;
+    const goals = (appState && appState.goals) || {};
+    Capacitor.Plugins.MiqyasWidget.update({
+      dateKey: key,
+      calCurrent: Math.round(cal),
+      calGoal: Math.round(goals.calories || 2000),
+      waterCurrent: Math.round(water),
+      waterGoal: Math.round(goals.water || 2500)
+    }).catch(()=>{});
+  }catch(e){ /* no-op outside the native app */ }
 }
 
 function defaultAppState(){
@@ -321,11 +344,54 @@ function computeStreak(){
 
 const FOOD_CATS = ['الكل','فطور','غدا','عشا','سناك'];
 
+// Shared meal-category → color mapping, used everywhere a meal's category
+// needs a visual accent (calorie-distribution chart, meal-list row dots).
+const MEAL_CAT_COLORS = {'فطور':'var(--fat)','غدا':'var(--protein)','عشا':'var(--carb)','سناك':'var(--shoulder)'};
+
+// Small hand-drawn line-art illustrations for empty states, matching the
+// stroke weight/style of the section-title icons used throughout the app
+// (24px viewBox originals scaled up here) — used instead of emoji so empty
+// states feel like part of the same design system.
+const EMPTY_ILLOS = {
+  meal: '<svg class="empty-illo" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="36" r="17"></circle><path d="M24 36a8 8 0 0 1 16 0"></path><line x1="17" y1="15" x2="22" y2="21"></line><line x1="47" y1="15" x2="42" y2="21"></line><line x1="32" y1="12" x2="32" y2="19"></line></svg>',
+  search: '<svg class="empty-illo" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="27" cy="27" r="15"></circle><line x1="38" y1="38" x2="51" y2="51"></line></svg>',
+  list: '<svg class="empty-illo" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="15" y="10" width="34" height="44" rx="4"></rect><line x1="22" y1="23" x2="42" y2="23"></line><line x1="22" y1="33" x2="42" y2="33"></line><line x1="22" y1="43" x2="34" y2="43"></line></svg>',
+  chart: '<svg class="empty-illo" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="13" y1="51" x2="13" y2="13"></line><line x1="13" y1="51" x2="51" y2="51"></line><path d="M19 43l9-11 8 7 13-17"></path></svg>'
+};
+function emptyStateHtml(kind, text){
+  const icon = EMPTY_ILLOS[kind] || EMPTY_ILLOS.list;
+  return `<div class="empty-state">${icon}<div class="empty-state-text">${text}</div></div>`;
+}
+
+// Animates a number-bearing element's text from its current displayed value
+// to `target` over a short duration, instead of snapping instantly — used
+// for logged numbers that change (calories remaining, switching viewed day).
+function animateCount(el, target, opts){
+  if(!el) return;
+  opts = opts || {};
+  const duration = opts.duration || 500;
+  const suffix = opts.suffix || '';
+  const formatter = opts.formatter || (n => Math.round(n).toLocaleString('en-US'));
+  const prevRaw = el.dataset.countRaw;
+  const startVal = prevRaw!=null ? parseFloat(prevRaw) : target;
+  el.dataset.countRaw = String(target);
+  if(!isFinite(startVal) || startVal===target){ el.textContent = formatter(target)+suffix; return; }
+  const startTime = performance.now();
+  function tick(now){
+    const t = Math.min((now-startTime)/duration, 1);
+    const eased = 1 - Math.pow(1-t, 3);
+    const val = startVal + (target-startVal)*eased;
+    el.textContent = formatter(val)+suffix;
+    if(t<1) requestAnimationFrame(tick);
+  }
+  requestAnimationFrame(tick);
+}
+
 function buildChartSvg(points){
   const w = 300, h = 140, pad = 18;
-  if(points.length===0) return '<div class="empty-hint">ما فيه سجل كافي لرسم منحنى بعد</div>';
+  if(points.length===0) return emptyStateHtml('chart', 'ما فيه سجل كافي لرسم منحنى بعد');
   if(points.length===1){
-    return `<div class="empty-hint">سجّل مرة ثانية عشان يظهر منحنى التقدم 📈 (آخر وزن: ${points[0].weight} كغ)</div>`;
+    return emptyStateHtml('chart', `سجّل مرة ثانية عشان يظهر منحنى التقدم (آخر وزن: ${points[0].weight} كغ)`);
   }
   const weights = points.map(p=>p.weight);
   const min = Math.min(...weights), max = Math.max(...weights);
@@ -358,7 +424,7 @@ function buildDualChartSvg(pointsA, pointsB, opts){
   const validA = pointsA.filter(p=>p.value!=null);
   const validB = pointsB.filter(p=>p.value!=null);
   if(validA.length<2 || validB.length<2){
-    return '<div class="empty-hint">سجّل وزنك وأكلك لأسبوعين متتاليين على الأقل عشان يبين المنحنى</div>';
+    return emptyStateHtml('chart', 'سجّل وزنك وأكلك لأسبوعين متتاليين على الأقل عشان يبين المنحنى');
   }
   const n = Math.max(pointsA.length, pointsB.length);
   const stepX = n>1 ? (w-pad*2)/(n-1) : 0;
@@ -554,3 +620,4 @@ function switchTab(tab){
 /* ============================================================
    FOOD SHEET (picker within FAB flow)
    ============================================================ */
+
