@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:id="@+id/widgetRoot"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:orientation="vertical"
+    android:background="@drawable/widget_bg"
+    android:padding="14dp">
+
+    <TextView
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="مِقياس"
+        android:textColor="#7C858F"
+        android:textSize="11sp"
+        android:textStyle="bold"
+        android:gravity="end"
+        android:layout_marginBottom="8dp"/>
+
+    <TextView
+        android:id="@+id/widgetCalText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="0 / 2000 سعرة"
+        android:textColor="#F3F1EA"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:gravity="end"/>
+
+    <ProgressBar
+        android:id="@+id/widgetCalBar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="8dp"
+        android:layout_marginTop="5dp"
+        android:layout_marginBottom="14dp"
+        android:max="100"
+        android:progress="0"
+        android:progressDrawable="@drawable/widget_progress_cal"/>
+
+    <TextView
+        android:id="@+id/widgetWaterText"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:text="0 / 2500 مل"
+        android:textColor="#F3F1EA"
+        android:textSize="15sp"
+        android:textStyle="bold"
+        android:gravity="end"/>
+
+    <ProgressBar
+        android:id="@+id/widgetWaterBar"
+        style="?android:attr/progressBarStyleHorizontal"
+        android:layout_width="match_parent"
+        android:layout_height="8dp"
+        android:layout_marginTop="5dp"
+        android:max="100"
+        android:progress="0"
+        android:progressDrawable="@drawable/widget_progress_water"/>
+
+</LinearLayout>
