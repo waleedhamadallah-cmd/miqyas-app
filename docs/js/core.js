@@ -39,22 +39,33 @@ function persist(){
 // happens to be *viewing* via switchViewedDay) to the native home-screen
 // widget, if the app is running inside the installed Android build (this
 // plugin doesn't exist on the plain web/PWA, so it's a silent no-op there).
+//
+// TEMPORARY DEBUG BUILD: shows a toast every time this runs, so we can see
+// from the phone's screen alone whether the JS→native bridge call is even
+// reaching the plugin, without needing a computer/devtools attached. Remove
+// the showToast(...) calls once the widget is confirmed working.
 function syncWidget(){
   try{
-    if(!(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.MiqyasWidget)) return;
+    if(!(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.MiqyasWidget)){
+      if(window.Capacitor && typeof showToast==='function') showToast('⚠️ ويدجت: MiqyasWidget مو موجود بالـ bridge');
+      return;
+    }
     const key = todayKey(new Date());
     const dayLog = (appState && appState.logs && appState.logs[key]) || {meals:[], waterMl:0};
     const cal = (dayLog.meals||[]).reduce((s,m)=>s+(m.calories||0),0);
     const water = dayLog.waterMl || 0;
     const goals = (appState && appState.goals) || {};
-    Capacitor.Plugins.MiqyasWidget.update({
+    const payload = {
       dateKey: key,
       calCurrent: Math.round(cal),
       calGoal: Math.round(goals.calories || 2000),
       waterCurrent: Math.round(water),
       waterGoal: Math.round(goals.water || 2500)
-    }).catch(()=>{});
-  }catch(e){ /* no-op outside the native app */ }
+    };
+    Capacitor.Plugins.MiqyasWidget.update(payload)
+      .then(()=>{ if(typeof showToast==='function') showToast(`✅ ويدجت اتحدّث: ${payload.calCurrent}/${payload.calGoal} سعرة`); })
+      .catch((e)=>{ if(typeof showToast==='function') showToast('❌ ويدجت رفض الطلب: ' + (e && e.message ? e.message : String(e))); });
+  }catch(e){ if(window.Capacitor && typeof showToast==='function') showToast('❌ ويدجت استثناء: ' + e.message); }
 }
 
 function defaultAppState(){
@@ -620,4 +631,3 @@ function switchTab(tab){
 /* ============================================================
    FOOD SHEET (picker within FAB flow)
    ============================================================ */
-
