@@ -6,7 +6,7 @@ function computeGymWeekStats(){
   let count=0, volume=0;
   for(let i=0;i<=6;i++){
     const key = dateKeyOffset(i);
-    const dayLog = (i===0) ? state.log : (appState.logs[key] || {workouts:[]});
+    const dayLog = appState.logs[key] || {workouts:[]};
     (dayLog.workouts||[]).forEach(w=>{
       count++;
       volume += (w.sets||[]).reduce((s,x)=> s + x.weight*x.reps, 0);
@@ -126,7 +126,7 @@ function computeMuscleHeat(){
   HEAT_ZONE_GROUPS.forEach(g=> heat[g]=0);
   for(let i=0;i<=6;i++){
     const key = dateKeyOffset(i);
-    const dayLog = (i===0) ? state.log : (appState.logs[key] || {workouts:[]});
+    const dayLog = appState.logs[key] || {workouts:[]};
     const decay = 1 - i/7; // today counts full, older days fade out
     (dayLog.workouts||[]).forEach(w=>{
       const vol = (w.sets||[]).reduce((s,x)=> s + x.weight*x.reps, 0);
@@ -156,7 +156,7 @@ function computeWeeklySetCounts(){
   const counts = {}; HEAT_ZONE_GROUPS.forEach(g=> counts[g]=0);
   for(let i=0;i<=6;i++){
     const key = dateKeyOffset(i);
-    const dayLog = (i===0) ? state.log : (appState.logs[key] || {workouts:[]});
+    const dayLog = appState.logs[key] || {workouts:[]};
     (dayLog.workouts||[]).forEach(w=>{
       if(counts[w.group]===undefined) return;
       counts[w.group] += (w.sets||[]).length;
@@ -393,4 +393,3 @@ function renderSupersetBar(){
   else txt.textContent = 'مختار: ' + state.supersetPicks.map(p=>p.name).join(' + ');
   btn.disabled = state.supersetPicks.length!==2;
 }
-
