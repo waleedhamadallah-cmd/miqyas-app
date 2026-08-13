@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1, user-scalable=no">
-<title>مِقياس — النادي والأكل</title>
+<title>مِقياس — تتبع الأكل</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@600;700;800;900&family=IBM+Plex+Sans+Arabic:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -14,6 +14,22 @@
 
 </head>
 <body>
+
+<div id="appSplash">
+  <div class="splash-ring">
+    <svg viewBox="0 0 100 100" width="68" height="68">
+      <circle cx="50" cy="50" r="40" fill="none" stroke="rgba(255,255,255,.08)" stroke-width="8"></circle>
+      <circle cx="50" cy="50" r="40" fill="none" stroke="url(#splashGrad)" stroke-width="8" stroke-linecap="round" stroke-dasharray="120 251" transform="rotate(-90 50 50)"></circle>
+      <defs>
+        <linearGradient id="splashGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+          <stop offset="0%" stop-color="#5EE6C9"></stop>
+          <stop offset="100%" stop-color="#2F6FE0"></stop>
+        </linearGradient>
+      </defs>
+    </svg>
+  </div>
+  <div class="splash-word">مِقياس</div>
+</div>
 
 <div id="app">
 
@@ -28,7 +44,7 @@
   </div>
 
   <div class="viewday-banner" id="viewDayBanner" style="display:none;">
-    <span id="viewDayBannerText"></span>
+    <span class="st-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"></rect><line x1="3" y1="10" x2="21" y2="10"></line><line x1="8" y1="3" x2="8" y2="7"></line><line x1="16" y1="3" x2="16" y2="7"></line></svg><span id="viewDayBannerText"></span></span>
     <button class="viewday-btn" id="btnReturnToday">رجوع لليوم ↩️</button>
   </div>
 
@@ -98,21 +114,23 @@
       </div>
 
       <div class="week-progress">
-        <div class="wt"><span>تمارين هذا الأسبوع</span><b id="weekProgressText">0 من 0</b></div>
+        <div class="wt"><span>أيام سجلت فيها هالأسبوع</span><b id="weekProgressText">0 من 7</b></div>
         <div class="wtrack"><div class="wfill" id="weekProgressFill" style="width:0%"></div></div>
       </div>
     </div>
 
-    <div class="section-title">⚡ إضافة سريعة <span class="link" id="goFoodLib">المكتبة كاملة ←</span></div>
-    <div class="chip-scroll" id="quickChips"></div>
+    <div class="home-secondary">
+      <div class="section-title"><span class="st-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>إضافة سريعة</span><span class="link" id="goFoodLib">المكتبة كاملة ←</span></div>
+      <div class="chip-scroll" id="quickChips"></div>
 
-    <div class="section-title">📝 <span id="mealsTodayLabel">اليوم</span></div>
-    <div class="entry-list" id="todaySummary"></div>
+      <div class="section-title"><span class="st-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="14" y2="17"></line></svg><span id="mealsTodayLabel">اليوم</span></span></div>
+      <div class="entry-list" id="todaySummary"></div>
+    </div>
   </section>
 
   <!-- FOOD VIEW -->
   <section class="view" id="view-food">
-    <div class="section-title" style="margin-top:16px;">🍽️ وجبات <span id="foodMealsLabel">اليوم</span></div>
+    <div class="section-title" style="margin-top:16px;"><span class="st-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="3"></circle></svg>وجبات <span id="foodMealsLabel">اليوم</span></span></div>
     <div class="entry-list" id="mealsToday"></div>
 
     <div class="qa-row">
@@ -120,10 +138,10 @@
       <button class="btn-secondary" id="btnOpenRecipeBuilder">🍲 بناء وصفة</button>
     </div>
 
-    <div class="section-title">📊 توزيع السعرات <span id="foodDistLabel">اليوم</span></div>
+    <div class="section-title"><span class="st-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="18" y1="20" x2="18" y2="14"></line></svg>توزيع السعرات <span id="foodDistLabel">اليوم</span></span></div>
     <div class="chart-wrap" id="calDistWrap"></div>
 
-    <div class="section-title">📚 مكتبة الأكل</div>
+    <div class="section-title"><span class="st-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"></rect><line x1="9" y1="4" x2="9" y2="20"></line></svg>مكتبة الأكل</span></div>
     <div class="lib-card">
       <div class="search-wrap">
         <input type="text" id="foodSearch" placeholder="ابحث عن وجبة...">
@@ -136,54 +154,23 @@
   </section>
 
   <!-- GYM VIEW -->
-  <section class="view" id="view-gym">
-    <div class="gym-stats-row" id="gymStatsRow"></div>
-
-    <div id="overtrainWarnWrap"></div>
-
-    <div class="section-title" style="margin-top:16px;">📐 توزيع الحجم الأسبوعي</div>
-    <div class="landmark-card" id="landmarkCard"></div>
-
-    <div class="section-title" style="margin-top:16px;">🗓️ خطتك الأسبوعية <span class="link" id="btnEditPlan">تعديل ✏️</span></div>
-    <div class="day-strip" id="dayStrip"></div>
-    <div class="plan-card" id="planCard"></div>
-
-    <div id="gymFavSection" style="display:none;">
-      <div class="section-title">⭐ المفضلة <span class="link" style="color:var(--text-mute); cursor:default;">بدء سريع بضغطة</span></div>
-      <div class="chip-scroll" id="gymFavRow"></div>
-    </div>
-
-    <div class="section-title">📋 سجل اليوم <span class="link" id="gymTodayVolume"></span></div>
-    <div class="entry-list" id="workoutsToday"></div>
-    <button class="btn-secondary" id="btnStartWorkout">+ تسجيل تمرين إضافي</button>
-
-    <div class="section-title">📅 آخر الأيام</div>
-    <div id="gymHistory"></div>
-  </section>
-
   <!-- PROGRESS VIEW -->
   <section class="view" id="view-progress">
-    <div class="section-title" style="margin-top:16px;">⚖️ وزن الجسم</div>
+    <div class="section-title" style="margin-top:16px;"><span class="st-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"></circle><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="13" x2="15" y2="15"></line><line x1="9" y1="3" x2="15" y2="3"></line></svg>وزن الجسم</span></div>
     <div class="weight-card" id="weightCard"></div>
 
-    <div class="section-title">📊 نظرة على الشهر</div>
+    <div class="section-title"><span class="st-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="18" y1="20" x2="18" y2="14"></line></svg>نظرة على الشهر</span></div>
     <div class="insight-card" id="insightCard"></div>
 
-    <div class="section-title">📅 ملخص الأسبوع الغذائي</div>
+    <div class="section-title"><span class="st-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"></rect><line x1="3" y1="10" x2="21" y2="10"></line><line x1="8" y1="3" x2="8" y2="7"></line><line x1="16" y1="3" x2="16" y2="7"></line></svg>ملخص الأسبوع الغذائي</span></div>
     <div class="insight-card" id="weeklyFoodInsight"></div>
 
-    <div class="section-title">🏆 الإنجازات</div>
-    <button class="btn-secondary" id="btnShowPRs" style="margin-top:0;">🏆 أرقامي القياسية</button>
   </section>
 
   <nav class="bottomnav">
     <button class="nav-btn active" data-tab="home">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><path d="M9 22V12h6v10"></path></svg>
       <span>الرئيسية</span>
-    </button>
-    <button class="nav-btn" data-tab="gym">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6.5 6.5l11 11"></path><path d="M21 21l-3-3M3 3l3 3"></path><path d="M18 6l-2 2M8 16l-2 2"></path><rect x="15.5" y="2.5" width="4" height="4" rx="1" transform="rotate(45 17.5 4.5)"></rect><rect x="4.5" y="17.5" width="4" height="4" rx="1" transform="rotate(45 6.5 19.5)"></rect></svg>
-      <span>النادي</span>
     </button>
     <button class="nav-btn" data-tab="food">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 8h1a4 4 0 0 1 0 8h-1"></path><path d="M2 8h16v9a4 4 0 0 1-4 4H6a4 4 0 0 1-4-4z"></path><line x1="6" y1="1" x2="6" y2="4"></line><line x1="10" y1="1" x2="10" y2="4"></line><line x1="14" y1="1" x2="14" y2="4"></line></svg>
@@ -208,10 +195,6 @@
     <div class="qa-option" id="qaFood">
       <div class="ic" style="background:var(--protein-soft); color:var(--protein);">🍽️</div>
       <div class="tx"><b>إضافة وجبة</b><span>من مكتبتك أو وجبة جديدة</span></div>
-    </div>
-    <div class="qa-option" id="qaWorkout">
-      <div class="ic" style="background:var(--carb-soft); color:var(--carb);">🏋️</div>
-      <div class="tx"><b>تسجيل تمرين</b><span>اختر التمرين وسجل الجولات</span></div>
     </div>
     <div class="qa-option" id="qaWeight">
       <div class="ic" style="background:var(--shoulder-soft); color:var(--shoulder);">⚖️</div>
@@ -261,113 +244,11 @@
   </div>
 </div>
 
-<div class="sheet" id="sheetWorkoutPick" style="max-height:92vh;">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>اختر تمرين</h3><div class="sheet-close" data-close>✕</div></div>
-  <div class="sheet-body">
-    <div class="superset-toggle" id="supersetToggle">🔗 وضع السوبرست (تمرينين بدون راحة)</div>
-    <div class="search-wrap">
-      <input type="text" id="exSearch" placeholder="ابحث عن تمرين...">
-      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
-    </div>
-    <div class="chipbar" id="exGroupBar"></div>
-    <div class="chipbar" id="exEquipBar"></div>
-    <div id="exList"></div>
-    <div class="superset-bar" id="supersetBar" style="display:none;">
-      <div class="sb-tx" id="supersetBarText">اختر تمرينين</div>
-      <button class="lib-add" id="btnStartSuperset" style="width:auto; border-radius:var(--r-pill); padding:0 16px; height:36px; background:var(--accent); color:#161113; font-size:12.5px; font-weight:800;" disabled>ابدأ ▶</button>
-    </div>
-    <button class="btn-secondary" id="btnAddCustomEx">+ إضافة تمرين جديد للمكتبة</button>
-  </div>
-</div>
-
-<div class="sheet" id="sheetNewEx">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>تمرين جديد</h3><div class="sheet-close" data-close>✕</div></div>
-  <div class="sheet-body">
-    <div class="form-field"><label>اسم التمرين</label><input type="text" id="neName" placeholder="مثال: ضغط صدر بالدمبل"></div>
-    <div class="form-field"><label>الفئة</label>
-      <select id="neGroup">
-        <option value="صدر">صدر</option>
-        <option value="ظهر">ظهر</option>
-        <option value="أرجل">أرجل</option>
-        <option value="أكتاف">أكتاف</option>
-        <option value="بايسبس">بايسبس</option>
-        <option value="ترايسبس">ترايسبس</option>
-        <option value="بطن">بطن</option>
-      </select>
-    </div>
-    <div class="form-field"><label>نوع الحركة (للأيقونة المتحركة)</label>
-      <select id="neMovement">
-        <option value="press">ضغط</option>
-        <option value="pull">سحب</option>
-        <option value="squat">سكوات</option>
-        <option value="curl">كيرل</option>
-        <option value="raise">رفرفة</option>
-        <option value="core">بطن / كور</option>
-      </select>
-    </div>
-    <button class="btn-primary" id="btnSaveNewEx">حفظ واختيار</button>
-  </div>
-</div>
-
-<div class="sheet" id="sheetSets" style="max-height:94vh;">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>تسجيل الجولات</h3><div class="sheet-close" data-close>✕</div></div>
-  <div class="sheet-body">
-    <div id="sessionTabsWrap"></div>
-    <div class="ex-picked-card">
-      <div id="pickedExIcon"></div>
-      <div class="tx">
-        <div class="exn" id="pickedExName">—</div>
-        <div class="exhint" id="pickedExHint">أول مرة تسجل هذا التمرين</div>
-      </div>
-      <div class="session-timer" id="sessionTimer">⏱ ٠:٠٠</div>
-    </div>
-
-    <div id="progressionHintWrap"></div>
-
-    <div class="field-toggle">
-      <div class="field-btn active" id="fieldWeightBtn">
-        <div class="fl">الوزن (كغ)</div>
-        <div class="fv tabular" id="fieldWeightVal">0</div>
-      </div>
-      <div class="field-btn" id="fieldRepsBtn">
-        <div class="fl">التكرارات</div>
-        <div class="fv tabular" id="fieldRepsVal">0</div>
-      </div>
-    </div>
-
-    <div id="barbellWrap"></div>
-
-    <div class="keypad" id="keypad">
-      <div class="key" data-k="1">1</div><div class="key" data-k="2">2</div><div class="key" data-k="3">3</div>
-      <div class="key" data-k="4">4</div><div class="key" data-k="5">5</div><div class="key" data-k="6">6</div>
-      <div class="key" data-k="7">7</div><div class="key" data-k="8">8</div><div class="key" data-k="9">9</div>
-      <div class="key wide" data-k="clear">مسح</div><div class="key" data-k="0">0</div><div class="key wide" data-k="back">⌫</div>
-    </div>
-
-    <button class="btn-primary" id="btnAddSet" style="margin-top:16px;">+ إضافة الجولة</button>
-
-    <div class="rest-timer-box" id="restTimerBox">
-      <div class="rt-time tabular" id="restTimerVal">1:30</div>
-      <div class="rt-tx">راحة قبل الجولة الجاية</div>
-      <div class="rt-btn" id="restTimerMinus">-15</div>
-      <div class="rt-btn" id="restTimerPlus">+15</div>
-      <div class="rt-btn" id="restTimerSkip">⏭</div>
-    </div>
-
-    <div class="set-chip-row" id="setChips"></div>
-
-    <button class="btn-primary" id="btnFinishWorkout" style="background:var(--carb);">حفظ وإنهاء التمرين</button>
-  </div>
-</div>
-
 <div class="sheet" id="sheetSettings" style="max-height:92vh;">
   <div class="sheet-handle"></div>
   <div class="sheet-head"><h3>الإعدادات</h3><div class="sheet-close" data-close>✕</div></div>
   <div class="sheet-body">
-    <div class="section-title" style="margin-top:0;">🌗 المظهر</div>
+    <div class="section-title" style="margin-top:0;"><span class="st-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"></line><circle cx="9" cy="7" r="2.2" fill="currentColor" stroke="none"></circle><line x1="4" y1="13" x2="20" y2="13"></line><circle cx="15" cy="13" r="2.2" fill="currentColor" stroke="none"></circle><line x1="4" y1="19" x2="20" y2="19"></line><circle cx="11" cy="19" r="2.2" fill="currentColor" stroke="none"></circle></svg>المظهر</span></div>
     <div class="theme-toggle">
       <div class="theme-opt" id="themeDarkBtn">🌙 داكن</div>
       <div class="theme-opt" id="themeLightBtn">☀️ فاتح</div>
@@ -376,7 +257,7 @@
     <div class="acc-list">
       <div class="acc-item open" data-acc="goals">
         <div class="acc-head">
-          <span class="acc-title">🎯 الأهداف اليومية</span>
+          <span class="acc-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"></circle></svg>الأهداف اليومية</span>
           <span class="acc-side"><span class="link" id="btnOpenSmartGoals">احسبها لي 🧮</span><span class="acc-chevron">⌄</span></span>
         </div>
         <div class="acc-body">
@@ -393,20 +274,9 @@
         </div>
       </div>
 
-      <div class="acc-item" data-acc="equip">
-        <div class="acc-head">
-          <span class="acc-title">🏋️ المعدات المتوفرة عندي</span>
-          <span class="acc-side"><span class="acc-chevron">⌄</span></span>
-        </div>
-        <div class="acc-body">
-          <div class="equip-row" id="equipRow"></div>
-          <div class="empty-hint" style="padding:6px 0 0; text-align:right;">تُستخدم لتصفية تمارين المكتبة حسب اللي متوفر عندك.</div>
-        </div>
-      </div>
-
       <div class="acc-item" data-acc="backup">
         <div class="acc-head">
-          <span class="acc-title">💾 نسخة احتياطية</span>
+          <span class="acc-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="4" y1="20" x2="20" y2="20"></line></svg>نسخة احتياطية</span>
           <span class="acc-side"><span class="acc-chevron">⌄</span></span>
         </div>
         <div class="acc-body">
@@ -420,7 +290,7 @@
 
       <div class="acc-item" data-acc="share">
         <div class="acc-head">
-          <span class="acc-title">📤 مشاركة</span>
+          <span class="acc-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="6" cy="12" r="2.3"></circle><circle cx="18" cy="6" r="2.3"></circle><circle cx="18" cy="18" r="2.3"></circle><line x1="8.1" y1="10.8" x2="15.9" y2="7.2"></line><line x1="8.1" y1="13.2" x2="15.9" y2="16.8"></line></svg>مشاركة</span>
           <span class="acc-side"><span class="acc-chevron">⌄</span></span>
         </div>
         <div class="acc-body">
@@ -430,7 +300,7 @@
 
       <div class="acc-item" data-acc="sync">
         <div class="acc-head">
-          <span class="acc-title">☁️ المزامنة بين الأجهزة</span>
+          <span class="acc-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>المزامنة بين الأجهزة</span>
           <span class="acc-side"><span class="acc-chevron">⌄</span></span>
         </div>
         <div class="acc-body">
@@ -439,34 +309,6 @@
       </div>
     </div>
   </div>
-</div>
-
-<div class="sheet" id="sheetPlanEdit" style="max-height:90vh;">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>تعديل خطة النادي</h3><div class="sheet-close" data-close>✕</div></div>
-  <div class="sheet-body">
-    <div id="planPresetList"></div>
-    <button class="btn-primary" id="btnApplyPlan">توليد الخطة</button>
-    <div class="empty-hint" style="padding-top:10px;">توليد خطة جديدة بيستبدل أي تعديلات سويتها يدوياً على الأيام.</div>
-  </div>
-</div>
-
-<div class="sheet" id="sheetSwap" style="max-height:80vh;">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3 id="swapTitle">بدائل</h3><div class="sheet-close" data-close>✕</div></div>
-  <div class="sheet-body"><div id="swapList"></div></div>
-</div>
-
-<div class="sheet" id="sheetPRs" style="max-height:88vh;">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>🏆 أرقامي القياسية</h3><div class="sheet-close" data-close>✕</div></div>
-  <div class="sheet-body"><div id="prList"></div></div>
-</div>
-
-<div class="sheet" id="sheetExDetail" style="max-height:88vh;">
-  <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3 id="exDetailTitle">تفاصيل التمرين</h3><div class="sheet-close" data-close>✕</div></div>
-  <div class="sheet-body"><div id="exDetailBody"></div></div>
 </div>
 
 <div class="sheet" id="sheetBodyWeight" style="max-height:90vh;">
@@ -584,22 +426,10 @@
 <div id="toast"><span class="tick">✓</span><span id="toastMsg"></span></div>
 
 
-<div id="prOverlay">
-  <div class="pr-card" id="prCard">
-    <span class="emoji">🎉</span>
-    <h4 id="prTitle">رقم قياسي جديد!</h4>
-    <p id="prSub">استمر على هالمستوى</p>
-    <button class="btn-primary" id="btnPrClose" style="margin-top:0;">تمام 💪</button>
-  </div>
-</div>
-
-
 <script src="./js/core.js"></script>
 <script src="./js/home.js"></script>
 <script src="./js/food.js"></script>
-<script src="./js/gym.js"></script>
 <script src="./js/progress.js"></script>
-<script src="./js/session.js"></script>
 <script src="./js/app.js"></script>
 <script>
 if('serviceWorker' in navigator){
