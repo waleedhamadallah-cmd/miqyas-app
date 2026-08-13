@@ -198,12 +198,15 @@ input{font-family:inherit; color:inherit;}
 .chip-scroll::-webkit-scrollbar{display:none;}
 .food-chip{
   flex:0 0 auto; background:var(--surface); border:1px solid var(--border-soft);
-  border-radius:var(--r-lg); padding:13px 15px; min-width:118px; box-shadow:var(--shadow-2);
+  border-radius:var(--r-lg); padding:13px 15px 13px 32px; min-width:118px; box-shadow:var(--shadow-2);
   cursor:pointer; transition:transform .12s ease, border-color .12s ease, background .12s ease;
   position:relative;
 }
 .food-chip:active{transform:scale(.95);}
-.food-chip .fname{font-size:13px; font-weight:700; margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:150px;}
+/* padding-left above (32px) reserves room for .plus so long names never
+   render underneath it — .plus is positioned relative to the padding box,
+   independent of this padding, so only the text placement needed adjusting. */
+.food-chip .fname{font-size:13px; font-weight:700; margin-bottom:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:133px;}
 .food-chip .fcal{font-size:12px; color:var(--text-mute);}
 .food-chip .plus{
   position:absolute; top:8px; left:8px; width:20px; height:20px; border-radius:50%;
@@ -296,7 +299,7 @@ input{font-family:inherit; color:inherit;}
 /* ============ BOTTOM NAV ============ */
 .bottomnav{
   position:fixed; bottom:0; left:50%; transform:translateX(-50%);
-  width:100%; max-width:480px; background:rgba(23,28,33,.88); backdrop-filter:blur(16px);
+  width:100%; max-width:480px; background:var(--bg-elev);
   border-top:1px solid var(--border); display:flex; padding:10px 14px calc(10px + env(safe-area-inset-bottom)); z-index:40;
 }
 .nav-btn{
@@ -664,8 +667,9 @@ html[data-theme="light"] .entry-del, html[data-theme="light"] .tdel{ background:
 }
 .water-custom-row input:focus{border-color:var(--shoulder);}
 .water-custom-btn{
-  padding:10px 18px; border-radius:var(--r-md); background:var(--shoulder); color:#12161A;
-  font-size:12px; font-weight:800; cursor:pointer; display:flex; align-items:center; transition:transform .12s ease;
+  flex:0 0 auto; padding:10px 20px; border-radius:var(--r-pill); background:var(--shoulder); color:#12161A;
+  font-size:12px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  transition:transform .12s ease;
 }
 .water-custom-btn:active{transform:scale(.95);}
 
