@@ -73,6 +73,7 @@ body{
     var(--bg);
   color:var(--text);
   font-family:var(--font-b);
+  line-height:1.5;
   -webkit-font-smoothing:antialiased;
   overflow-x:hidden;
 }
@@ -150,25 +151,36 @@ input{font-family:inherit; color:inherit;}
   pointer-events:none;
 }
 .ring-wrap{ display:flex; justify-content:center; position:relative; margin-bottom:10px; }
-#ringSvg{ filter:drop-shadow(0 4px 16px rgba(255,107,74,.16)); }
+#ringSvg{ filter:drop-shadow(0 4px 16px rgba(47,211,166,.18)); transition:filter .3s ease; }
+#ringSvg.over-goal{ filter:drop-shadow(0 4px 16px rgba(229,85,91,.22)); }
 .ring-center{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; }
-.ring-center .num{ font-family:var(--font-d); font-weight:900; font-size:42px; line-height:1; letter-spacing:-.5px; }
+.ring-center .num{ font-family:var(--font-d); font-weight:900; font-size:42px; line-height:1; letter-spacing:-.5px; transition:color .2s ease; }
 .ring-center .lbl{font-size:13px; color:var(--text-mute); font-weight:500;}
 .ring-center .sub{font-size:12px; color:var(--text-mute); margin-top:5px;}
+.ring-center.over-goal .num{ color:var(--danger); }
 
 .macro-row{display:flex; gap:10px; margin-top:22px;}
-.macro-pill{ flex:1; background:var(--bg-elev); border:1px solid var(--border-soft); border-radius:var(--r-md); padding:11px 12px 10px; transition:background .2s ease; }
+.macro-pill{ flex:1; background:var(--bg-elev); border:1px solid var(--border-soft); border-radius:var(--r-md); padding:11px 12px 10px; transition:background .2s ease, border-color .2s ease; }
 .macro-pill .top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
 .macro-pill .name{font-size:12px; color:var(--text-dim); font-weight:600;}
-.macro-pill .val{font-size:12px; font-weight:700; font-family:var(--font-d);}
+.macro-pill .val{font-size:12px; font-weight:700; font-family:var(--font-d); transition:color .2s ease;}
 .macro-track{height:6px; border-radius:var(--r-pill); background:var(--border-soft); overflow:hidden;}
-.macro-fill{height:100%; border-radius:var(--r-pill); transition:width .6s cubic-bezier(.2,.8,.2,1);}
+.macro-fill{height:100%; border-radius:var(--r-pill); transition:width .6s cubic-bezier(.2,.8,.2,1), background .2s ease;}
 .macro-pill.protein .val{color:var(--protein);}
 .macro-pill.protein .macro-fill{background:var(--protein);}
 .macro-pill.carb .val{color:var(--carb);}
 .macro-pill.carb .macro-fill{background:var(--carb);}
 .macro-pill.fat .val{color:var(--fat);}
 .macro-pill.fat .macro-fill{background:var(--fat);}
+.macro-pill.over{ border-color:rgba(229,85,91,.4); }
+.macro-pill.over .val{color:var(--danger) !important;}
+.macro-pill.over .macro-fill{background:var(--danger) !important;}
+.macro-pill.over .val::after{content:' ⚠'; font-size:10px;}
+
+/* ============ EMPTY STATES (custom line-art, matches the section-title icon set) ============ */
+.empty-state{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:10px; padding:26px 14px 20px; text-align:center; }
+.empty-illo{ width:52px; height:52px; color:var(--text-mute); opacity:.5; }
+.empty-state-text{ font-size:12.5px; color:var(--text-mute); font-weight:600; max-width:260px; line-height:1.7; }
 
 /* ============ STREAK & WEEK PROGRESS (combined card) ============ */
 .stats-combo{
@@ -383,10 +395,6 @@ input{font-family:inherit; color:inherit;}
   width:34px; height:34px; border-radius:50%; background:var(--bg-elev); border:1px solid var(--border);
   display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:13px; flex:0 0 auto; color:var(--text-dim);
 }
-.lib-del{
-  width:34px; height:34px; border-radius:50%; background:var(--bg-elev); border:1px solid var(--border);
-  display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:13px; flex:0 0 auto; color:var(--danger);
-}
 .custom-tag{font-size:10px; font-weight:700; color:var(--accent-text); background:var(--carb-soft); border-radius:6px; padding:1px 6px; margin-inline-start:2px;}
 
 /* ============ FOOD PAGE LAYOUT ============ */
@@ -584,10 +592,11 @@ html[data-theme="light"] .fab{ box-shadow:0 10px 22px rgba(47,211,166,.28); }
 html[data-theme="light"] .field-btn .fv{ color:var(--text); }
 html[data-theme="light"] #toast{ color:var(--text); background:var(--surface); border:1px solid var(--border); }
 html[data-theme="light"] .hero-card::before{ background:radial-gradient(420px 220px at 50% -25%, rgba(47,211,166,.07), transparent 62%); }
-html[data-theme="light"] #ringSvg{ filter:drop-shadow(0 4px 14px rgba(255,107,74,.10)); }
+html[data-theme="light"] #ringSvg{ filter:drop-shadow(0 4px 14px rgba(47,211,166,.14)); }
+html[data-theme="light"] #ringSvg.over-goal{ filter:drop-shadow(0 4px 14px rgba(229,85,91,.16)); }
 html[data-theme="light"] .streak-flame{ filter:drop-shadow(0 0 8px rgba(255,107,74,.3)); }
 html[data-theme="light"] .icon-btn,
-html[data-theme="light"] .lib-edit, html[data-theme="light"] .lib-del,
+html[data-theme="light"] .lib-edit,
 html[data-theme="light"] .entry-del, html[data-theme="light"] .tdel{ background:var(--bg-elev); }
 
 /* ============ THEME TOGGLE ============ */
