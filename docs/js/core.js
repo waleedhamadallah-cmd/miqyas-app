@@ -36,8 +36,8 @@ function persist(){
 
 function defaultAppState(){
   return {
-    library:{foods:defaultFoods(), exercises:defaultExercises()}, goals:defaultGoals(), plan:null, logs:{},
-    bodyWeights:{}, bodyFat:{}, bodyMeasurements:{}, mealTemplates:[], equipment:[...ALL_EQUIPMENT],
+    library:{foods:defaultFoods()}, goals:defaultGoals(), logs:{},
+    bodyWeights:{}, bodyFat:{}, bodyMeasurements:{}, mealTemplates:[],
     theme:'dark', onboarded:false, updatedAt:0
   };
 }
@@ -45,34 +45,30 @@ function defaultAppState(){
 function rebindFromAppState(){
   state.library = appState.library;
   state.goals = appState.goals;
-  state.plan = appState.plan;
-  state.selectedPresetType = state.plan.type || 'upper_lower_4';
-  if(!appState.logs[state.today]) appState.logs[state.today] = {meals:[], workouts:[], waterMl:0};
+  if(!appState.logs[state.today]) appState.logs[state.today] = {meals:[], waterMl:0};
   if(appState.logs[state.today].waterMl===undefined) appState.logs[state.today].waterMl = 0;
   state.log = appState.logs[state.today];
   if(!appState.bodyWeights) appState.bodyWeights = {};
   if(!appState.bodyFat) appState.bodyFat = {};
   if(!appState.bodyMeasurements) appState.bodyMeasurements = {};
   if(!appState.mealTemplates) appState.mealTemplates = [];
-  if(!appState.equipment) appState.equipment = [...ALL_EQUIPMENT];
   if(!appState.theme) appState.theme = 'dark';
   if(appState.onboarded===undefined) appState.onboarded = true; // existing users skip onboarding
   if(appState.goals.water===undefined) appState.goals.water = 2500;
   if(appState.goals.fiber===undefined) appState.goals.fiber = 30;
   if(appState.goals.sodium===undefined) appState.goals.sodium = 2300;
-  (appState.library.exercises||[]).forEach(ex=>{
-    if(ex.equipment===undefined) ex.equipment = 'barbell';
-    if(ex.injured===undefined) ex.injured = false;
-  });
   (appState.library.foods||[]).forEach(f=>{
     if(f.fiber===undefined) f.fiber = 0;
     if(f.sodium===undefined) f.sodium = 0;
+    if(f.sugar===undefined) f.sugar = 0;
+    if(f.satFat===undefined) f.satFat = 0;
+    if(f.servingUnit===undefined) f.servingUnit = 'حصة';
   });
   // One-time food-library refresh: replaces the default food list with the
   // curated menu. Bumping FOOD_LIB_VERSION in the future will re-trigger
   // this once more without touching custom foods added after this point
   // (custom foods are preserved; only the original defaults are swapped).
-  const FOOD_LIB_VERSION = 3;
+  const FOOD_LIB_VERSION = 4;
   if(appState.foodLibraryVersion !== FOOD_LIB_VERSION){
     const custom = (appState.library.foods||[]).filter(f=>f.isCustom);
     appState.library.foods = [...defaultFoods(), ...custom];
@@ -254,111 +250,21 @@ function defaultFoods(){
   ];
 }
 
-function defaultExercises(){
-  const mk = (name,group,movementType,equipment)=>({id:uid(),name,group,movementType,equipment:equipment||'barbell',injured:false,favorite:false,usageCount:0,lastWeight:0,lastReps:0,prWeight:0,prReps:0,prVolume:0,prDate:null});
-  return [
-    mk('بنش برس','صدر','press','barbell'), mk('ضغط صدر بالدمبل','صدر','press','dumbbell'), mk('بينش مائل','صدر','press','barbell'),
-    mk('سحب أمامي','ظهر','pull','machine'), mk('بار عريض','ظهر','pull','bodyweight'), mk('تجديف بالبار','ظهر','pull','barbell'),
-    mk('سكوات','أرجل','squat','barbell'), mk('لنجز','أرجل','squat','dumbbell'), mk('ضغط أرجل','أرجل','squat','machine'),
-    mk('ضغط أكتاف','أكتاف','press','dumbbell'), mk('رفرفة جانبية','أكتاف','raise','dumbbell'),
-    mk('كيرل بار','بايسبس','curl','barbell'), mk('كيرل دمبل تبادلي','بايسبس','curl','dumbbell'),
-    mk('بوش داون','ترايسبس','press','machine'), mk('ديبس','ترايسبس','press','bodyweight'),
-    mk('كرنش','بطن','core','bodyweight'), mk('بلانك','بطن','core','bodyweight'), mk('رفع أرجل معلق','بطن','core','bodyweight'),
-  ];
-}
-
 function defaultGoals(){ return {calories:2200, protein:150, carbs:220, fat:70, water:2500, fiber:30, sodium:2300}; }
 
-const EQUIPMENT_LABELS = {barbell:'بار حديد', dumbbell:'دمبل', machine:'أجهزة', bodyweight:'وزن الجسم'};
-const ALL_EQUIPMENT = ['barbell','dumbbell','machine','bodyweight'];
-
-/* ============================================================
-   MUSCLE GROUP COLORS + WEEKLY SPLIT PRESETS
-   ============================================================ */
-
-const GROUP_COLOR_VAR = {
-  'صدر':{solid:'var(--protein)', soft:'var(--protein-soft)'},
-  'ظهر':{solid:'var(--carb)', soft:'var(--carb-soft)'},
-  'أرجل':{solid:'var(--fat)', soft:'var(--fat-soft)'},
-  'أكتاف':{solid:'var(--shoulder)', soft:'var(--shoulder-soft)'},
-  'بايسبس':{solid:'var(--biceps)', soft:'var(--biceps-soft)'},
-  'ترايسبس':{solid:'var(--triceps)', soft:'var(--triceps-soft)'},
-  'بطن':{solid:'var(--abs)', soft:'var(--abs-soft)'},
-};
-
-const WARMUP_TEXT = {
-  'صدر':'تدوير أكتاف + ٢ جولة تسخين بوزن خفيف',
-  'ظهر':'تعليق بسيط على البار + سحب خفيف للإحماء',
-  'أرجل':'تدوير ركب وحوض + سكوات فاضي ١٥ مرة',
-  'أكتاف':'تدوير أذرع + رفرفة خفيفة بدون وزن',
-  'بايسبس':'تمديد وتقصير الساعد + جولة كيرل خفيفة',
-  'ترايسبس':'تمديد الكتف للخلف + جولة بوش داون خفيفة',
-  'بطن':'تنفس عميق + بلانك ٢٠ ثانية',
-};
-
-function warmupHintFor(groups){
-  const uniq = [...new Set(groups)];
-  if(uniq.length===0) return '';
-  return uniq.slice(0,2).map(g=> WARMUP_TEXT[g] || '').filter(Boolean).join(' · ');
-}
-
-const SPLIT_PRESETS = {
-  full_body_3: {
-    label:'فل بودي', sub:'٣ أيام/أسبوع — مناسب للمبتدئين',
-    days:{0:['صدر','ظهر','أرجل','أكتاف','بطن'], 2:['صدر','ظهر','أرجل','أكتاف','بطن'], 4:['صدر','ظهر','أرجل','أكتاف','بطن']}
-  },
-  upper_lower_4: {
-    label:'علوي / سفلي', sub:'٤ أيام/أسبوع — توازن جيد',
-    days:{0:['صدر','ظهر','أكتاف','بايسبس','ترايسبس'], 1:['أرجل','أرجل','بطن'], 3:['صدر','ظهر','أكتاف','بايسبس','ترايسبس'], 4:['أرجل','أرجل','بطن']}
-  },
-  ppl_6: {
-    label:'دفع - سحب - أرجل', sub:'٦ أيام/أسبوع — مكثف',
-    days:{0:['صدر','صدر','أكتاف','ترايسبس'], 1:['ظهر','ظهر','بايسبس'], 2:['أرجل','أرجل','بطن'], 3:['صدر','صدر','أكتاف','ترايسبس'], 4:['ظهر','ظهر','بايسبس'], 5:['أرجل','أرجل','بطن']}
-  },
-  bro_split_5:{
-    label:'تقسيم عضلة يومياً', sub:'٥ أيام/أسبوع — تركيز عالي',
-    days:{0:['صدر','صدر','صدر'], 1:['ظهر','ظهر','ظهر'], 2:['أرجل','أرجل','أرجل'], 3:['أكتاف','أكتاف','بطن'], 4:['بايسبس','بايسبس','ترايسبس','ترايسبس']}
-  }
-};
-
-const ORDERED_DAYS = [6,0,1,2,3,4,5];
-
-const DAY_LABELS = {6:'سبت',0:'أحد',1:'إثنين',2:'ثلاثاء',3:'أربعاء',4:'خميس',5:'جمعة'};
-
-/* ============================================================
-   STATE
-   ============================================================ */
-
 const state = {
-  library: {foods:[], exercises:[]},
+  library: {foods:[]},
   goals: defaultGoals(),
-  plan: {type:'upper_lower_4', days:{}},
   today: '',
-  log: {meals:[], workouts:[]},
+  log: {meals:[]},
   streak: 0,
   streakDays: [],
-  weekPlanned: 0,
-  weekDone: 0,
+  weekLoggedDays: 0,
   activeFoodCat: 'الكل',
   activeSheetFoodCat: 'الكل',
   mealBuilderMode: false,
   mealBuilderStep: 'protein',
-  mealBuilderPicks: {protein:null, carb:null},  activeExGroup: 'الكل',
-  activeEquipFilter: null,
-  viewedPlanDay: new Date().getDay(),
-  selectedPresetType: 'upper_lower_4',
-  activeField: 'weight',
-  weightVal: 0,
-  repsVal: 0,
-  // workout session (single exercise, or 2 for superset)
-  sessionExercises: [],
-  sessionSets: {},
-  sessionActiveIdx: 0,
-  sessionStartTime: 0,
-  sessionTimerHandle: null,
-  // superset picking (inside exercise picker sheet)
-  supersetPickMode: false,
-  supersetPicks: [],
+  mealBuilderPicks: {protein:null, carb:null},
   // set to a food id while editing an existing custom food, null when adding new
   editingFoodId: null,
   // date key (YYYY-MM-DD) the app is currently "viewing" — equals `today` normally,
@@ -381,79 +287,29 @@ function dateKeyOffset(offsetDays){
 
 const WEEKDAYS = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
 
+// Short weekday labels for compact UI (e.g. the home days-strip pills), indexed
+// the same as Date#getDay() (0 = Sunday).
+const DAY_LABELS = ['أحد','اثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت'];
+
 const MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-
-/* ============================================================
-   PLAN GENERATION
-   ============================================================ */
-
-function pickExercisesForDay(groups, library){
-  const lib = library || state.library;
-  const chosen = [];
-  const usedPerGroup = {};
-  groups.forEach(g=>{
-    usedPerGroup[g] = usedPerGroup[g]||0;
-    const candidates = lib.exercises.filter(e=>e.group===g && !e.injured)
-      .sort((a,b)=> (b.favorite - a.favorite) || (b.usageCount - a.usageCount));
-    const pick = candidates[usedPerGroup[g]] || candidates[0];
-    if(pick && !chosen.includes(pick.id)) chosen.push(pick.id);
-    usedPerGroup[g]++;
-  });
-  return chosen;
-}
-
-function generatePlan(type, library){
-  const preset = SPLIT_PRESETS[type] || SPLIT_PRESETS.upper_lower_4;
-  const days = {};
-  for(let d=0; d<7; d++){
-    const groups = preset.days[d] || [];
-    days[d] = groups.length ? pickExercisesForDay(groups, library) : [];
-  }
-  return {type, days};
-}
-
-/* ============================================================
-   EXERCISE ICON HTML
-   ============================================================ */
-
-function exAnimHtml(ex, size){
-  if(!ex) return '';
-  const gc = GROUP_COLOR_VAR[ex.group] || GROUP_COLOR_VAR['صدر'];
-  const mt = ex.movementType || 'press';
-  let inner = '';
-  if(mt==='press'){ inner = '<div class="post l"></div><div class="post r"></div><div class="bar"></div>'; }
-  else if(mt==='pull'){ inner = '<div class="post l"></div><div class="post r"></div><div class="bar"></div>'; }
-  else if(mt==='squat'){ inner = '<div class="leg l"></div><div class="leg r"></div><div class="torso"></div>'; }
-  else if(mt==='curl'){ inner = '<div class="dot"></div><div class="arm"></div>'; }
-  else if(mt==='raise'){ inner = '<div class="arm"></div>'; }
-  else if(mt==='core'){ inner = '<div class="torso2"></div>'; }
-  const sizeCls = size ? ' '+size : '';
-  return `<div class="ex-anim ex-anim--${mt}${sizeCls}" style="--gc:${gc.solid};--gcbg:${gc.soft}">${inner}</div>`;
-}
-
-/* ============================================================
-   INIT
-   ============================================================ */
 
 function formatDateHuman(d){ return `${WEEKDAYS[d.getDay()]}، ${d.getDate()} ${MONTHS[d.getMonth()]}`; }
 
 function computeStreak(){
+  // Streak + week progress are based on logging consistency: a day "counts"
+  // if at least one meal was logged that day (matches real "today", not
+  // whatever day the home-strip might currently be viewing).
   const days = [];
-  let planned=0, done=0;
+  let loggedThisWeek = 0;
   for(let i=6;i>=0;i--){
     const key = dateKeyOffset(i);
-    const dt = new Date(); dt.setDate(dt.getDate()-i);
-    const dow = dt.getDay();
-    const dayLog = appState.logs[key] || {meals:[],workouts:[]};
-    const worked = !!(dayLog.workouts && dayLog.workouts.length>0);
-    days.push(worked);
-    const isPlanDay = !!(state.plan.days[dow] && state.plan.days[dow].length>0);
-    if(isPlanDay) planned++;
-    if(isPlanDay && worked) done++;
+    const dayLog = appState.logs[key] || {meals:[]};
+    const logged = !!(dayLog.meals && dayLog.meals.length>0);
+    days.push(logged);
+    if(logged) loggedThisWeek++;
   }
   state.streakDays = days;
-  state.weekPlanned = planned;
-  state.weekDone = done;
+  state.weekLoggedDays = loggedThisWeek;
   let streak = 0;
   for(let i=days.length-1;i>=0;i--){ if(days[i]) streak++; else break; }
   state.streak = streak;
@@ -464,43 +320,6 @@ function computeStreak(){
    ============================================================ */
 
 const FOOD_CATS = ['الكل','فطور','غدا','عشا','سناك'];
-
-const PLATE_SIZES = [25,20,15,10,5,2.5,1.25];
-
-const PLATE_COLORS = {25:'#E5555B',20:'#5B9DFF',15:'#F2D33C',10:'#2FD3A6',5:'#F3F1EA',2.5:'#7C858F',1.25:'#B7BEC6'};
-
-const PLATE_HEIGHTS = {25:44,20:40,15:36,10:32,5:26,2.5:20,1.25:16};
-
-const PLATE_HEIGHTS_SM = {25:26,20:24,15:22,10:20,5:17,2.5:14,1.25:11};
-
-function decomposePlates(perSideKg){
-  const plates = [];
-  let remaining = perSideKg;
-  for(const s of PLATE_SIZES){
-    let guard = 0;
-    while(remaining >= s - 0.001 && guard<12){ plates.push(s); remaining -= s; guard++; }
-  }
-  return plates;
-}
-
-function plateIconsHtml(weightKg, opts){
-  opts = opts || {};
-  const bar = 20;
-  const perSide = Math.max(0, (weightKg - bar) / 2);
-  const plates = decomposePlates(perSide);
-  const maxShow = opts.max || 6;
-  const shown = plates.slice(0, maxShow);
-  const overflow = plates.length - shown.length;
-  const heights = opts.size==='sm' ? PLATE_HEIGHTS_SM : PLATE_HEIGHTS;
-  const plateEls = shown.map(s=> `<div class="plate" style="height:${heights[s]}px; background:${PLATE_COLORS[s]};"></div>`).join('');
-  const overflowEl = overflow>0 ? `<div class="bb-more">+${overflow}</div>` : '';
-  const sizeCls = opts.size==='sm' ? ' sm' : '';
-  return `<div class="barbell${sizeCls}" id="${opts.id||''}">
-    <div class="bb-sleeve"></div><div class="bb-plates">${plateEls}${overflowEl}</div>
-    <div class="bb-bar"></div>
-    <div class="bb-plates">${plateEls}${overflowEl}</div><div class="bb-sleeve"></div>
-  </div>`;
-}
 
 function buildChartSvg(points){
   const w = 300, h = 140, pad = 18;
@@ -574,13 +393,6 @@ function calcSmartGoals({sex, age, heightCm, weightKg, activity, goal}){
   const carbs = Math.round((calories - protein*4 - fat*9)/4);
   return {calories, protein, carbs:Math.max(carbs,50), fat};
 }
-// Epley formula: estimated one-rep max from any logged set.
-function calcOneRepMax(weight, reps){
-  if(reps<=0) return weight;
-  if(reps===1) return weight;
-  return Math.round(weight * (1 + reps/30) * 10) / 10;
-}
-
 /* ============================================================
    EXPORT / IMPORT BACKUP
    ============================================================ */
@@ -669,7 +481,7 @@ function attachSwipeToDelete(rowEl, onConfirmDelete){
 
 const overlay = document.getElementById('overlay');
 
-const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetWorkoutPick','sheetNewEx','sheetSets','sheetSettings','sheetPlanEdit','sheetSwap','sheetPRs','sheetExDetail','sheetBodyWeight','sheetOnboarding','sheetRecipeBuilder','sheetMealTemplates','sheetShareCard'];
+const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetSettings','sheetBodyWeight','sheetOnboarding','sheetRecipeBuilder','sheetMealTemplates','sheetShareCard'];
 
 function openSheet(id){
   closeAllSheets();
@@ -681,8 +493,6 @@ function closeAllSheets(){
   overlay.classList.remove('show');
   allSheets.forEach(id=>document.getElementById(id).classList.remove('show'));
   document.getElementById('fab').classList.remove('rot');
-  stopSessionTimer();
-  stopRestTimer();
 }
 
 /* ============================================================
