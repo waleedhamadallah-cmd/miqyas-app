@@ -1,56 +1,7 @@
 /* ============================================================
-   PROGRESS TAB: personal records, exercise charts, body weight,
+   PROGRESS TAB: body weight, measurements, monthly insight,
    cloud sync settings UI
    ============================================================ */
-function renderPRList(){
-  const wrap = document.getElementById('prList');
-  const withPR = state.library.exercises.filter(ex=>(ex.prWeight||0)>0)
-    .sort((a,b)=> (b.prWeight||0)-(a.prWeight||0));
-  if(withPR.length===0){ wrap.innerHTML = '<div class="empty-hint">لسا ما سجلت أرقام قياسية. سجل أوزانك بالنادي وبتظهر هنا تلقائياً 🏆</div>'; return; }
-  wrap.innerHTML = '';
-  withPR.forEach(ex=>{
-    const row = document.createElement('div');
-    row.className = 'lib-row';
-    row.innerHTML = `${exAnimHtml(ex,'sm')}<div class="lm"><div class="n">${escapeHtml(ex.name)}</div><div class="d">أعلى وزن: ${ex.prWeight} كغ × ${ex.prReps||'-'} · حجم أقصى: ${ex.prVolume||0}</div></div>
-      <div class="plan-icon-btn" data-detail2="${ex.id}">📈</div>`;
-    row.querySelector('[data-detail2]').addEventListener('click', (e)=>{ e.stopPropagation(); openExerciseDetail(ex); });
-    wrap.appendChild(row);
-  });
-}
-
-function getExerciseHistory(exId){
-  const points = [];
-  Object.keys(appState.logs).sort().forEach(dateKey=>{
-    const dayLog = appState.logs[dateKey];
-    (dayLog.workouts||[]).forEach(w=>{
-      if(w.exerciseId===exId){
-        const maxW = Math.max(...w.sets.map(s=>s.weight));
-        points.push({date:dateKey, weight:maxW});
-      }
-    });
-  });
-  return points;
-}
-
-function openExerciseDetail(ex){
-  document.getElementById('exDetailTitle').textContent = ex.name;
-  const history = getExerciseHistory(ex.id);
-  const sessions = history.length;
-  const first = history.length ? history[0].weight : 0;
-  const latest = history.length ? history[history.length-1].weight : 0;
-  const estMax = latest ? calcOneRepMax(latest, ex.prReps||1) : 0;
-  const body = document.getElementById('exDetailBody');
-  body.innerHTML = `
-    <div class="ex-detail-head">${exAnimHtml(ex,'lg')}<div class="tx"><div class="exn" style="font-family:var(--font-d); font-weight:800; font-size:16px;">${escapeHtml(ex.group)}</div><div class="exhint" style="color:var(--text-mute); font-size:12px;">${sessions} جلسة مسجلة</div>${estMax?`<div class="orm-badge">💪 تقدير أقصى وزن (1RM): ${estMax} كغ</div>`:''}</div></div>
-    <div class="ex-detail-stats">
-      <div class="ex-stat"><div class="sv tabular">${first||'-'}</div><div class="sl">أول وزن</div></div>
-      <div class="ex-stat"><div class="sv tabular">${latest||'-'}</div><div class="sl">آخر وزن</div></div>
-      <div class="ex-stat"><div class="sv tabular">${ex.prWeight||0}</div><div class="sl">🏆 قياسي</div></div>
-    </div>
-    <div class="chart-wrap">${buildChartSvg(history)}</div>
-  `;
-  openSheet('sheetExDetail');
-}
 
 /* ============================================================
    BODY WEIGHT TRACKING
@@ -279,4 +230,3 @@ async function onEnableSyncClick(){
     if(resEl) resEl.innerHTML = `<div class="sync-badge off" style="width:100%; box-sizing:border-box; color:var(--danger);">❌ ${escapeHtml(e.code||e.message||'خطأ غير معروف')}</div>`;
   }
 }
-
