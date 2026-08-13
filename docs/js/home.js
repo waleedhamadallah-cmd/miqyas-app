@@ -165,22 +165,76 @@ function addWater(deltaMl){
 }
 
 /* ============================================================
-   PAST DAYS STRIP — pick an old day to edit its meals
+   DAYS STRIP — jump the whole app into viewing/editing another
+   day (past or future), right = past, left = today → coming days
    ============================================================ */
+function isViewingToday(){ return state.viewDate === state.today; }
+
+function switchViewedDay(dateKey){
+  state.viewDate = dateKey;
+  if(!appState.logs[dateKey]) appState.logs[dateKey] = {meals:[], workouts:[], waterMl:0};
+  if(appState.logs[dateKey].waterMl===undefined) appState.logs[dateKey].waterMl = 0;
+  state.log = appState.logs[dateKey];
+  renderAll();
+}
+
+function returnToToday(){
+  switchViewedDay(state.today);
+  switchTab('home');
+}
+
+function renderViewedDayBanner(){
+  const banner = document.getElementById('viewDayBanner');
+  if(!banner) return;
+  if(isViewingToday()){ banner.style.display = 'none'; return; }
+  const d = new Date(state.viewDate+'T00:00:00');
+  document.getElementById('viewDayBannerText').textContent = `📅 تعدّل يوم: ${formatDateHuman(d)}`;
+  banner.style.display = 'flex';
+}
+
+function renderViewedDayLabels(){
+  const label = isViewingToday() ? 'اليوم' : formatDateHuman(new Date(state.viewDate+'T00:00:00'));
+  ['mealsTodayLabel','foodMealsLabel','foodDistLabel'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.textContent = label;
+  });
+}
+
+let pastStripInitialized = false;
 function renderPastDaysStrip(){
   const wrap = document.getElementById('pastDaysStrip');
   if(!wrap) return;
+  const prevScroll = wrap.scrollLeft;
   wrap.innerHTML = '';
-  for(let i=1;i<=14;i++){
-    const key = dateKeyOffset(i);
+
+  const makePill = (key, isToday)=>{
     const d = new Date(key+'T00:00:00');
     const dayLog = appState.logs[key];
     const hasMeals = !!(dayLog && dayLog.meals && dayLog.meals.length>0);
     const pill = document.createElement('div');
-    pill.className = 'date-pill'+(hasMeals ? ' logged' : '');
-    pill.innerHTML = `<div class="dpl">${DAY_LABELS[d.getDay()]}</div><div class="dpn tabular">${d.getDate()}</div><div class="dpdot"></div>`;
-    pill.addEventListener('click', ()=> openDayEdit(key));
-    wrap.appendChild(pill);
+    pill.className = 'date-pill'
+      + (hasMeals ? ' logged' : '')
+      + (isToday ? ' today' : '')
+      + (key===state.viewDate ? ' viewed' : '');
+    const label = isToday ? 'اليوم' : DAY_LABELS[d.getDay()];
+    pill.innerHTML = `<div class="dpl">${label}</div><div class="dpn tabular">${d.getDate()}</div><div class="dpdot"></div>`;
+    pill.addEventListener('click', ()=>{
+      switchViewedDay(key);
+      if(!isToday) switchTab('food');
+    });
+    return pill;
+  };
+
+  for(let i=10;i>=1;i--){ wrap.appendChild(makePill(dateKeyOffset(i), false)); }
+  wrap.appendChild(makePill(state.today, true));
+  for(let i=1;i<=3;i++){ wrap.appendChild(makePill(dateKeyOffset(-i), false)); }
+
+  if(!pastStripInitialized){
+    pastStripInitialized = true;
+    const todayPill = wrap.querySelector('.date-pill.today');
+    if(todayPill) todayPill.scrollIntoView({inline:'center', block:'nearest'});
+  } else {
+    wrap.scrollLeft = prevScroll;
   }
 }
 
