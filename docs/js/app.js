@@ -4,6 +4,7 @@
    ============================================================ */
 async function init(){
   state.today = todayKey();
+  state.viewDate = state.today;
   document.getElementById('dateText').textContent = formatDateHuman(new Date());
   setGreeting();
 
@@ -61,6 +62,8 @@ function setGreeting(){
 }
 
 function renderAll(){
+  renderViewedDayBanner();
+  renderViewedDayLabels();
   renderRing();
   renderStreak();
   renderWeekProgress();
@@ -162,7 +165,7 @@ function bindEvents(){
   document.getElementById('sheetFoodSearch').addEventListener('input', renderSheetFoodList);
   document.getElementById('foodSearch').addEventListener('input', renderFoodLibList);
   document.getElementById('exSearch').addEventListener('input', renderExList);
-  document.getElementById('dayEditFoodSearch').addEventListener('input', renderDayEditFoodList);
+  document.getElementById('btnReturnToday').addEventListener('click', returnToToday);
 
   document.getElementById('btnAddCustomFood').addEventListener('click', ()=> { resetNewFoodSheet(); openSheet('sheetNewFood'); });
   document.getElementById('btnAddCustomFood2').addEventListener('click', ()=> { resetNewFoodSheet(); openSheet('sheetNewFood'); });
@@ -457,7 +460,7 @@ function drawShareCard(){
   const seen = new Set();
   for(let i=0;i<=6;i++){
     const key = dateKeyOffset(i);
-    const dayLog = (i===0) ? state.log : (appState.logs[key] || {meals:[],workouts:[]});
+    const dayLog = appState.logs[key] || {meals:[],workouts:[]};
     if((dayLog.meals||[]).length>0){ mealDays++; totalCal += dayLog.meals.reduce((s,m)=>s+m.calories,0); }
     (dayLog.workouts||[]).forEach(wk=>{ workouts++; volume += (wk.sets||[]).reduce((s,x)=>s+x.weight*x.reps,0); });
   }
