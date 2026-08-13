@@ -45,8 +45,8 @@ function renderStreak(){
 }
 
 function renderWeekProgress(){
-  document.getElementById('weekProgressText').textContent = `${state.weekDone} من ${state.weekPlanned}`;
-  const pct = state.weekPlanned ? (state.weekDone/state.weekPlanned*100) : 0;
+  document.getElementById('weekProgressText').textContent = `${state.weekLoggedDays} من 7`;
+  const pct = (state.weekLoggedDays/7)*100;
   document.getElementById('weekProgressFill').style.width = pct+'%';
 }
 
@@ -123,29 +123,17 @@ function fmtDuration(sec){
 function renderTodaySummary(){
   const wrap = document.getElementById('todaySummary');
   wrap.innerHTML = '';
-  const items = [];
-  state.log.meals.forEach(m=>items.push({type:'meal', ref:m}));
-  state.log.workouts.forEach(w=>items.push({type:'workout', ref:w}));
-  items.sort((a,b)=> (a.ref.time||0) - (b.ref.time||0));
-  if(items.length===0){
-    wrap.innerHTML = '<div class="empty-hint">لسا ما سجلت شي اليوم. اضغط + وابدأ 💪</div>';
+  const meals = [...state.log.meals].sort((a,b)=> (a.time||0) - (b.time||0));
+  if(meals.length===0){
+    wrap.innerHTML = '<div class="empty-hint">لسا ما سجلت شي اليوم. اضغط + وابدأ 🍽️</div>';
     return;
   }
-  items.forEach(it=>{
+  meals.forEach(m=>{
     const row = document.createElement('div');
     row.className = 'entry-row';
-    if(it.type==='meal'){
-      const m = it.ref;
-      row.innerHTML = `<div class="entry-dot" style="background:var(--protein)"></div>
-        <div class="entry-main"><div class="t1">${escapeHtml(m.name)}</div><div class="t2">${m.category} · ب${Math.round(m.protein)} ك${Math.round(m.carbs)} د${Math.round(m.fat)}</div></div>
-        <div class="entry-side tabular">${m.calories}</div>`;
-    }else{
-      const w = it.ref;
-      const setsTxt = w.sets.map(s=>`${s.weight}×${s.reps}`).join('، ');
-      const durTxt = fmtDuration(w.durationSec);
-      row.innerHTML = `${exAnimHtml(w,'sm')}
-        <div class="entry-main"><div class="t1">${escapeHtml(w.name)}${w.isPR?'<span class="pr-badge">🏆 قياسي</span>':''}</div><div class="t2">${w.sets.length} جولات · ${setsTxt}${durTxt?' · '+durTxt:''}</div></div>`;
-    }
+    row.innerHTML = `<div class="entry-dot" style="background:var(--protein)"></div>
+      <div class="entry-main"><div class="t1">${escapeHtml(m.name)}</div><div class="t2">${m.category} · ب${Math.round(m.protein)} ك${Math.round(m.carbs)} د${Math.round(m.fat)}</div></div>
+      <div class="entry-side tabular">${m.calories}</div>`;
     wrap.appendChild(row);
   });
 }
@@ -172,7 +160,7 @@ function isViewingToday(){ return state.viewDate === state.today; }
 
 function switchViewedDay(dateKey){
   state.viewDate = dateKey;
-  if(!appState.logs[dateKey]) appState.logs[dateKey] = {meals:[], workouts:[], waterMl:0};
+  if(!appState.logs[dateKey]) appState.logs[dateKey] = {meals:[], waterMl:0};
   if(appState.logs[dateKey].waterMl===undefined) appState.logs[dateKey].waterMl = 0;
   state.log = appState.logs[dateKey];
   renderAll();
@@ -188,7 +176,7 @@ function renderViewedDayBanner(){
   if(!banner) return;
   if(isViewingToday()){ banner.style.display = 'none'; return; }
   const d = new Date(state.viewDate+'T00:00:00');
-  document.getElementById('viewDayBannerText').textContent = `📅 تعدّل يوم: ${formatDateHuman(d)}`;
+  document.getElementById('viewDayBannerText').textContent = `تعدّل يوم: ${formatDateHuman(d)}`;
   banner.style.display = 'flex';
 }
 
