@@ -153,11 +153,13 @@
     </div>
   </section>
 
-  <!-- GYM VIEW -->
   <!-- PROGRESS VIEW -->
   <section class="view" id="view-progress">
     <div class="section-title" style="margin-top:16px;"><span class="st-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="13" r="8"></circle><line x1="12" y1="9" x2="12" y2="13"></line><line x1="12" y1="13" x2="15" y2="15"></line><line x1="9" y1="3" x2="15" y2="3"></line></svg>وزن الجسم</span></div>
     <div class="weight-card" id="weightCard"></div>
+
+    <div class="section-title"><span class="st-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="18" y1="20" x2="18" y2="14"></line></svg>الوزن مقابل السعرات</span></div>
+    <div class="insight-card" id="weightCalTrendCard"></div>
 
     <div class="section-title"><span class="st-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="18" y1="20" x2="18" y2="14"></line></svg>نظرة على الشهر</span></div>
     <div class="insight-card" id="insightCard"></div>
@@ -295,6 +297,7 @@
         </div>
         <div class="acc-body">
           <button class="btn-secondary" id="btnOpenShareCard" style="margin-top:0;">بطاقة ملخص الأسبوع</button>
+          <button class="btn-secondary" id="btnOpenReport">📋 تقرير التغذية (لطبيب أو أخصائي تغذية)</button>
         </div>
       </div>
 
@@ -420,6 +423,21 @@
   <div class="sheet-body">
     <div class="share-preview"><canvas id="shareCanvas" width="600" height="750"></canvas></div>
     <button class="btn-primary" id="btnDownloadShareCard">تحميل الصورة 💾</button>
+  </div>
+</div>
+
+<div class="sheet" id="sheetReport" style="max-height:92vh;">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head"><h3>📋 تقرير التغذية</h3><div class="sheet-close" data-close>✕</div></div>
+  <div class="sheet-body">
+    <div class="empty-hint" style="padding:0 0 10px; text-align:right;">تقرير جاهز تعرضه على طبيب أو أخصائي تغذية — يلخّص سعراتك والماكروز ووزنك والتزامك بالهدف خلال الفترة اللي تختارها.</div>
+    <div class="chipbar" id="reportPeriodBar">
+      <div class="filter-chip" data-period="7">آخر 7 أيام</div>
+      <div class="filter-chip active" data-period="30">آخر 30 يوم</div>
+      <div class="filter-chip" data-period="90">آخر 90 يوم</div>
+    </div>
+    <div class="share-preview"><canvas id="reportCanvas" width="700" height="1160"></canvas></div>
+    <button class="btn-primary" id="btnDownloadReport">تحميل التقرير 💾</button>
   </div>
 </div>
 
