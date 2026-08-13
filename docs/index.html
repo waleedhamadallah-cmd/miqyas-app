@@ -59,8 +59,12 @@
           <circle id="ringProgress" cx="100" cy="100" r="86" fill="none" stroke="url(#ringGrad)" stroke-width="14" stroke-linecap="round" transform="rotate(-90 100 100)"/>
           <defs>
             <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-              <stop offset="0%" stop-color="#FF6B4A"/>
-              <stop offset="100%" stop-color="#F2B84B"/>
+              <stop offset="0%" stop-color="#5EE6C9"/>
+              <stop offset="100%" stop-color="#2F6FE0"/>
+            </linearGradient>
+            <linearGradient id="ringGradOver" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#FF7A80"/>
+              <stop offset="100%" stop-color="#E5555B"/>
             </linearGradient>
           </defs>
         </svg>
@@ -192,7 +196,7 @@
 
 <div class="sheet" id="sheetQuick">
   <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>إضافة سريعة</h3><div class="sheet-close" data-close>✕</div></div>
+  <div class="sheet-head"><h3>إضافة سريعة</h3><div class="sheet-close" data-close aria-label="إغلاق" role="button">✕</div></div>
   <div class="sheet-body">
     <div class="qa-option" id="qaFood">
       <div class="ic" style="background:var(--protein-soft); color:var(--protein);">🍽️</div>
@@ -207,7 +211,7 @@
 
 <div class="sheet" id="sheetFood" style="max-height:92vh;">
   <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>إضافة وجبة</h3><div class="sheet-close" data-close>✕</div></div>
+  <div class="sheet-head"><h3>إضافة وجبة</h3><div class="sheet-close" data-close aria-label="إغلاق" role="button">✕</div></div>
   <div class="sheet-body">
     <div class="meal-builder-toggle" id="mealBuilderToggle">🍽️ ابنِ وجبة (بروتين + كارب)</div>
     <div id="mealBuilderBar" style="display:none;"></div>
@@ -223,7 +227,7 @@
 
 <div class="sheet" id="sheetNewFood">
   <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3 id="sheetNewFoodTitle">وجبة جديدة</h3><div class="sheet-close" data-close>✕</div></div>
+  <div class="sheet-head"><h3 id="sheetNewFoodTitle">وجبة جديدة</h3><div class="sheet-close" data-close aria-label="إغلاق" role="button">✕</div></div>
   <div class="sheet-body">
     <div class="form-field"><label>اسم الوجبة</label><input type="text" id="nfName" placeholder="مثال: صدر دجاج مشوي"></div>
     <div class="form-field"><label>الفئة</label>
@@ -248,7 +252,7 @@
 
 <div class="sheet" id="sheetSettings" style="max-height:92vh;">
   <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>الإعدادات</h3><div class="sheet-close" data-close>✕</div></div>
+  <div class="sheet-head"><h3>الإعدادات</h3><div class="sheet-close" data-close aria-label="إغلاق" role="button">✕</div></div>
   <div class="sheet-body">
     <div class="section-title" style="margin-top:0;"><span class="st-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"></line><circle cx="9" cy="7" r="2.2" fill="currentColor" stroke="none"></circle><line x1="4" y1="13" x2="20" y2="13"></line><circle cx="15" cy="13" r="2.2" fill="currentColor" stroke="none"></circle><line x1="4" y1="19" x2="20" y2="19"></line><circle cx="11" cy="19" r="2.2" fill="currentColor" stroke="none"></circle></svg>المظهر</span></div>
     <div class="theme-toggle">
@@ -316,7 +320,7 @@
 
 <div class="sheet" id="sheetBodyWeight" style="max-height:90vh;">
   <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>⚖️ وزن الجسم</h3><div class="sheet-close" data-close>✕</div></div>
+  <div class="sheet-head"><h3>⚖️ وزن الجسم</h3><div class="sheet-close" data-close aria-label="إغلاق" role="button">✕</div></div>
   <div class="sheet-body">
     <div class="weight-input-row">
       <div class="form-field"><label>وزنك اليوم (كغ)</label><input type="number" id="bwInput" step="0.1" inputmode="decimal" placeholder="مثال: 78.5"></div>
@@ -340,7 +344,7 @@
 
 <div class="sheet" id="sheetOnboarding" style="max-height:94vh;">
   <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>مرحباً بك 👋</h3><div class="sheet-close" data-close>✕</div></div>
+  <div class="sheet-head"><h3>مرحباً بك 👋</h3><div class="sheet-close" data-close aria-label="إغلاق" role="button">✕</div></div>
   <div class="sheet-body">
     <div class="ob-progress"><span id="obDot1"></span><span id="obDot2"></span><span id="obDot3"></span></div>
 
@@ -393,7 +397,7 @@
 
 <div class="sheet" id="sheetMealTemplates" style="max-height:88vh;">
   <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>📋 قوالب الوجبات</h3><div class="sheet-close" data-close>✕</div></div>
+  <div class="sheet-head"><h3>📋 قوالب الوجبات</h3><div class="sheet-close" data-close aria-label="إغلاق" role="button">✕</div></div>
   <div class="sheet-body">
     <button class="btn-primary" id="btnSaveTodayAsTemplate">💾 احفظ وجبات اليوم كقالب</button>
     <div class="section-title">قوالبك</div>
@@ -403,7 +407,7 @@
 
 <div class="sheet" id="sheetRecipeBuilder" style="max-height:90vh;">
   <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>🍲 بناء وصفة</h3><div class="sheet-close" data-close>✕</div></div>
+  <div class="sheet-head"><h3>🍲 بناء وصفة</h3><div class="sheet-close" data-close aria-label="إغلاق" role="button">✕</div></div>
   <div class="sheet-body">
     <div class="empty-hint" style="padding:0 0 10px; text-align:right;">اختر مكونات من مكتبتك، والتطبيق يجمع لك القيم تلقائياً.</div>
     <div class="search-wrap"><input type="text" id="recipeSearch" placeholder="ابحث عن مكوّن..."></div>
@@ -419,7 +423,7 @@
 
 <div class="sheet" id="sheetShareCard" style="max-height:90vh;">
   <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>📤 بطاقة ملخص الأسبوع</h3><div class="sheet-close" data-close>✕</div></div>
+  <div class="sheet-head"><h3>📤 بطاقة ملخص الأسبوع</h3><div class="sheet-close" data-close aria-label="إغلاق" role="button">✕</div></div>
   <div class="sheet-body">
     <div class="share-preview"><canvas id="shareCanvas" width="600" height="750"></canvas></div>
     <button class="btn-primary" id="btnDownloadShareCard">تحميل الصورة 💾</button>
@@ -428,7 +432,7 @@
 
 <div class="sheet" id="sheetReport" style="max-height:92vh;">
   <div class="sheet-handle"></div>
-  <div class="sheet-head"><h3>📋 تقرير التغذية</h3><div class="sheet-close" data-close>✕</div></div>
+  <div class="sheet-head"><h3>📋 تقرير التغذية</h3><div class="sheet-close" data-close aria-label="إغلاق" role="button">✕</div></div>
   <div class="sheet-body">
     <div class="empty-hint" style="padding:0 0 10px; text-align:right;">تقرير جاهز تعرضه على طبيب أو أخصائي تغذية — يلخّص سعراتك والماكروز ووزنك والتزامك بالهدف خلال الفترة اللي تختارها.</div>
     <div class="chipbar" id="reportPeriodBar">
