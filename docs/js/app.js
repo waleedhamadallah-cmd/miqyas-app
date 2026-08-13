@@ -79,6 +79,7 @@ function renderAll(){
   renderInsightCard();
   renderWeeklyFoodSummary();
   renderWeightCard();
+  renderWeightCalorieTrend();
   renderWaterCard();
   renderQuickChips();
   renderTodaySummary();
@@ -251,6 +252,27 @@ function bindEvents(){
     const a = document.createElement('a');
     a.href = canvas.toDataURL('image/png');
     a.download = `miqyas-week-${state.today}.png`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  });
+
+  /* ---------- Nutrition report (for a doctor / dietitian) ---------- */
+  document.getElementById('btnOpenReport').addEventListener('click', ()=>{
+    document.querySelectorAll('#reportPeriodBar .filter-chip').forEach(c=> c.classList.toggle('active', c.getAttribute('data-period')==='30'));
+    openSheet('sheetReport');
+    setTimeout(()=> renderReportPreview(30), 50);
+  });
+  document.getElementById('reportPeriodBar').addEventListener('click', (e)=>{
+    const chip = e.target.closest('.filter-chip');
+    if(!chip) return;
+    document.querySelectorAll('#reportPeriodBar .filter-chip').forEach(c=> c.classList.remove('active'));
+    chip.classList.add('active');
+    renderReportPreview(parseInt(chip.getAttribute('data-period'),10));
+  });
+  document.getElementById('btnDownloadReport').addEventListener('click', ()=>{
+    const canvas = document.getElementById('reportCanvas');
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = `miqyas-report-${reportPeriod}d-${state.today}.png`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   });
 
