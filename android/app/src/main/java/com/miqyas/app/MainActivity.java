@@ -9,6 +9,10 @@ import com.getcapacitor.BridgeActivity;
 public class MainActivity extends BridgeActivity {
     @Override
     public void onCreate(Bundle savedInstanceState) {
+        // Must be registered before super.onCreate() per Capacitor's plugin
+        // registration contract, so the JS bridge can see it as soon as the
+        // page loads.
+        registerPlugin(MiqyasWidgetPlugin.class);
         super.onCreate(savedInstanceState);
 
         // The app targets SDK 36 (Android 15+), where the OS enforces edge-to-edge
