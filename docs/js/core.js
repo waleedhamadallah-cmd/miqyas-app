@@ -344,6 +344,51 @@ function buildChartSvg(points){
   </svg>`;
 }
 
+// Two independently-normalized line series on one chart — e.g. weight vs.
+// average calories, plotted together so trends line up even though the
+// two live on totally different scales (kg vs kcal). Points with value:null
+// break the line for that gap instead of connecting across missing data.
+function buildDualChartSvg(pointsA, pointsB, opts){
+  opts = opts || {};
+  const colorA = opts.colorA || 'var(--shoulder)';
+  const colorB = opts.colorB || 'var(--protein)';
+  const labelA = opts.labelA || '';
+  const labelB = opts.labelB || '';
+  const w = 300, h = 140, pad = 18;
+  const validA = pointsA.filter(p=>p.value!=null);
+  const validB = pointsB.filter(p=>p.value!=null);
+  if(validA.length<2 || validB.length<2){
+    return '<div class="empty-hint">سجّل وزنك وأكلك لأسبوعين متتاليين على الأقل عشان يبين المنحنى</div>';
+  }
+  const n = Math.max(pointsA.length, pointsB.length);
+  const stepX = n>1 ? (w-pad*2)/(n-1) : 0;
+  function pathFor(points){
+    const vals = points.map(p=>p.value).filter(v=>v!=null);
+    if(vals.length<2) return '';
+    const min = Math.min(...vals), max = Math.max(...vals);
+    const range = (max-min) || 1;
+    let d = '', started = false;
+    points.forEach((p,i)=>{
+      const x = pad + i*stepX;
+      if(p.value==null){ started = false; return; }
+      const y = h - pad - ((p.value-min)/range) * (h-pad*2);
+      d += (started ? 'L' : 'M') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
+      started = true;
+    });
+    return d.trim();
+  }
+  const dA = pathFor(pointsA);
+  const dB = pathFor(pointsB);
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="140">
+    ${dA ? `<path d="${dA}" fill="none" stroke="${colorA}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>` : ''}
+    ${dB ? `<path d="${dB}" fill="none" stroke="${colorB}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5,4"/>` : ''}
+  </svg>
+  <div class="chart-legend">
+    <span class="chart-legend-item"><span class="chart-legend-dot" style="background:${colorA}"></span>${escapeHtml(labelA)}</span>
+    <span class="chart-legend-item"><span class="chart-legend-dot" style="background:${colorB}"></span>${escapeHtml(labelB)}</span>
+  </div>`;
+}
+
 function showToast(msg){
   const t = document.getElementById('toast');
   document.getElementById('toastMsg').textContent = msg;
@@ -481,7 +526,7 @@ function attachSwipeToDelete(rowEl, onConfirmDelete){
 
 const overlay = document.getElementById('overlay');
 
-const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetSettings','sheetBodyWeight','sheetOnboarding','sheetRecipeBuilder','sheetMealTemplates','sheetShareCard'];
+const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetSettings','sheetBodyWeight','sheetOnboarding','sheetRecipeBuilder','sheetMealTemplates','sheetShareCard','sheetReport'];
 
 function openSheet(id){
   closeAllSheets();
