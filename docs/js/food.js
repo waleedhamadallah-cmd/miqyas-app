@@ -45,6 +45,19 @@ function renderFoodCatBar(){
   });
 }
 
+function sortFoodList(list){
+  return [...list].sort((a,b)=> (b.favorite - a.favorite) || ((b.usageCount||0) - (a.usageCount||0)));
+}
+
+function toggleFoodFavorite(food){
+  food.favorite = !food.favorite;
+  persist();
+  vibrate(8);
+  renderFoodLibList();
+  renderSheetFoodList();
+  renderQuickChips();
+}
+
 function renderFoodLibList(){
   const wrap = document.getElementById('foodLibList');
   const q = (document.getElementById('foodSearch').value||'').trim();
@@ -52,17 +65,20 @@ function renderFoodLibList(){
   let list = state.library.foods;
   if(state.activeFoodCat!=='الكل') list = list.filter(f=>f.category===state.activeFoodCat);
   if(q) list = list.filter(f=>f.name.includes(q));
+  list = sortFoodList(list);
   if(list.length===0){ wrap.innerHTML = '<div class="empty-hint">ما فيه نتائج</div>'; return; }
   list.forEach(food=>{
     const row = document.createElement('div');
     row.className = 'lib-row';
     const customTag = food.isCustom ? '<span class="custom-tag">مخصصة</span>' : '';
-    row.innerHTML = `<div class="lm"><div class="n">${escapeHtml(food.name)} ${food.favorite?'<span class="star">★</span>':''}${customTag}</div><div class="d">${food.category} · ${food.calories} سعرة · ب${food.protein} ك${food.carbs} د${food.fat}</div></div>
+    row.innerHTML = `<div class="lm"><div class="n">${escapeHtml(food.name)}${customTag}</div><div class="d">${food.category} · ${food.calories} سعرة · ب${food.protein} ك${food.carbs} د${food.fat}</div></div>
       <div class="lib-actions">
+        <div class="fav-star${food.favorite?' on':''}" data-fav-food="${food.id}">${food.favorite?'★':'☆'}</div>
         ${food.isCustom ? `<div class="lib-edit" data-edit-food="${food.id}">✏️</div><div class="lib-del" data-del-food="${food.id}">🗑️</div>` : ''}
         <div class="lib-add">+</div>
       </div>`;
     row.querySelector('.lib-add').addEventListener('click', (e)=>{ e.stopPropagation(); quickAddFood(food, null); });
+    row.querySelector('[data-fav-food]').addEventListener('click', (e)=>{ e.stopPropagation(); toggleFoodFavorite(food); });
     const editBtn = row.querySelector('[data-edit-food]');
     if(editBtn) editBtn.addEventListener('click', (e)=>{ e.stopPropagation(); openEditFood(food); });
     const delBtn = row.querySelector('[data-del-food]');
@@ -327,6 +343,7 @@ function renderSheetFoodList(){
     list = list.filter(f=>f.category===state.activeSheetFoodCat);
   }
   if(q) list = list.filter(f=>f.name.includes(q));
+  list = sortFoodList(list);
   if(list.length===0){ wrap.innerHTML = '<div class="empty-hint">ما فيه نتائج، جرب اسم ثاني أو ضيف وجبة جديدة</div>'; return; }
   list.forEach(food=>{
     const row = document.createElement('div');
