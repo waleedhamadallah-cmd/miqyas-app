@@ -361,8 +361,10 @@ const state = {
   supersetPicks: [],
   // set to a food id while editing an existing custom food, null when adding new
   editingFoodId: null,
-  // date key (YYYY-MM-DD) of the past day currently being edited via the home "past days" strip
-  dayEditTarget: null,
+  // date key (YYYY-MM-DD) the app is currently "viewing" — equals `today` normally,
+  // but switches to a past/future day when picked from the home days strip, so the
+  // whole app (ring, macros, water, meal list, food tab) behaves as if that day is today
+  viewDate: '',
 };
 
 function todayKey(d){
@@ -442,7 +444,7 @@ function computeStreak(){
     const key = dateKeyOffset(i);
     const dt = new Date(); dt.setDate(dt.getDate()-i);
     const dow = dt.getDay();
-    const dayLog = (i===0) ? state.log : (appState.logs[key] || {meals:[],workouts:[]});
+    const dayLog = appState.logs[key] || {meals:[],workouts:[]};
     const worked = !!(dayLog.workouts && dayLog.workouts.length>0);
     days.push(worked);
     const isPlanDay = !!(state.plan.days[dow] && state.plan.days[dow].length>0);
@@ -667,7 +669,7 @@ function attachSwipeToDelete(rowEl, onConfirmDelete){
 
 const overlay = document.getElementById('overlay');
 
-const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetWorkoutPick','sheetNewEx','sheetSets','sheetSettings','sheetPlanEdit','sheetSwap','sheetPRs','sheetExDetail','sheetBodyWeight','sheetOnboarding','sheetRecipeBuilder','sheetMealTemplates','sheetShareCard','sheetDayEdit'];
+const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetWorkoutPick','sheetNewEx','sheetSets','sheetSettings','sheetPlanEdit','sheetSwap','sheetPRs','sheetExDetail','sheetBodyWeight','sheetOnboarding','sheetRecipeBuilder','sheetMealTemplates','sheetShareCard'];
 
 function openSheet(id){
   closeAllSheets();
