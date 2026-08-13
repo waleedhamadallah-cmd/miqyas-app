@@ -662,7 +662,7 @@ html[data-theme="light"] .entry-del, html[data-theme="light"] .tdel{ background:
 .water-btn:active{transform:scale(.94); background:rgba(91,157,255,.22);}
 .water-custom-row{display:flex; gap:8px; margin-top:9px;}
 .water-custom-row input{
-  flex:1; background:var(--bg-elev); border:1px solid var(--border-soft); border-radius:var(--r-md);
+  flex:1; min-width:0; background:var(--bg-elev); border:1px solid var(--border-soft); border-radius:var(--r-md);
   padding:10px 12px; font-size:13px; color:var(--text); outline:none;
 }
 .water-custom-row input:focus{border-color:var(--shoulder);}
