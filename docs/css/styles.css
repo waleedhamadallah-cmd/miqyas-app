@@ -218,8 +218,8 @@ input{font-family:inherit; color:inherit;}
 .ex-anim--core .torso2{ animation:coreRot 1.7s ease-in-out infinite; }
 @keyframes coreRot{ 0%,100%{transform:translateX(-50%) rotate(0deg) translateY(0);} 50%{transform:translateX(-50%) rotate(-16deg) translateY(-5px);} }
 
-/* ============ PAST DAYS STRIP (home — edit old meal days) ============ */
-.date-strip{ display:flex; gap:8px; overflow-x:auto; padding:2px 2px 6px; scrollbar-width:none; }
+/* ============ DAYS STRIP (home — jump to another day) ============ */
+.date-strip{ display:flex; gap:8px; overflow-x:auto; padding:2px 2px 6px; margin-bottom:8px; scrollbar-width:none; }
 .date-strip::-webkit-scrollbar{display:none;}
 .date-pill{
   flex:0 0 auto; width:52px; padding:10px 0 9px; border-radius:16px; background:var(--surface);
@@ -231,6 +231,22 @@ input{font-family:inherit; color:inherit;}
 .date-pill .dpn{font-family:var(--font-d); font-weight:800; font-size:15px;}
 .date-pill .dpdot{width:5px; height:5px; border-radius:50%; background:var(--accent); margin:6px auto 0; opacity:0;}
 .date-pill.logged .dpdot{opacity:1;}
+.date-pill.today{ border-color:var(--accent); background:var(--protein-soft); }
+.date-pill.today .dpl{color:var(--accent);}
+.date-pill.viewed{ box-shadow:0 0 0 1.5px var(--accent) inset, var(--shadow-2); }
+
+/* ============ VIEWED-DAY BANNER (shown when editing a non-today day) ============ */
+.viewday-banner{
+  display:flex; align-items:center; justify-content:space-between; gap:10px;
+  margin:0 18px 4px; padding:10px 14px; border-radius:var(--r-md);
+  background:var(--protein-soft); border:1px solid rgba(255,107,74,.3);
+  font-size:12.5px; font-weight:700; color:var(--accent);
+}
+.viewday-btn{
+  flex:0 0 auto; background:var(--accent); color:#161113; border:none; border-radius:var(--r-pill);
+  padding:7px 12px; font-size:11.5px; font-weight:800; cursor:pointer;
+}
+.viewday-btn:active{transform:scale(.95);}
 
 /* ============ WEEK STRIP + PLAN ============ */
 .day-strip{ display:flex; gap:8px; overflow-x:auto; padding:2px 2px 6px; scrollbar-width:none; }
