@@ -11,26 +11,100 @@ function getBodyWeightHistory(){
   return Object.keys(appState.bodyWeights).sort().map(date=>({date, weight: appState.bodyWeights[date]}));
 }
 
+// WHO adult BMI bands — same 0/18.5/25/30/40 scale most health apps use.
+// Color reuses مِقياس's existing macro palette (blue/teal/orange/red)
+// instead of inventing new colors, so it reads consistently with the rest
+// of the app's charts.
+const BMI_BANDS = [
+  {max:18.5, label:'نقص وزن', color:'var(--shoulder)', text:'var(--shoulder-text)', soft:'var(--shoulder-soft)'},
+  {max:25,   label:'وزن طبيعي', color:'var(--carb)',     text:'var(--carb-text)',     soft:'var(--carb-soft)'},
+  {max:30,   label:'زيادة وزن', color:'var(--fat)',      text:'var(--fat-text)',      soft:'var(--fat-soft)'},
+  {max:Infinity, label:'سمنة',  color:'var(--danger)',   text:'var(--danger-text)',   soft:'var(--danger-soft)'}
+];
+function calcBmi(weightKg, heightCm){
+  const h = heightCm/100;
+  return weightKg / (h*h);
+}
+function bmiBand(bmi){ return BMI_BANDS.find(b=> bmi < b.max) || BMI_BANDS[BMI_BANDS.length-1]; }
+
+// Segmented 0→40 gauge with a marker at the current BMI. Kept left-to-right
+// (direction:ltr in CSS) even in this RTL app — same convention already
+// used for the line charts, so numeric scales read in the universal
+// low-to-high direction instead of being mirrored.
+function buildBmiGauge(bmi){
+  const SCALE_MAX = 40;
+  const bounds = [0, 18.5, 25, 30, SCALE_MAX];
+  const segs = BMI_BANDS.map((b,i)=>{
+    const from = bounds[i], to = Math.min(bounds[i+1], SCALE_MAX);
+    return `<div class="bmi-seg" style="width:${((to-from)/SCALE_MAX*100).toFixed(2)}%; background:${b.color};"></div>`;
+  }).join('');
+  const markerPct = Math.min(Math.max(bmi,0), SCALE_MAX) / SCALE_MAX * 100;
+  return `<div class="bmi-gauge">
+    <div class="bmi-track">${segs}<div class="bmi-marker" style="left:${markerPct.toFixed(2)}%;"></div></div>
+    <div class="bmi-ticks"><span>0</span><span>18.5</span><span>25</span><span>30</span><span>40</span></div>
+  </div>`;
+}
+
 function renderWeightCard(){
   const wrap = document.getElementById('weightCard');
   wrap.onclick = openBodyWeightSheet;
   const history = getBodyWeightHistory();
   if(history.length===0){
-    wrap.innerHTML = `<div class="wc-icon">⚖️</div>
-      <div class="wc-tx"><div class="w1">وزن الجسم</div><div class="w2">ما سجلت وزنك بعد — اضغط للبدء</div></div>`;
+    wrap.innerHTML = `<div class="wc-empty">
+      <div class="wc-icon">⚖️</div>
+      <div class="wc-tx"><div class="w1">وزن الجسم</div><div class="w2">ما سجلت وزنك بعد — اضغط للبدء</div></div>
+    </div>`;
     return;
   }
   const latest = history[history.length-1];
-  let trendTxt = 'أول تسجيل لك';
+  const first = history[0];
+  let trendHtml = '<span class="wc-trend">أول تسجيل لك</span>';
   if(history.length>1){
-    const first = history[0];
     const diff = Math.round((latest.weight-first.weight)*10)/10;
-    if(diff===0) trendTxt = 'ثابت من أول تسجيل';
-    else trendTxt = `${diff>0?'▲':'▼'} ${Math.abs(diff)} كغ من أول تسجيل`;
+    if(diff===0) trendHtml = '<span class="wc-trend">ثابت من أول تسجيل</span>';
+    else trendHtml = `<span class="wc-trend">${diff>0?'▲':'▼'} ${Math.abs(diff)} كغ من أول تسجيل</span>`;
   }
-  wrap.innerHTML = `<div class="wc-icon">⚖️</div>
-    <div class="wc-tx"><div class="w1">وزن الجسم</div><div class="w2">${trendTxt}</div></div>
-    <div class="wc-num tabular">${latest.weight}<span>كغ</span></div>`;
+
+  const chartHtml = history.length>1
+    ? `<div class="chart-wrap wc-chart">${buildChartSvg(history)}</div>`
+    : '';
+
+  let bmiHtml = '';
+  const heightCm = appState.profile && appState.profile.heightCm;
+  if(heightCm){
+    const bmi = Math.round(calcBmi(latest.weight, heightCm)*10)/10;
+    const band = bmiBand(bmi);
+    bmiHtml = `<div class="bmi-block">
+      <div class="bmi-head">
+        <span class="bmi-badge" style="background:${band.soft}; color:${band.text};">${band.label}</span>
+        <span class="bmi-val tabular">مؤشر كتلة الجسم <b>${bmi}</b></span>
+      </div>
+      ${buildBmiGauge(bmi)}
+    </div>`;
+  } else {
+    bmiHtml = `<div class="bmi-block bmi-prompt">أضف طولك عشان نحسب مؤشر كتلة جسمك (BMI) — اضغط هنا</div>`;
+  }
+
+  let targetHtml = '';
+  const target = appState.profile && appState.profile.targetWeightKg;
+  if(target){
+    const total = Math.abs(target - first.weight) || 1;
+    const done = Math.min(Math.max(Math.abs(latest.weight - first.weight) / total, 0), 1);
+    targetHtml = `<div class="wc-target">
+      <div class="wc-target-row"><span>البداية <b class="tabular">${first.weight}كغ</b></span><span>الهدف <b class="tabular">${target}كغ</b></span></div>
+      <div class="wc-target-track"><div class="wc-target-fill" style="width:${(done*100).toFixed(1)}%;"></div></div>
+    </div>`;
+  }
+
+  wrap.innerHTML = `
+    <div class="wc-top">
+      <div class="wc-tx"><div class="w1">الوزن الحالي</div>${trendHtml}</div>
+      <div class="wc-num tabular">${latest.weight}<span>كغ</span></div>
+    </div>
+    ${chartHtml}
+    ${targetHtml}
+    ${bmiHtml}
+  `;
 }
 
 function openBodyWeightSheet(){
@@ -42,6 +116,8 @@ function openBodyWeightSheet(){
   document.getElementById('measArm').value = todayM.arm || '';
   document.getElementById('measWaist').value = todayM.waist || '';
   document.getElementById('measChest').value = todayM.chest || '';
+  document.getElementById('bwHeight').value = appState.profile.heightCm || '';
+  document.getElementById('bwTarget').value = appState.profile.targetWeightKg || '';
   renderBodyWeightSheetBody();
   renderMeasurementCharts();
   renderBodyFatChart();
@@ -303,8 +379,6 @@ function drawReportCanvas(days){
     [`${data.avgP} غ`, 'متوسط البروتين', '#FF6B4A'],
     [`${data.avgC} غ`, 'متوسط الكارب', '#2FD3A6'],
     [`${data.avgF} غ`, 'متوسط الدهون', '#F2B84B'],
-    [`${data.avgFiber} غ`, 'متوسط الألياف', '#5B9DFF'],
-    [`${data.avgSodium.toLocaleString('en-US')} مغ`, 'متوسط الصوديوم', '#5B9DFF'],
   ];
   const boxW = (w-30-30-16)/2, boxH = 78, gapX = 16, gapY = 14;
   statLabels.forEach((s,i)=>{
@@ -487,4 +561,3 @@ async function onEnableSyncClick(){
     if(resEl) resEl.innerHTML = `<div class="sync-badge off" style="width:100%; box-sizing:border-box; color:var(--danger);">❌ ${escapeHtml(e.code||e.message||'خطأ غير معروف')}</div>`;
   }
 }
-
