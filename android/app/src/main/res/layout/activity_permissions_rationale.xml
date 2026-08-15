@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8"?>
+<ScrollView xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#12161A">
+
+    <LinearLayout
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:orientation="vertical"
+        android:padding="24dp">
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="مِقياس × Health Connect"
+            android:textColor="#F3F1EA"
+            android:textSize="20sp"
+            android:textStyle="bold"
+            android:gravity="end"
+            android:layout_marginBottom="16dp" />
+
+        <TextView
+            android:layout_width="match_parent"
+            android:layout_height="wrap_content"
+            android:text="مِقياس يكتب فقط بيانات التغذية (السعرات والماكروز) والماء اللي تسجّلها داخل التطبيق إلى Health Connect، عشان تقدر تطبيقات ثانية متربطة بـHealth Connect تشوفها.\n\nمِقياس ما يقرأ أي بيانات من Health Connect ولا من أي تطبيق ثاني — الاتجاه من مِقياس إلى Health Connect بس.\n\nتقدر توقف هذا الربط أي وقت من إعدادات Health Connect بجهازك، أو من إعدادات مِقياس."
+            android:textColor="#B7BEC6"
+            android:textSize="14sp"
+            android:lineSpacingMultiplier="1.5"
+            android:gravity="end" />
+
+    </LinearLayout>
+</ScrollView>
