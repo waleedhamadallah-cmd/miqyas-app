@@ -136,7 +136,8 @@ function defaultAppState(){
   return {
     library:{foods:defaultFoods()}, goals:defaultGoals(), logs:{},
     bodyWeights:{}, bodyFat:{}, bodyMeasurements:{}, mealTemplates:[],
-    theme:'dark', onboarded:false, updatedAt:0, healthConnectGranted:false
+    theme:'dark', onboarded:false, updatedAt:0, healthConnectGranted:false,
+    aiProxyUrl:'', aiProxySecret:''
   };
 }
 
@@ -156,6 +157,8 @@ function rebindFromAppState(){
   if(appState.goals.fiber===undefined) appState.goals.fiber = 30;
   if(appState.goals.sodium===undefined) appState.goals.sodium = 2300;
   if(appState.healthConnectGranted===undefined) appState.healthConnectGranted = false;
+  if(appState.aiProxyUrl===undefined) appState.aiProxyUrl = '';
+  if(appState.aiProxySecret===undefined) appState.aiProxySecret = '';
   (appState.library.foods||[]).forEach(f=>{
     if(f.fiber===undefined) f.fiber = 0;
     if(f.sodium===undefined) f.sodium = 0;
@@ -668,7 +671,7 @@ function attachSwipeToDelete(rowEl, onConfirmDelete){
 
 const overlay = document.getElementById('overlay');
 
-const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetSettings','sheetBodyWeight','sheetOnboarding','sheetRecipeBuilder','sheetMealTemplates','sheetShareCard','sheetReport'];
+const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetAiScan','sheetSettings','sheetBodyWeight','sheetOnboarding','sheetRecipeBuilder','sheetMealTemplates','sheetShareCard','sheetReport'];
 
 function openSheet(id){
   closeAllSheets();

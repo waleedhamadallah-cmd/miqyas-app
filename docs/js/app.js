@@ -124,6 +124,26 @@ function bindEvents(){
   document.getElementById('qaWeight').addEventListener('click', ()=>{
     openBodyWeightSheet();
   });
+  document.getElementById('qaAiScan').addEventListener('click', ()=>{
+    resetAiScanSheet();
+    openSheet('sheetAiScan');
+  });
+  document.getElementById('aiScanCameraBtn').addEventListener('click', ()=> document.getElementById('aiScanCameraInput').click());
+  document.getElementById('aiScanGalleryBtn').addEventListener('click', ()=> document.getElementById('aiScanGalleryInput').click());
+  document.getElementById('aiScanCameraInput').addEventListener('change', (e)=>{
+    const f = e.target.files[0]; e.target.value='';
+    if(f) handleAiScanFile(f);
+  });
+  document.getElementById('aiScanGalleryInput').addEventListener('change', (e)=>{
+    const f = e.target.files[0]; e.target.value='';
+    if(f) handleAiScanFile(f);
+  });
+  document.getElementById('btnSaveAiSettings').addEventListener('click', ()=>{
+    appState.aiProxyUrl = document.getElementById('aiProxyUrlInput').value.trim();
+    appState.aiProxySecret = document.getElementById('aiProxySecretInput').value.trim();
+    persist();
+    showToast('تم حفظ إعدادات الذكاء الاصطناعي ✅');
+  });
   document.getElementById('btnSaveBodyWeight').addEventListener('click', ()=>{
     const val = parseFloat(document.getElementById('bwInput').value);
     if(!val || val<=0){ showToast('اكتب وزن صحيح أول'); return; }
@@ -193,6 +213,8 @@ function bindEvents(){
     document.getElementById('goalWater').value = state.goals.water;
     document.getElementById('goalFiber').value = state.goals.fiber;
     document.getElementById('goalSodium').value = state.goals.sodium;
+    document.getElementById('aiProxyUrlInput').value = appState.aiProxyUrl || '';
+    document.getElementById('aiProxySecretInput').value = appState.aiProxySecret || '';
     renderSyncStatus();
     renderThemeButtons();
     renderHealthConnectStatus();
