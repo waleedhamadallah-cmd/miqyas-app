@@ -88,7 +88,7 @@ async function healthConnectRequestAccess(){
     if(!avail.available){
       return {ok:false, reason: avail.needsProviderUpdate ? 'needs-update' : 'not-installed'};
     }
-    const res = await plugin.requestPermissions();
+    const res = await plugin.requestHealthPermissions();
     appState.healthConnectGranted = !!res.granted;
     persist();
     return {ok: !!res.granted, reason: res.granted ? 'granted' : 'denied'};
