@@ -34,18 +34,6 @@ function renderMealsToday(){
   });
 }
 
-function renderFoodCatBar(){
-  const bar = document.getElementById('foodCatBar');
-  bar.innerHTML = '';
-  FOOD_CATS.forEach(cat=>{
-    const chip = document.createElement('div');
-    chip.className = 'filter-chip'+(state.activeFoodCat===cat?' active':'');
-    chip.textContent = cat;
-    chip.addEventListener('click', ()=>{ state.activeFoodCat = cat; renderFoodCatBar(); renderFoodLibList(); });
-    bar.appendChild(chip);
-  });
-}
-
 // Tie-break order once favorite/usageCount are equal (the common case for
 // anyone who hasn't built up usage history yet, e.g. a first-time "الكل"
 // view) — mains/carbs/salads read before snacks/desserts, instead of
@@ -67,7 +55,51 @@ function toggleFoodFavorite(food){
   vibrate(8);
   renderFoodLibList();
   renderSheetFoodList();
-  renderQuickChips();
+}
+
+// Library groups by what the food actually IS (macro role) instead of what
+// meal-time it's usually eaten at — "بروتين/كارب/سلطة" tells you something
+// useful about a food itself; "غدا/عشا" doesn't (a grilled chicken breast
+// is "غدا" whether you eat it at noon or at 9pm). The add-meal picker sheet
+// (sheetFood) keeps the old time-of-day chip filter — that one really is
+// about "what am I eating right now", which time-of-day does answer.
+const FOOD_TYPE_GROUPS = [
+  {key:'protein', label:'بروتين',            icon:'🍗', soft:'var(--protein-soft)', text:'var(--protein-text)'},
+  {key:'carb',    label:'كارب',              icon:'🍞', soft:'var(--carb-soft)',    text:'var(--carb-text)'},
+  {key:'salad',   label:'سلطة',              icon:'🥗', soft:'var(--shoulder-soft)',text:'var(--shoulder-text)'},
+  {key:'snack',   label:'حلويات وسناكات',    icon:'🍰', soft:'var(--fat-soft)',     text:'var(--fat-text)'}
+];
+const FOOD_TYPE_KEYS = new Set(FOOD_TYPE_GROUPS.map(g=>g.key));
+
+// Which groups are expanded, kept across re-renders (typing a search
+// letter re-renders the whole list; this keeps a group you opened from
+// snapping shut on every keystroke).
+const libGroupsOpen = {protein:true};
+
+function buildLibRow(food){
+  const row = document.createElement('div');
+  row.className = 'lib-row';
+  const customTag = food.isCustom ? '<span class="custom-tag">مخصصة</span>' : '';
+  row.innerHTML = `<div class="lm"><div class="n">${escapeHtml(food.name)}${customTag}</div><div class="d">${food.category} · ${food.calories} سعرة · ب${food.protein} ك${food.carbs} د${food.fat}</div></div>
+    <div class="lib-actions">
+      <div class="fav-star${food.favorite?' on':''}" data-fav-food="${food.id}" aria-label="${food.favorite?'إزالة من المفضلة':'إضافة للمفضلة'}" role="button">${food.favorite?'★':'☆'}</div>
+      ${food.isCustom ? `<div class="lib-edit" data-edit-food="${food.id}" aria-label="تعديل" role="button">✏️</div>` : ''}
+      ${food.isCustom ? `<div class="lib-delete" data-del-food="${food.id}" aria-label="حذف" role="button">🗑️</div>` : ''}
+      <div class="lib-add" aria-label="إضافة لليوم" role="button">+</div>
+    </div>`;
+  row.querySelector('.lib-add').addEventListener('click', (e)=>{ e.stopPropagation(); quickAddFood(food, null); });
+  row.querySelector('[data-fav-food]').addEventListener('click', (e)=>{ e.stopPropagation(); toggleFoodFavorite(food); });
+  const editBtn = row.querySelector('[data-edit-food]');
+  if(editBtn) editBtn.addEventListener('click', (e)=>{ e.stopPropagation(); openEditFood(food); });
+  if(food.isCustom){
+    // Explicit, always-visible delete icon — matches the × on "وجبات
+    // اليوم" instead of making swipe-to-delete the ONLY way to remove a
+    // custom food (swipe stays too, as a bonus shortcut, not the only path).
+    const delBtn = row.querySelector('[data-del-food]');
+    if(delBtn) delBtn.addEventListener('click', (e)=>{ e.stopPropagation(); deleteCustomFood(food); });
+    attachSwipeToDelete(row, ()=> deleteCustomFood(food));
+  }
+  return row;
 }
 
 function renderFoodLibList(){
@@ -75,34 +107,33 @@ function renderFoodLibList(){
   const q = (document.getElementById('foodSearch').value||'').trim();
   wrap.innerHTML = '';
   let list = state.library.foods;
-  if(state.activeFoodCat!=='الكل') list = list.filter(f=>f.category===state.activeFoodCat);
   if(q) list = list.filter(f=>f.name.includes(q));
-  list = sortFoodList(list);
   if(list.length===0){ wrap.innerHTML = emptyStateHtml('search', 'ما فيه نتائج'); return; }
-  list.forEach(food=>{
-    const row = document.createElement('div');
-    row.className = 'lib-row';
-    const customTag = food.isCustom ? '<span class="custom-tag">مخصصة</span>' : '';
-    row.innerHTML = `<div class="lm"><div class="n">${escapeHtml(food.name)}${customTag}</div><div class="d">${food.category} · ${food.calories} سعرة · ب${food.protein} ك${food.carbs} د${food.fat}</div></div>
-      <div class="lib-actions">
-        <div class="fav-star${food.favorite?' on':''}" data-fav-food="${food.id}" aria-label="${food.favorite?'إزالة من المفضلة':'إضافة للمفضلة'}" role="button">${food.favorite?'★':'☆'}</div>
-        ${food.isCustom ? `<div class="lib-edit" data-edit-food="${food.id}" aria-label="تعديل" role="button">✏️</div>` : ''}
-        ${food.isCustom ? `<div class="lib-delete" data-del-food="${food.id}" aria-label="حذف" role="button">🗑️</div>` : ''}
-        <div class="lib-add" aria-label="إضافة لليوم" role="button">+</div>
-      </div>`;
-    row.querySelector('.lib-add').addEventListener('click', (e)=>{ e.stopPropagation(); quickAddFood(food, null); });
-    row.querySelector('[data-fav-food]').addEventListener('click', (e)=>{ e.stopPropagation(); toggleFoodFavorite(food); });
-    const editBtn = row.querySelector('[data-edit-food]');
-    if(editBtn) editBtn.addEventListener('click', (e)=>{ e.stopPropagation(); openEditFood(food); });
-    if(food.isCustom){
-      // Explicit, always-visible delete icon — matches the × on "وجبات
-      // اليوم" instead of making swipe-to-delete the ONLY way to remove a
-      // custom food (swipe stays too, as a bonus shortcut, not the only path).
-      const delBtn = row.querySelector('[data-del-food]');
-      if(delBtn) delBtn.addEventListener('click', (e)=>{ e.stopPropagation(); deleteCustomFood(food); });
-      attachSwipeToDelete(row, ()=> deleteCustomFood(food));
-    }
-    wrap.appendChild(row);
+
+  const groups = FOOD_TYPE_GROUPS.map(g=> ({...g, items: sortFoodList(list.filter(f=>f.foodType===g.key))}));
+  const otherItems = sortFoodList(list.filter(f=>!FOOD_TYPE_KEYS.has(f.foodType)));
+  if(otherItems.length) groups.push({key:'other', label:'أخرى', icon:'🍽️', soft:'var(--surface-2)', text:'var(--text-dim)', items:otherItems});
+
+  groups.filter(g=>g.items.length>0).forEach(g=>{
+    // Searching should surface matches immediately instead of hiding them
+    // behind a collapsed group the user has to think to open.
+    const isOpen = q ? true : !!libGroupsOpen[g.key];
+    const card = document.createElement('div');
+    card.className = 'acc-group';
+    card.innerHTML = `<div class="acc-item${isOpen?' open':''}">
+      <div class="acc-head">
+        <span class="acc-title"><span class="lib-group-ic" style="background:${g.soft}; color:${g.text};">${g.icon}</span>${g.label}<span class="acc-count">${g.items.length}</span></span>
+        <span class="acc-chevron">⌄</span>
+      </div>
+      <div class="acc-body"><div class="lib-group-rows"></div></div>
+    </div>`;
+    const item = card.querySelector('.acc-item');
+    card.querySelector('.acc-head').addEventListener('click', ()=>{
+      libGroupsOpen[g.key] = item.classList.toggle('open');
+    });
+    const rowsWrap = card.querySelector('.lib-group-rows');
+    g.items.forEach(food=> rowsWrap.appendChild(buildLibRow(food)));
+    wrap.appendChild(card);
   });
 }
 
@@ -202,27 +233,6 @@ async function quickAddFood(food, chipEl){
   if(chipEl){ chipEl.classList.add('pulse'); setTimeout(()=>chipEl.classList.remove('pulse'), 400); }
   showToast(`أضيفت ${food.name}`);
   renderAll();
-}
-
-/* ============================================================
-   CALORIE DISTRIBUTION CHART
-   ============================================================ */
-function renderCalDist(){
-  const wrap = document.getElementById('calDistWrap');
-  if(!wrap) return;
-  const sums = {'فطور':0,'غدا':0,'عشا':0,'سناك':0};
-  state.log.meals.forEach(m=> { if(sums[m.category]!==undefined) sums[m.category]+=m.calories; });
-  const total = Object.values(sums).reduce((a,b)=>a+b,0);
-  if(total===0){ wrap.innerHTML = emptyStateHtml('chart', 'سجل وجبة عشان يبين لك التوزيع'); return; }
-  const order = ['فطور','غدا','عشا','سناك'];
-  const rows = order.map(cat=>{
-    const pct = Math.round((sums[cat]/total)*100);
-    return `<div style="margin-bottom:10px;">
-      <div style="display:flex; justify-content:space-between; font-size:11.5px; color:var(--text-dim); margin-bottom:4px;"><span>${cat}</span><span class="tabular">${sums[cat]} سعرة (${pct}٪)</span></div>
-      <div style="height:8px; background:var(--border-soft); border-radius:99px; overflow:hidden;"><div style="height:100%; width:${pct}%; background:${MEAL_CAT_COLORS[cat]}; border-radius:99px;"></div></div>
-    </div>`;
-  }).join('');
-  wrap.innerHTML = rows;
 }
 
 /* ============================================================
