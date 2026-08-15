@@ -207,6 +207,24 @@ function bindEvents(){
     closeAllSheets();
   });
 
+  /* ---------- Edit logged meal (quantity / delete) ---------- */
+  document.getElementById('editMealQtyChips').addEventListener('click', (e)=>{
+    const chip = e.target.closest('.filter-chip');
+    if(!chip) return;
+    document.getElementById('editMealQtyCustom').value = '';
+    setEditMealQty(parseFloat(chip.getAttribute('data-qty')));
+  });
+  document.getElementById('editMealQtyCustom').addEventListener('input', (e)=>{
+    const val = parseFloat(e.target.value);
+    if(val>0) setEditMealQty(val);
+  });
+  document.getElementById('btnSaveEditMeal').addEventListener('click', ()=> saveEditMealQty());
+  document.getElementById('btnDeleteEditMeal').addEventListener('click', ()=>{
+    if(!editMealId) return;
+    deleteMealEntry(editMealId);
+    closeAllSheets();
+  });
+
   // Scoped to the static Settings accordion only — the food library's
   // accordion headers are rendered dynamically and already bind their own
   // click listener per-element inside renderFoodLibList() (food.js). Binding
