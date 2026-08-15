@@ -46,8 +46,19 @@ function renderFoodCatBar(){
   });
 }
 
+// Tie-break order once favorite/usageCount are equal (the common case for
+// anyone who hasn't built up usage history yet, e.g. a first-time "الكل"
+// view) — mains/carbs/salads read before snacks/desserts, instead of
+// falling back to raw array order (which used to list ~17 desserts before
+// a single real meal). Doesn't touch favorite/usageCount at all, so it
+// takes effect immediately for existing libraries too, no migration needed.
+const FOOD_TYPE_ORDER = {protein:0, carb:1, salad:2, snack:3};
 function sortFoodList(list){
-  return [...list].sort((a,b)=> (b.favorite - a.favorite) || ((b.usageCount||0) - (a.usageCount||0)));
+  return [...list].sort((a,b)=>
+    (b.favorite - a.favorite) ||
+    ((b.usageCount||0) - (a.usageCount||0)) ||
+    ((FOOD_TYPE_ORDER[a.foodType] ?? 2) - (FOOD_TYPE_ORDER[b.foodType] ?? 2))
+  );
 }
 
 function toggleFoodFavorite(food){
@@ -76,6 +87,7 @@ function renderFoodLibList(){
       <div class="lib-actions">
         <div class="fav-star${food.favorite?' on':''}" data-fav-food="${food.id}" aria-label="${food.favorite?'إزالة من المفضلة':'إضافة للمفضلة'}" role="button">${food.favorite?'★':'☆'}</div>
         ${food.isCustom ? `<div class="lib-edit" data-edit-food="${food.id}" aria-label="تعديل" role="button">✏️</div>` : ''}
+        ${food.isCustom ? `<div class="lib-delete" data-del-food="${food.id}" aria-label="حذف" role="button">🗑️</div>` : ''}
         <div class="lib-add" aria-label="إضافة لليوم" role="button">+</div>
       </div>`;
     row.querySelector('.lib-add').addEventListener('click', (e)=>{ e.stopPropagation(); quickAddFood(food, null); });
@@ -83,6 +95,11 @@ function renderFoodLibList(){
     const editBtn = row.querySelector('[data-edit-food]');
     if(editBtn) editBtn.addEventListener('click', (e)=>{ e.stopPropagation(); openEditFood(food); });
     if(food.isCustom){
+      // Explicit, always-visible delete icon — matches the × on "وجبات
+      // اليوم" instead of making swipe-to-delete the ONLY way to remove a
+      // custom food (swipe stays too, as a bonus shortcut, not the only path).
+      const delBtn = row.querySelector('[data-del-food]');
+      if(delBtn) delBtn.addEventListener('click', (e)=>{ e.stopPropagation(); deleteCustomFood(food); });
       attachSwipeToDelete(row, ()=> deleteCustomFood(food));
     }
     wrap.appendChild(row);
@@ -102,8 +119,6 @@ function openEditFood(food){
   document.getElementById('nfP').value = food.protein;
   document.getElementById('nfC').value = food.carbs;
   document.getElementById('nfF').value = food.fat;
-  document.getElementById('nfFiber').value = food.fiber || 0;
-  document.getElementById('nfSodium').value = food.sodium || 0;
   openSheet('sheetNewFood');
 }
 
@@ -111,7 +126,7 @@ function resetNewFoodSheet(){
   state.editingFoodId = null;
   document.getElementById('sheetNewFoodTitle').textContent = 'وجبة جديدة';
   document.getElementById('btnSaveNewFoodLabel').textContent = 'حفظ وإضافة لليوم';
-  ['nfName','nfCal','nfP','nfC','nfF','nfFiber','nfSodium'].forEach(id=> document.getElementById(id).value='');
+  ['nfName','nfCal','nfP','nfC','nfF'].forEach(id=> document.getElementById(id).value='');
 }
 
 function deleteCustomFood(food){
@@ -439,4 +454,3 @@ async function finishMealBuilder(){
 /* ============================================================
    EXERCISE PICKER SHEET
    ============================================================ */
-
