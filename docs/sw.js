@@ -1,9 +1,9 @@
-const CACHE_NAME = 'miqyas-cache-v4';
+const CACHE_NAME = 'miqyas-cache-v5';
 const SHELL = [
   './', './index.html', './manifest.json', './icon-192.png', './icon-512.png',
   './css/styles.css',
-  './js/core.js', './js/home.js', './js/food.js', './js/gym.js',
-  './js/progress.js', './js/session.js', './js/app.js'
+  './js/core.js', './js/home.js', './js/food.js', './js/ai.js',
+  './js/progress.js', './js/app.js'
 ];
 
 self.addEventListener('install', (e) => {
