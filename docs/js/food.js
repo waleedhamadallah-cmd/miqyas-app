@@ -1,37 +1,127 @@
 /* ============================================================
    FOOD TAB: today's meals, food library list/search, quick add
    ============================================================ */
+// Shared by the swipe-to-delete row action and the edit-meal sheet's own
+// delete button, so both paths get the same undo toast instead of two
+// slightly different deletion behaviors.
+function deleteMealEntry(id){
+  const idx = state.log.meals.findIndex(m=>m.id===id);
+  if(idx<0) return;
+  const removed = state.log.meals[idx];
+  state.log.meals.splice(idx,1);
+  persist();
+  renderAll();
+  showUndoToast(`حذفت ${removed.name}`, ()=>{
+    state.log.meals.splice(idx,0,removed);
+    persist();
+    renderAll();
+  });
+}
+
 function renderMealsToday(){
   const wrap = document.getElementById('mealsToday');
   wrap.innerHTML = '';
   if(state.log.meals.length===0){ wrap.innerHTML = emptyStateHtml('meal', 'ولا وجبة مسجلة اليوم بعد'); return; }
-  const deleteMeal = (id)=>{
-    const idx = state.log.meals.findIndex(m=>m.id===id);
-    if(idx<0) return;
-    const removed = state.log.meals[idx];
-    state.log.meals.splice(idx,1);
-    persist();
-    renderAll();
-    showUndoToast(`حذفت ${removed.name}`, ()=>{
-      state.log.meals.splice(idx,0,removed);
-      persist();
-      renderAll();
-    });
-  };
   state.log.meals.forEach(m=>{
     const row = document.createElement('div');
     row.className = 'entry-row';
     const dotColor = MEAL_CAT_COLORS[m.category] || 'var(--protein)';
+    const qtyTag = (m.qty!==undefined && m.qty!==1) ? ` · ×${trimQtyDisplay(m.qty)}` : '';
     row.innerHTML = `<div class="entry-dot" style="background:${dotColor}"></div>
-      <div class="entry-main"><div class="t1">${escapeHtml(m.name)}</div><div class="t2">${m.category} · ب${Math.round(m.protein)} ك${Math.round(m.carbs)} د${Math.round(m.fat)}</div></div>
+      <div class="entry-main"><div class="t1">${escapeHtml(m.name)}</div><div class="t2">${m.category} · ب${Math.round(m.protein)} ك${Math.round(m.carbs)} د${Math.round(m.fat)}${qtyTag}</div></div>
       <div class="entry-side tabular">${m.calories}</div>
       <div class="entry-del" data-del-meal="${m.id}" aria-label="حذف ${escapeHtml(m.name)}" role="button">${ICON_X}</div>`;
-    attachSwipeToDelete(row, ()=> deleteMeal(m.id));
+    row.addEventListener('click', (e)=>{
+      if(e.target.closest('.entry-del')) return;
+      openEditMealSheet(m.id);
+    });
+    attachSwipeToDelete(row, ()=> deleteMealEntry(m.id));
     wrap.appendChild(row);
   });
   wrap.querySelectorAll('[data-del-meal]').forEach(btn=>{
-    btn.addEventListener('click', ()=> deleteMeal(btn.getAttribute('data-del-meal')));
+    btn.addEventListener('click', (e)=>{ e.stopPropagation(); deleteMealEntry(btn.getAttribute('data-del-meal')); });
   });
+}
+
+function trimQtyDisplay(qty){
+  // 1.5 -> "1.5", 2 -> "2", 0.75 -> "0.75" (never a trailing .0)
+  return (Math.round(qty*100)/100).toString();
+}
+
+/* ============================================================
+   EDIT MEAL ENTRY (rescale quantity or delete)
+   ============================================================ */
+let editMealId = null;
+let editMealQty = 1;
+
+// Legacy entries logged before qty/base* existed just use their current
+// displayed macros as the 1x base — the best guess available, and correct
+// for the overwhelming majority since qty defaults to 1 anyway.
+function getMealEntryBase(entry){
+  if(entry.baseCalories!==undefined) return entry;
+  return {baseCalories:entry.calories, baseProtein:entry.protein, baseCarbs:entry.carbs,
+    baseFat:entry.fat, baseFiber:entry.fiber||0, baseSodium:entry.sodium||0};
+}
+
+function openEditMealSheet(entryId){
+  const entry = state.log.meals.find(m=>m.id===entryId);
+  if(!entry) return;
+  editMealId = entryId;
+  editMealQty = entry.qty!==undefined ? entry.qty : 1;
+  document.getElementById('editMealName').textContent = entry.name;
+  document.getElementById('editMealQtyCustom').value = '';
+  renderEditMealQtyChips();
+  renderEditMealPreview();
+  openSheet('sheetEditMeal');
+}
+
+function renderEditMealQtyChips(){
+  document.querySelectorAll('#editMealQtyChips .filter-chip').forEach(chip=>{
+    chip.classList.toggle('active', parseFloat(chip.getAttribute('data-qty'))===editMealQty);
+  });
+}
+
+function setEditMealQty(qty){
+  if(!(qty>0)) return;
+  editMealQty = Math.round(qty*100)/100;
+  renderEditMealQtyChips();
+  renderEditMealPreview();
+}
+
+function renderEditMealPreview(){
+  const entry = state.log.meals.find(m=>m.id===editMealId);
+  const preview = document.getElementById('editMealPreview');
+  if(!entry || !preview) return;
+  const base = getMealEntryBase(entry);
+  const cal = Math.round(base.baseCalories*editMealQty);
+  const p = Math.round(base.baseProtein*editMealQty);
+  const c = Math.round(base.baseCarbs*editMealQty);
+  const f = Math.round(base.baseFat*editMealQty);
+  preview.innerHTML = `
+    <div class="rt-row"><span>سعرات</span><b>${cal}</b></div>
+    <div class="rt-row"><span>بروتين</span><b>${p} غ</b></div>
+    <div class="rt-row"><span>كارب</span><b>${c} غ</b></div>
+    <div class="rt-row"><span>دهون</span><b>${f} غ</b></div>`;
+}
+
+function saveEditMealQty(){
+  const entry = state.log.meals.find(m=>m.id===editMealId);
+  if(!entry) return;
+  const base = getMealEntryBase(entry);
+  entry.baseCalories = base.baseCalories; entry.baseProtein = base.baseProtein;
+  entry.baseCarbs = base.baseCarbs; entry.baseFat = base.baseFat;
+  entry.baseFiber = base.baseFiber; entry.baseSodium = base.baseSodium;
+  entry.qty = editMealQty;
+  entry.calories = Math.round(base.baseCalories*editMealQty);
+  entry.protein = Math.round(base.baseProtein*editMealQty);
+  entry.carbs = Math.round(base.baseCarbs*editMealQty);
+  entry.fat = Math.round(base.baseFat*editMealQty);
+  entry.fiber = Math.round(base.baseFiber*editMealQty);
+  entry.sodium = Math.round(base.baseSodium*editMealQty);
+  persist();
+  renderAll();
+  closeAllSheets();
+  showToast('تم تحديث الوجبة ✏️');
 }
 
 // Tie-break order once favorite/usageCount are equal (the common case for
@@ -216,14 +306,23 @@ function renderWeeklyFoodSummary(){
   wrap.innerHTML = avgHtml + catHtml;
 }
 
-/* ============================================================
-   RENDER: GYM VIEW
-   ============================================================ */
+// Builds a logged-meal entry with qty=1 and its base-serving macros saved
+// alongside the (currently identical) displayed macros. Keeping the base
+// values separate from the scaled ones lets the edit-meal sheet rescale a
+// logged entry later (½×, 1.5×, a custom multiplier, ...) without losing
+// precision from repeatedly scaling an already-scaled number.
+function makeMealEntry(name, category, foodId, calories, protein, carbs, fat, fiber, sodium){
+  return {
+    id:uid(), foodId, name, category, qty:1,
+    baseCalories:calories, baseProtein:protein, baseCarbs:carbs, baseFat:fat,
+    baseFiber:fiber||0, baseSodium:sodium||0,
+    calories, protein, carbs, fat, fiber:fiber||0, sodium:sodium||0,
+    time:Date.now()
+  };
+}
 
 async function quickAddFood(food, chipEl){
-  const entry = {id:uid(), foodId:food.id, name:food.name, category:food.category,
-    calories:food.calories, protein:food.protein, carbs:food.carbs, fat:food.fat,
-    fiber:food.fiber||0, sodium:food.sodium||0, time:Date.now()};
+  const entry = makeMealEntry(food.name, food.category, food.id, food.calories, food.protein, food.carbs, food.fat, food.fiber, food.sodium);
   state.log.meals.push(entry);
   food.usageCount = (food.usageCount||0)+1;
   persist();
@@ -272,8 +371,7 @@ function renderTemplateList(){
       const t = templates.find(x=>x.id===btn.getAttribute('data-apply'));
       if(!t) return;
       t.foods.forEach(f=>{
-        const entry = {id:uid(), foodId:f.foodId, name:f.name, category:f.category,
-          calories:f.calories, protein:f.protein, carbs:f.carbs, fat:f.fat, fiber:f.fiber||0, sodium:f.sodium||0, time:Date.now()};
+        const entry = makeMealEntry(f.name, f.category, f.foodId, f.calories, f.protein, f.carbs, f.fat, f.fiber, f.sodium);
         state.log.meals.push(entry);
         syncHealthConnectNutrition(entry);
       });
@@ -447,9 +545,9 @@ async function finishMealBuilder(){
     calories:acc.calories+f.calories, protein:acc.protein+f.protein, carbs:acc.carbs+f.carbs,
     fat:acc.fat+f.fat, fiber:acc.fiber+(f.fiber||0), sodium:acc.sodium+(f.sodium||0)
   }), {calories:0,protein:0,carbs:0,fat:0,fiber:0,sodium:0});
-  const entry = {id:uid(), foodId:null, name, category:'غدا',
-    calories:Math.round(totals.calories), protein:Math.round(totals.protein), carbs:Math.round(totals.carbs),
-    fat:Math.round(totals.fat), fiber:Math.round(totals.fiber), sodium:Math.round(totals.sodium), time:Date.now()};
+  const entry = makeMealEntry(name, 'غدا', null,
+    Math.round(totals.calories), Math.round(totals.protein), Math.round(totals.carbs),
+    Math.round(totals.fat), Math.round(totals.fiber), Math.round(totals.sodium));
   state.log.meals.push(entry);
   items.forEach(f=> f.usageCount = (f.usageCount||0)+1);
   persist();
@@ -460,7 +558,3 @@ async function finishMealBuilder(){
   toggleMealBuilder(); // reset for next time
   closeAllSheets();
 }
-
-/* ============================================================
-   EXERCISE PICKER SHEET
-   ============================================================ */
