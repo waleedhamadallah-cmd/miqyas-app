@@ -282,9 +282,10 @@ function getReportData(days){
   };
 }
 
-// Simple word-wrap for canvas text (Arabic shapes correctly per fillText
-// call regardless of split points, since we only break on natural spaces).
-function wrapCanvasText(ctx, text, cx, y, maxWidth, lineHeight){
+// Simple word-wrap for canvas text — split into a pure "measure" step and a
+// "draw" step so the final image height can be computed up front (see
+// drawReportCanvas) instead of leaving a big blank area below the content.
+function computeWrappedLines(ctx, text, maxWidth){
   const words = text.split(' ');
   let line = '';
   const lines = [];
@@ -298,139 +299,348 @@ function wrapCanvasText(ctx, text, cx, y, maxWidth, lineHeight){
     }
   });
   if(line) lines.push(line);
+  return lines;
+}
+function drawWrappedLines(ctx, lines, cx, y, lineHeight){
   lines.forEach((l,i)=> ctx.fillText(l, cx, y + i*lineHeight));
-  return lines.length;
 }
 
-function drawReportStatBox(ctx, x, y, w, h, value, label, color){
-  ctx.fillStyle = '#F5F3EE';
-  roundRect(ctx, x, y, w, h, 14); ctx.fill();
-  ctx.textAlign = 'center';
+const REPORT_INK = '#1A1D21';
+const REPORT_MUTED = '#63686F';
+const REPORT_TEAL = '#0E8F77';
+const REPORT_TEAL_DARK = '#0A6B58';
+const REPORT_LINE = '#E4E0D6';
+const REPORT_PROTEIN = '#FF6B4A';
+const REPORT_CARB = '#2FD3A6';
+const REPORT_FAT = '#F2B84B';
+const REPORT_BLUE = '#5B9DFF';
+
+function drawReportSectionTitle(ctx, title, x, y, color){
+  ctx.textAlign = 'right';
+  ctx.fillStyle = REPORT_INK;
+  ctx.font = '800 20px Arial';
+  ctx.fillText(title, x, y);
+  const tw = Math.min(ctx.measureText(title).width, 60);
+  ctx.fillStyle = color || REPORT_TEAL;
+  roundRect(ctx, x-tw, y+9, tw, 4, 2);
+  ctx.fill();
+}
+
+function drawReportStatBox(ctx, x, y, w, h, value, label, color, icon){
+  ctx.save();
+  ctx.shadowColor = 'rgba(30,26,18,.10)';
+  ctx.shadowBlur = 10;
+  ctx.shadowOffsetY = 3;
+  ctx.fillStyle = '#FFFFFF';
+  roundRect(ctx, x, y, w, h, 16);
+  ctx.fill();
+  ctx.restore();
+
   ctx.fillStyle = color;
-  ctx.font = '900 26px Arial';
-  ctx.fillText(String(value), x+w/2, y+h/2-2);
-  ctx.fillStyle = '#63686F';
+  roundRect(ctx, x+16, y, w-32, 3.5, 2);
+  ctx.fill();
+
+  ctx.textAlign = 'center';
+  if(icon){
+    ctx.font = '16px Arial';
+    ctx.fillText(icon, x+w/2, y+27);
+  }
+  ctx.fillStyle = color;
+  ctx.font = '900 23px Arial';
+  // Force LTR just for the value: it's a number (possibly signed, e.g.
+  // "-1.3"), and drawing it inside an RTL text run can flip the minus
+  // sign to the wrong side ("1.3-") — this keeps signed values readable.
+  ctx.direction = 'ltr';
+  ctx.fillText(String(value), x+w/2, y + (icon ? h/2+9 : h/2-1));
+  ctx.direction = 'rtl';
+  ctx.fillStyle = REPORT_MUTED;
   ctx.font = '600 12px Arial';
-  ctx.fillText(label, x+w/2, y+h/2+20);
+  ctx.fillText(label, x+w/2, y+h-14);
+}
+
+function drawReportDonut(ctx, cx, cy, rOuter, rInner, segments, centerValue, centerLabel){
+  let start = -Math.PI/2;
+  const ringR = (rOuter+rInner)/2;
+  ctx.lineCap = 'butt';
+  segments.forEach(seg=>{
+    const frac = Math.max(seg.pct,0)/100;
+    if(frac<=0) return;
+    const end = start + frac*Math.PI*2;
+    ctx.beginPath();
+    ctx.arc(cx, cy, ringR, start, end);
+    ctx.lineWidth = rOuter-rInner;
+    ctx.strokeStyle = seg.color;
+    ctx.stroke();
+    start = end;
+  });
+  ctx.textAlign = 'center';
+  ctx.fillStyle = REPORT_INK;
+  ctx.font = '900 22px Arial';
+  ctx.fillText(String(centerValue), cx, cy+2);
+  ctx.fillStyle = REPORT_MUTED;
+  ctx.font = '600 11px Arial';
+  ctx.fillText(centerLabel, cx, cy+19);
 }
 
 function drawReportTrendChart(ctx, x, y, w, h, weightPoints, calPoints){
-  const pad = 10;
-  function drawSeries(points, color, dashed){
+  const pad = 8;
+  const weightVals = weightPoints.map(p=>p.value).filter(v=>v!=null);
+  const calVals = calPoints.map(p=>p.value).filter(v=>v!=null);
+
+  // Short periods (e.g. "آخر 7 أيام") can bucket down to a single week —
+  // not enough points for a line. Rather than silently render an empty
+  // chart with dangling gridlines, say so explicitly.
+  if(weightVals.length<2 && calVals.length<2){
+    ctx.textAlign = 'center';
+    ctx.fillStyle = REPORT_MUTED;
+    ctx.font = '600 13px Arial';
+    ctx.fillText('لسا ما فيه بيانات كافية لعرض اتجاه هذه الفترة', x+w/2, y+h/2);
+    return;
+  }
+
+  // gridlines + weight axis labels (min / mid / max) so the chart reads as
+  // an actual chart instead of a bare line floating on white space.
+  if(weightVals.length>=2){
+    const min = Math.min(...weightVals), max = Math.max(...weightVals);
+    ctx.strokeStyle = REPORT_LINE; ctx.lineWidth = 1; ctx.setLineDash([4,4]);
+    ctx.textAlign = 'left'; ctx.fillStyle = REPORT_MUTED; ctx.font = '600 11px Arial';
+    [0, 0.5, 1].forEach(t=>{
+      const gy = y+pad+(h-pad*2)*t;
+      ctx.beginPath(); ctx.moveTo(x, gy); ctx.lineTo(x+w, gy); ctx.stroke();
+      const val = max - (max-min)*t;
+      ctx.fillText(val.toFixed(1), x, gy-4);
+    });
+    ctx.setLineDash([]);
+  }
+
+  function drawSeries(points, color, dashed, fill){
     const vals = points.map(p=>p.value).filter(v=>v!=null);
-    if(vals.length<2) return;
+    if(vals.length<2) return null;
     const min = Math.min(...vals), max = Math.max(...vals);
     const range = (max-min) || 1;
     const n = points.length;
     const stepX = n>1 ? (w-pad*2)/(n-1) : 0;
+    const coords = [];
     ctx.beginPath();
     ctx.strokeStyle = color; ctx.lineWidth = 3; ctx.lineCap='round'; ctx.lineJoin='round';
-    ctx.setLineDash(dashed ? [9,7] : []);
+    ctx.setLineDash(dashed ? [8,6] : []);
     let started = false;
     points.forEach((p,i)=>{
       const px = x+pad+i*stepX;
       if(p.value==null){ started=false; return; }
       const py = y+h-pad-((p.value-min)/range)*(h-pad*2);
+      coords.push([px,py]);
       if(!started){ ctx.moveTo(px,py); started=true; } else { ctx.lineTo(px,py); }
     });
     ctx.stroke();
     ctx.setLineDash([]);
+
+    if(fill && coords.length>1){
+      const grad = ctx.createLinearGradient(0,y,0,y+h);
+      grad.addColorStop(0, color+'33');
+      grad.addColorStop(1, color+'00');
+      ctx.beginPath();
+      ctx.moveTo(coords[0][0], y+h-pad);
+      coords.forEach(c=> ctx.lineTo(c[0], c[1]));
+      ctx.lineTo(coords[coords.length-1][0], y+h-pad);
+      ctx.closePath();
+      ctx.fillStyle = grad;
+      ctx.fill();
+    }
+
+    const last = coords[coords.length-1];
+    if(last){
+      ctx.beginPath();
+      ctx.arc(last[0], last[1], 4.5, 0, Math.PI*2);
+      ctx.fillStyle = color;
+      ctx.fill();
+      ctx.strokeStyle = '#FFFFFF'; ctx.lineWidth = 2; ctx.stroke();
+    }
+    return coords;
   }
-  drawSeries(weightPoints, '#5B9DFF', false);
-  drawSeries(calPoints, '#FF6B4A', true);
+  drawSeries(calPoints, REPORT_PROTEIN, true, false);
+  drawSeries(weightPoints, REPORT_BLUE, false, true);
 }
 
+// Renders the full report onto #reportCanvas. Runs a lightweight first pass
+// to measure the disclaimer's wrapped line count (the only variable-height
+// element), sizes the canvas to fit the *actual* content, then draws once —
+// this is what removes the large blank strip that used to sit under a
+// fixed 1160px canvas regardless of how much content there was.
 function drawReportCanvas(days){
   const canvas = document.getElementById('reportCanvas');
   const ctx = canvas.getContext('2d');
-  const w = canvas.width, h = canvas.height;
+  const W = 700, M = 32, CW = W - M*2;
   const data = getReportData(days);
+  const periodLabel = days<=7 ? 'آخر 7 أيام' : (days<=30 ? 'آخر 30 يوم' : 'آخر 90 يوم');
 
   ctx.direction = 'rtl';
+  ctx.font = '500 12px Arial';
+  const disclaimer = 'التقرير مبني على بيانات مسجَّلة ذاتياً بتطبيق مِقياس وما يغني عن تقييم مختص التغذية أو الطبيب.';
+  const disclaimerLines = computeWrappedLines(ctx, disclaimer, CW);
+
+  const HEADER_H = 140;
+  const TOP_PAD = 30;
+  const STAT_BOX_H = 92, STAT_GAP_X = 16, STAT_GAP_Y = 14;
+  const statRows = 3;
+  const statGridH = statRows*STAT_BOX_H + (statRows-1)*STAT_GAP_Y;
+  const SECTION_GAP = 34;
+  const DONUT_H = 190;
+  const WEIGHT_BOX_H = 92;
+  const MICRO_BOX_H = 78;
+  const CHART_LEGEND_H = 26;
+  const CHART_H = 190;
+  const FOOTER_H = 34 + disclaimerLines.length*19 + 24;
+
+  const totalH = HEADER_H
+    + TOP_PAD + 24 + statGridH + SECTION_GAP
+    + 24 + DONUT_H + SECTION_GAP
+    + 24 + WEIGHT_BOX_H + SECTION_GAP
+    + 24 + MICRO_BOX_H + SECTION_GAP
+    + 24 + CHART_LEGEND_H + CHART_H + SECTION_GAP
+    + FOOTER_H;
+
+  canvas.width = W;
+  canvas.height = Math.round(totalH);
+  const w = canvas.width, h = canvas.height;
+  ctx.direction = 'rtl';
+
   ctx.fillStyle = '#FFFFFF';
   ctx.fillRect(0,0,w,h);
 
-  // header band
-  ctx.fillStyle = '#F5F3EE';
-  ctx.fillRect(0,0,w,110);
+  // ---- header ----
+  const headGrad = ctx.createLinearGradient(0,0,w,0);
+  headGrad.addColorStop(0, REPORT_TEAL_DARK);
+  headGrad.addColorStop(1, REPORT_TEAL);
+  ctx.fillStyle = headGrad;
+  ctx.fillRect(0,0,w,HEADER_H);
+
+  // small logo mark: three bars of rising height, echoing "مقياس" (a scale/measure)
+  const lx = w/2, ly = 34;
+  ctx.fillStyle = 'rgba(255,255,255,.92)';
+  [[-18,14,8],[0,20,8],[18,26,8]].forEach(([dx,bh,bw])=>{
+    roundRect(ctx, lx+dx-bw/2, ly+26-bh, bw, bh, 3);
+    ctx.fill();
+  });
+
   ctx.textAlign = 'center';
-  ctx.fillStyle = '#1A1D21';
-  ctx.font = '900 30px Arial';
-  ctx.fillText('تقرير التغذية', w/2, 52);
-  ctx.font = '700 15px Arial';
-  ctx.fillStyle = '#0E8F77';
-  ctx.fillText('مِقياس', w/2, 78);
-  ctx.font = '500 13px Arial';
-  ctx.fillStyle = '#63686F';
-  const periodLabel = days<=7 ? 'آخر 7 أيام' : (days<=30 ? 'آخر 30 يوم' : 'آخر 90 يوم');
-  ctx.fillText(`${periodLabel} · أُنشئ بتاريخ ${formatDateHuman(new Date())}`, w/2, 98);
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '900 27px Arial';
+  ctx.fillText('تقرير التغذية', w/2, 92);
+  ctx.font = '600 13px Arial';
+  ctx.fillStyle = 'rgba(255,255,255,.85)';
+  ctx.fillText(`مِقياس · ${periodLabel} · أُنشئ بتاريخ ${formatDateHuman(new Date())}`, w/2, 114);
 
-  let y = 145;
-  ctx.textAlign = 'right';
-  ctx.fillStyle = '#1A1D21';
-  ctx.font = '800 20px Arial';
-  ctx.fillText('ملخص الفترة', w-30, y);
-  y += 25;
+  let y = HEADER_H + TOP_PAD;
 
+  // ---- summary grid ----
+  drawReportSectionTitle(ctx, 'ملخص الفترة', w-M, y, REPORT_TEAL);
+  y += 24;
   const statLabels = [
-    [`${data.loggedDays}/${data.days}`, 'أيام مسجَّلة', '#0E8F77'],
-    [`${data.adherencePct}٪`, 'التزام بهدف السعرات', '#F2B84B'],
-    [data.avgCal.toLocaleString('en-US'), 'متوسط السعرات', '#FF6B4A'],
-    [`${data.avgP} غ`, 'متوسط البروتين', '#FF6B4A'],
-    [`${data.avgC} غ`, 'متوسط الكارب', '#2FD3A6'],
-    [`${data.avgF} غ`, 'متوسط الدهون', '#F2B84B'],
+    [`${data.loggedDays}/${data.days}`, 'أيام مسجَّلة', REPORT_TEAL, '🗓️'],
+    [`${data.adherencePct}٪`, 'التزام بهدف السعرات', REPORT_FAT, '🎯'],
+    [data.avgCal.toLocaleString('en-US'), 'متوسط السعرات', REPORT_PROTEIN, '🔥'],
+    [`${data.avgP} غ`, 'متوسط البروتين', REPORT_PROTEIN, '🍗'],
+    [`${data.avgC} غ`, 'متوسط الكارب', REPORT_CARB, '🍞'],
+    [`${data.avgF} غ`, 'متوسط الدهون', REPORT_FAT, '🥑'],
   ];
-  const boxW = (w-30-30-16)/2, boxH = 78, gapX = 16, gapY = 14;
+  const boxW = (CW-STAT_GAP_X)/2;
   statLabels.forEach((s,i)=>{
     const col = i%2, row = Math.floor(i/2);
-    const x = 30 + col*(boxW+gapX);
-    const by = y + row*(boxH+gapY);
-    drawReportStatBox(ctx, x, by, boxW, boxH, s[0], s[1], s[2]);
+    const x = M + col*(boxW+STAT_GAP_X);
+    const by = y + row*(STAT_BOX_H+STAT_GAP_Y);
+    drawReportStatBox(ctx, x, by, boxW, STAT_BOX_H, s[0], s[1], s[2], s[3]);
   });
-  y += Math.ceil(statLabels.length/2)*(boxH+gapY) + 20;
+  y += statGridH + SECTION_GAP;
 
-  ctx.textAlign = 'right';
-  ctx.fillStyle = '#1A1D21';
-  ctx.font = '800 20px Arial';
-  ctx.fillText('الوزن', w-30, y);
-  y += 25;
-  const wStats = [
-    [data.firstWeight!=null ? data.firstWeight : '—', 'أول وزن مسجَّل'],
-    [data.lastWeight!=null ? data.lastWeight : '—', 'آخر وزن مسجَّل'],
-    [data.firstWeight!=null && data.lastWeight!=null ? (()=>{const d=Math.round((data.lastWeight-data.firstWeight)*10)/10; return (d>=0?'+':'')+d;})() : '—', 'التغيّر (كغ)'],
+  // ---- macro distribution donut ----
+  drawReportSectionTitle(ctx, 'توزيع الماكروز', w-M, y, REPORT_CARB);
+  y += 24;
+  const pCal = data.avgP*4, cCal = data.avgC*4, fCal = data.avgF*9;
+  const macroTotal = (pCal+cCal+fCal) || 1;
+  const macroSegs = [
+    {label:'بروتين', grams:data.avgP, pct: Math.round(pCal/macroTotal*100), color: REPORT_PROTEIN},
+    {label:'كارب',   grams:data.avgC, pct: Math.round(cCal/macroTotal*100), color: REPORT_CARB},
+    {label:'دهون',   grams:data.avgF, pct: Math.round(fCal/macroTotal*100), color: REPORT_FAT},
   ];
-  const wBoxW = (w-30-30-16*2)/3;
-  wStats.forEach((s,i)=>{
-    const x = 30 + i*(wBoxW+16);
-    drawReportStatBox(ctx, x, y, wBoxW, boxH, s[0], s[1], '#5B9DFF');
+  const donutCx = w/2, donutCy = y+70;
+  drawReportDonut(ctx, donutCx, donutCy, 68, 42, macroSegs, data.avgCal.toLocaleString('en-US'), 'سعرة/يوم');
+  const legendY = y+70+68+30;
+  const chipW = CW/3;
+  ctx.font = '700 13px Arial';
+  macroSegs.forEach((s,i)=>{
+    const cx = M + chipW*i + chipW/2;
+    ctx.beginPath(); ctx.arc(cx+ (ctx.measureText(`${s.label} ${s.pct}٪`).width/2)+9, legendY, 5, 0, Math.PI*2);
+    ctx.fillStyle = s.color; ctx.fill();
+    ctx.textAlign = 'center';
+    ctx.fillStyle = REPORT_INK;
+    ctx.fillText(`${s.label} ${s.pct}٪`, cx, legendY+4);
+    ctx.fillStyle = REPORT_MUTED;
+    ctx.font = '500 11px Arial';
+    ctx.fillText(`${s.grams} غ`, cx, legendY+20);
+    ctx.font = '700 13px Arial';
   });
-  y += boxH + 34;
+  y += DONUT_H + SECTION_GAP;
 
+  // ---- weight ----
+  drawReportSectionTitle(ctx, 'الوزن', w-M, y, REPORT_BLUE);
+  y += 24;
+  let changeVal = '—', changeColor = REPORT_MUTED, changeIcon = '➖';
+  if(data.firstWeight!=null && data.lastWeight!=null){
+    const d = Math.round((data.lastWeight-data.firstWeight)*10)/10;
+    changeVal = (d>0?'+':'') + d;
+    if(d<0){ changeColor = REPORT_CARB; changeIcon = '📉'; }
+    else if(d>0){ changeColor = REPORT_FAT; changeIcon = '📈'; }
+    else { changeIcon = '➖'; }
+  }
+  const wStats = [
+    [data.firstWeight!=null ? data.firstWeight : '—', 'أول وزن مسجَّل', REPORT_BLUE, '⚖️'],
+    [data.lastWeight!=null ? data.lastWeight : '—', 'آخر وزن مسجَّل', REPORT_BLUE, '⚖️'],
+    [changeVal, 'التغيّر (كغ)', changeColor, changeIcon],
+  ];
+  const wBoxW = (CW-STAT_GAP_X*2)/3;
+  wStats.forEach((s,i)=>{
+    const x = M + i*(wBoxW+STAT_GAP_X);
+    drawReportStatBox(ctx, x, y, wBoxW, WEIGHT_BOX_H, s[0], s[1], s[2], s[3]);
+  });
+  y += WEIGHT_BOX_H + SECTION_GAP;
+
+  // ---- micro-nutrients ----
+  drawReportSectionTitle(ctx, 'عناصر إضافية', w-M, y, REPORT_FAT);
+  y += 24;
+  const microW = (CW-STAT_GAP_X)/2;
+  drawReportStatBox(ctx, M, y, microW, MICRO_BOX_H, `${data.avgFiber} غ`, 'متوسط الألياف اليومي', REPORT_CARB, '🌾');
+  drawReportStatBox(ctx, M+microW+STAT_GAP_X, y, microW, MICRO_BOX_H, `${data.avgSodium.toLocaleString('en-US')} ملغ`, 'متوسط الصوديوم اليومي', REPORT_FAT, '🧂');
+  y += MICRO_BOX_H + SECTION_GAP;
+
+  // ---- trend chart ----
+  drawReportSectionTitle(ctx, 'الاتجاه الأسبوعي: الوزن مقابل السعرات', w-M, y, REPORT_TEAL);
+  y += 24;
+  ctx.font = '700 12px Arial';
   ctx.textAlign = 'right';
-  ctx.fillStyle = '#1A1D21';
-  ctx.font = '800 20px Arial';
-  ctx.fillText('الاتجاه الأسبوعي: الوزن مقابل السعرات', w-30, y);
-  y += 20;
-  drawReportTrendChart(ctx, 30, y, w-60, 200, data.weightPoints, data.calPoints);
-  y += 200 + 26;
+  ctx.fillStyle = REPORT_BLUE;
+  ctx.beginPath(); ctx.arc(w-M-4, y-4, 4.5, 0, Math.PI*2); ctx.fill();
+  ctx.fillText('الوزن', w-M-14, y);
+  ctx.fillStyle = REPORT_PROTEIN;
+  ctx.beginPath(); ctx.arc(w-M-100, y-4, 4.5, 0, Math.PI*2); ctx.fill();
+  ctx.fillText('متوسط السعرات', w-M-110, y);
+  y += CHART_LEGEND_H;
+  drawReportTrendChart(ctx, M, y, CW, CHART_H, data.weightPoints, data.calPoints);
+  y += CHART_H + SECTION_GAP;
 
-  ctx.textAlign = 'right';
-  ctx.font = '600 13px Arial';
-  ctx.fillStyle = '#5B9DFF';
-  ctx.fillText('⎯ الوزن', w-30, y);
-  ctx.fillStyle = '#FF6B4A';
-  ctx.fillText('- - متوسط السعرات', w-140, y);
-  y += 40;
-
-  ctx.strokeStyle = '#E2DED4'; ctx.lineWidth = 1;
-  ctx.beginPath(); ctx.moveTo(30,y); ctx.lineTo(w-30,y); ctx.stroke();
+  // ---- footer ----
+  ctx.strokeStyle = REPORT_LINE; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(M,y); ctx.lineTo(w-M,y); ctx.stroke();
   y += 26;
-
   ctx.textAlign = 'right';
-  ctx.fillStyle = '#63686F';
+  ctx.fillStyle = REPORT_MUTED;
   ctx.font = '500 12px Arial';
-  const disclaimer = 'التقرير مبني على بيانات مسجَّلة ذاتياً بتطبيق مِقياس وما يغني عن تقييم مختص التغذية أو الطبيب.';
-  wrapCanvasText(ctx, disclaimer, w-30, y, w-60, 19);
+  drawWrappedLines(ctx, disclaimerLines, w-M, y, 19);
+  y += disclaimerLines.length*19 + 18;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = REPORT_TEAL;
+  ctx.font = '700 12px Arial';
+  ctx.fillText('صُنع بتطبيق مِقياس', w/2, y);
 
   return canvas;
 }
