@@ -287,32 +287,6 @@ input{font-family:inherit; color:inherit;}
   display:flex; align-items:center; justify-content:center; color:var(--text-mute); cursor:pointer; flex:0 0 auto;
 }
 
-/* ============ EXERCISE ANIMATED ICONS ============ */
-.ex-anim{ width:46px; height:46px; border-radius:14px; position:relative; overflow:hidden; flex:0 0 auto; background:var(--gcbg); }
-.ex-anim.sm{ width:34px; height:34px; border-radius:11px; }
-.ex-anim.lg{ width:64px; height:64px; border-radius:19px; }
-.ex-anim .post{ position:absolute; bottom:9px; width:3px; height:15px; background:var(--gc); opacity:.45; border-radius:2px; }
-.ex-anim .post.l{left:12px;} .ex-anim .post.r{right:12px;}
-.ex-anim .bar{ position:absolute; left:11px; right:11px; height:4px; border-radius:2px; background:var(--gc); top:15px; }
-.ex-anim--press .bar{ animation:barDown 1.7s ease-in-out infinite; }
-@keyframes barDown{ 0%,100%{transform:translateY(0);} 50%{transform:translateY(10px);} }
-.ex-anim--pull .bar{ top:9px; animation:barUp 1.7s ease-in-out infinite; }
-@keyframes barUp{ 0%,100%{transform:translateY(10px);} 50%{transform:translateY(0);} }
-.ex-anim .leg{ position:absolute; bottom:7px; width:3px; height:17px; background:var(--gc); opacity:.45; border-radius:2px; }
-.ex-anim .leg.l{left:15px;} .ex-anim .leg.r{right:15px;}
-.ex-anim .torso{ position:absolute; left:50%; top:9px; width:16px; height:16px; border-radius:5px; background:var(--gc); transform:translateX(-50%); }
-.ex-anim--squat .torso{ animation:squatY 1.7s ease-in-out infinite; }
-@keyframes squatY{ 0%,100%{transform:translateX(-50%) translateY(0);} 50%{transform:translateX(-50%) translateY(11px);} }
-.ex-anim .dot{ position:absolute; bottom:7px; left:50%; width:6px; height:6px; border-radius:50%; background:var(--gc); opacity:.45; transform:translateX(-50%); }
-.ex-anim .arm{ position:absolute; bottom:9px; left:50%; width:4px; height:20px; background:var(--gc); border-radius:2px; transform-origin:bottom center; transform:translateX(-50%); }
-.ex-anim--curl .arm{ animation:curlRot 1.7s ease-in-out infinite; }
-@keyframes curlRot{ 0%,100%{transform:translateX(-50%) rotate(0deg);} 50%{transform:translateX(-50%) rotate(-95deg);} }
-.ex-anim--raise .arm{ left:auto; right:16px; transform:none; animation:raiseRot 1.7s ease-in-out infinite; }
-@keyframes raiseRot{ 0%,100%{transform:rotate(0deg);} 50%{transform:rotate(-75deg);} }
-.ex-anim .torso2{ position:absolute; bottom:11px; left:50%; width:22px; height:8px; border-radius:4px; background:var(--gc); transform-origin:bottom center; transform:translateX(-50%); }
-.ex-anim--core .torso2{ animation:coreRot 1.7s ease-in-out infinite; }
-@keyframes coreRot{ 0%,100%{transform:translateX(-50%) rotate(0deg) translateY(0);} 50%{transform:translateX(-50%) rotate(-16deg) translateY(-5px);} }
-
 /* ============ DAYS STRIP (home — jump to another day) ============ */
 .date-strip{ display:flex; gap:8px; overflow-x:auto; padding:2px 2px 6px; margin-bottom:8px; scrollbar-width:none; }
 .date-strip::-webkit-scrollbar{display:none;}
@@ -574,7 +548,7 @@ input{font-family:inherit; color:inherit;}
 .mb-actions{display:flex; gap:8px;}
 .mb-actions .btn-secondary, .mb-actions .btn-primary{margin-top:0; flex:1;}
 
-/* ============ EXERCISE DETAIL CHART ============ */
+/* ============ STAT CARDS + TREND CHART (body weight / body fat / measurements) ============ */
 .ex-detail-stats{display:flex; gap:10px; margin-bottom:16px;}
 .ex-stat{flex:1; background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-md); padding:10px; text-align:center; box-shadow:var(--shadow-2);}
 .ex-stat .sv{font-family:var(--font-d); font-weight:900; font-size:18px;}
@@ -584,7 +558,7 @@ input{font-family:inherit; color:inherit;}
 .chart-legend-item{display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-dim); font-weight:600;}
 .chart-legend-dot{width:9px; height:9px; border-radius:50%; flex:0 0 auto;}
 
-/* ============ FAVORITE STAR (exercise picker) ============ */
+/* ============ FAVORITE STAR (food library) ============ */
 .fav-star{
   font-size:19px; color:var(--text-mute); cursor:pointer; flex:0 0 auto; line-height:1; transition:transform .12s ease;
   width:var(--tap-min); height:var(--tap-min); display:flex; align-items:center; justify-content:center;
@@ -665,14 +639,6 @@ input{font-family:inherit; color:inherit;}
 }
 .btn-secondary:active{transform:scale(.97);}
 
-.ex-picked-card{
-  background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-lg); padding:16px; box-shadow:var(--shadow-2);
-  margin-bottom:14px; display:flex; align-items:center; gap:14px;
-}
-.ex-picked-card .tx{flex:1; min-width:0;}
-.ex-picked-card .exn{font-family:var(--font-d); font-weight:800; font-size:16px; margin-bottom:2px;}
-.ex-picked-card .exhint{font-size:12px; color:var(--text-mute);}
-
 .field-toggle{display:flex; gap:10px; margin:14px 0;}
 .field-btn{ flex:1; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:14px 10px; text-align:center; cursor:pointer; }
 .field-btn.active{border-color:var(--accent); background:rgba(47,211,166,.08);}
@@ -686,13 +652,6 @@ input{font-family:inherit; color:inherit;}
 }
 .key:active{background:var(--surface-2); transform:scale(.95);}
 .key.wide{grid-column:span 1; color:var(--text-mute); font-size:15px;}
-
-.set-chip-row{display:flex; flex-wrap:wrap; gap:8px; margin:14px 0;}
-.set-chip{
-  background:var(--bg-elev); border:1px solid var(--border); border-radius:var(--r-pill);
-  padding:8px 12px; font-size:13px; font-weight:700; display:flex; align-items:center; gap:6px;
-}
-.set-chip .x{color:var(--text-mute); cursor:pointer; font-weight:400;}
 
 #toast{
   position:fixed; bottom:calc(164px + env(safe-area-inset-bottom)); left:50%; transform:translate(-50%, 20px);
@@ -882,6 +841,13 @@ html[data-theme="light"] .entry-del, html[data-theme="light"] .tdel{ background:
   padding:7px 12px; border-radius:var(--r-pill); background:var(--accent); color:#161113; font-size:12px; font-weight:800; cursor:pointer; flex:0 0 auto;
 }
 .template-row .tdel{width:32px; height:32px; border-radius:50%; background:var(--bg-elev); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; color:var(--text-mute); cursor:pointer; flex:0 0 auto;}
+
+/* ============ REMINDERS (Settings) ============ */
+.reminder-row{display:flex; align-items:center; gap:10px; padding:6px 4px;}
+.reminder-row input[type="checkbox"]{width:20px; height:20px; accent-color:var(--accent); flex:0 0 auto;}
+.reminder-row label{font-size:14px; color:var(--text); cursor:pointer;}
+#reminderMealTimeField, #reminderWaterFields{margin-right:30px; margin-top:6px;}
+#reminderMealTimeField.disabled, #reminderWaterFields.disabled{opacity:.4; pointer-events:none;}
 
 /* ============ RECIPE BUILDER ============ */
 .recipe-pick-row{display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--border-soft);}
