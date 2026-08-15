@@ -1,7 +1,15 @@
 ext {
-    minSdkVersion = 24
+    // Bumped from 24 -> 26: the Health Connect client library's own manifest
+    // requires minSdk 26, and app minSdk can't go lower than a dependency's
+    // declared floor without a manifest-merge conflict. Android 7.x (API 24-25)
+    // is a vanishingly small slice of real devices in 2026, so this is a safe
+    // trade for gaining Health Connect support.
+    minSdkVersion = 26
     compileSdkVersion = 36
     targetSdkVersion = 36
+    kotlinVersion = '2.4.10'
+    healthConnectVersion = '1.1.0'
+    kotlinxCoroutinesVersion = '1.10.2'
     androidxActivityVersion = '1.11.0'
     androidxAppCompatVersion = '1.7.1'
     androidxCoordinatorLayoutVersion = '1.3.0'

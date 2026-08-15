@@ -9,6 +9,12 @@ buildscript {
     dependencies {
         classpath 'com.android.tools.build:gradle:8.13.0'
         classpath 'com.google.gms:google-services:4.4.4'
+        // Added for the Health Connect integration — its plugin (HealthConnectPlugin.kt)
+        // is written in Kotlin since Health Connect's client library is coroutine-based
+        // and is meant to be called from Kotlin, not bridged awkwardly from Java.
+        // Hardcoded here (not read from variables.gradle) because buildscript{} always
+        // evaluates before "apply from: variables.gradle" runs, regardless of file order.
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.4.10'
 
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
