@@ -153,6 +153,10 @@ function bindEvents(){
       if(!appState.bodyFat) appState.bodyFat = {};
       appState.bodyFat[state.today] = Math.round(bfVal*10)/10;
     }
+    const heightVal = parseFloat(document.getElementById('bwHeight').value);
+    appState.profile.heightCm = (heightVal && heightVal>0) ? Math.round(heightVal) : null;
+    const targetVal = parseFloat(document.getElementById('bwTarget').value);
+    appState.profile.targetWeightKg = (targetVal && targetVal>0) ? Math.round(targetVal*10)/10 : null;
     persist();
     renderWeightCard();
     renderBodyWeightSheetBody();
@@ -174,14 +178,15 @@ function bindEvents(){
     const p = parseFloat(document.getElementById('nfP').value)||0;
     const c = parseFloat(document.getElementById('nfC').value)||0;
     const f = parseFloat(document.getElementById('nfF').value)||0;
-    const fiber = parseFloat(document.getElementById('nfFiber').value)||0;
-    const sodium = parseFloat(document.getElementById('nfSodium').value)||0;
     if(!name){ showToast('اكتب اسم الوجبة أول'); return; }
 
     if(state.editingFoodId){
       const food = state.library.foods.find(fd=>fd.id===state.editingFoodId);
       if(food){
-        Object.assign(food, {name, category:cat, calories:cal, protein:p, carbs:c, fat:f, fiber, sodium});
+        // fiber/sodium intentionally left untouched here — the fields were
+        // removed from this form, so whatever value the food already had
+        // (usually 0 from defaultFoods()) just carries forward as-is.
+        Object.assign(food, {name, category:cat, calories:cal, protein:p, carbs:c, fat:f});
         persist();
         showToast(`تم تحديث ${name} ✏️`);
       }
@@ -191,7 +196,7 @@ function bindEvents(){
       return;
     }
 
-    const food = {id:uid(), name, category:cat, calories:cal, protein:p, carbs:c, fat:f, fiber, sodium, favorite:false, usageCount:0, isCustom:true};
+    const food = {id:uid(), name, category:cat, calories:cal, protein:p, carbs:c, fat:f, fiber:0, sodium:0, favorite:false, usageCount:0, isCustom:true};
     state.library.foods.push(food);
     resetNewFoodSheet();
     await quickAddFood(food, null);
@@ -211,8 +216,6 @@ function bindEvents(){
     document.getElementById('goalC').value = state.goals.carbs;
     document.getElementById('goalF').value = state.goals.fat;
     document.getElementById('goalWater').value = state.goals.water;
-    document.getElementById('goalFiber').value = state.goals.fiber;
-    document.getElementById('goalSodium').value = state.goals.sodium;
     document.getElementById('aiProxyUrlInput').value = appState.aiProxyUrl || '';
     document.getElementById('aiProxySecretInput').value = appState.aiProxySecret || '';
     renderSyncStatus();
@@ -231,8 +234,10 @@ function bindEvents(){
       carbs: parseInt(document.getElementById('goalC').value,10) || defaultGoals().carbs,
       fat: parseInt(document.getElementById('goalF').value,10) || defaultGoals().fat,
       water: parseInt(document.getElementById('goalWater').value,10) || defaultGoals().water,
-      fiber: parseInt(document.getElementById('goalFiber').value,10) || defaultGoals().fiber,
-      sodium: parseInt(document.getElementById('goalSodium').value,10) || defaultGoals().sodium,
+      // No longer user-editable (fields removed from Settings) — keep
+      // whatever was already set so old data/goals reports don't break.
+      fiber: state.goals.fiber,
+      sodium: state.goals.sodium,
     };
     appState.goals = state.goals;
     persist();
@@ -484,6 +489,10 @@ function bindOnboardingEvents(){
     appState.goals = state.goals;
     appState.onboarded = true;
     if(weightKg) appState.bodyWeights[state.today] = weightKg;
+    // Height was already being collected here for the calorie calc above —
+    // it just wasn't kept afterwards. Persisting it now is what lets the
+    // Progress tab's weight card show a BMI gauge without asking again.
+    if(heightCm) appState.profile.heightCm = heightCm;
     persist();
     closeAllSheets();
     renderAll();
