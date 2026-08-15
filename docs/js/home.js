@@ -45,8 +45,20 @@ function setMacro(key, val, goal){
   if(pillEl) pillEl.classList.toggle('over', over);
 }
 
+function streakFlameTier(streak){
+  if(streak<=0) return 0;
+  if(streak<3) return 1;
+  if(streak<7) return 2;
+  if(streak<30) return 3;
+  return 4;
+}
 function renderStreak(){
   document.getElementById('streakN').textContent = state.streak;
+  const flameEl = document.getElementById('streakFlame');
+  if(flameEl){
+    for(let t=0;t<=4;t++) flameEl.classList.remove('tier-'+t);
+    flameEl.classList.add('tier-'+streakFlameTier(state.streak));
+  }
   const wrap = document.getElementById('streakDots');
   wrap.innerHTML = '';
   state.streakDays.forEach(on=>{
@@ -93,17 +105,17 @@ function renderInsightCard(){
   const prevAvg = prevDays ? prevProtein/prevDays : 0;
   let compareHtml;
   if(prevDays===0 || thisDays===0){
-    compareHtml = `<div class="insight-row"><div class="insight-icon" style="background:var(--carb-soft); color:var(--carb-text);">📊</div>
+    compareHtml = `<div class="insight-row"><div class="insight-icon" style="background:var(--carb-soft); color:var(--carb-text);">${ICON_BAR_CHART}</div>
       <div class="insight-tx"><div class="it1">لسا مب كافي بيانات للمقارنة</div><div class="it2">سجل أكثر عشان تشوف مقارنة شهرية</div></div></div>`;
   } else {
     const diffPct = Math.round(((thisAvg-prevAvg)/prevAvg)*100);
     const up = diffPct>=0;
-    compareHtml = `<div class="insight-row"><div class="insight-icon" style="background:var(--protein-soft); color:var(--protein-text);">${up?'📈':'📉'}</div>
+    compareHtml = `<div class="insight-row"><div class="insight-icon" style="background:var(--protein-soft); color:var(--protein-text);">${up?ICON_TREND_UP:ICON_TREND_DOWN}</div>
       <div class="insight-tx"><div class="it1">بروتينك هالشهر ${up?'أعلى':'أقل'} ${Math.abs(diffPct)}٪ من الشهر اللي فات</div><div class="it2">متوسط ${Math.round(thisAvg)}غ يومياً مقابل ${Math.round(prevAvg)}غ</div></div></div>`;
   }
 
   const adherencePct = thisLoggedDays ? Math.round((thisAdherent/thisLoggedDays)*100) : 0;
-  const adherenceHtml = `<div class="insight-row"><div class="insight-icon" style="background:var(--fat-soft); color:var(--fat-text);">🎯</div>
+  const adherenceHtml = `<div class="insight-row"><div class="insight-icon" style="background:var(--fat-soft); color:var(--fat-text);">${ICON_TARGET}</div>
     <div class="insight-tx"><div class="it1">التزمت بهدف السعرات ${thisAdherent} من ${thisLoggedDays} يوم هالشهر</div><div class="it2">${adherencePct}٪ من الأيام اللي سجلتها ضمن الهدف</div></div></div>`;
 
   wrap.innerHTML = compareHtml + adherenceHtml;
