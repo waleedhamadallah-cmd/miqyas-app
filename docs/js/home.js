@@ -109,23 +109,6 @@ function renderInsightCard(){
   wrap.innerHTML = compareHtml + adherenceHtml;
 }
 
-function renderQuickChips(){
-  const wrap = document.getElementById('quickChips');
-  wrap.innerHTML = '';
-  if(state.library.foods.length===0){
-    wrap.innerHTML = emptyStateHtml('meal', 'مكتبتك فاضية، ضيف وجبة عشان تبدأ');
-    return;
-  }
-  const top = [...state.library.foods].sort((a,b)=>b.usageCount-a.usageCount).slice(0,8);
-  top.forEach(food=>{
-    const chip = document.createElement('div');
-    chip.className = 'food-chip';
-    chip.innerHTML = `<div class="plus">+</div><div class="fname">${escapeHtml(food.name)}</div><div class="fcal tabular">${food.calories} سعرة</div>`;
-    chip.addEventListener('click', ()=> quickAddFood(food, chip));
-    wrap.appendChild(chip);
-  });
-}
-
 function fmtDuration(sec){
   if(!sec) return '';
   const m = Math.round(sec/60);
@@ -196,7 +179,7 @@ function renderViewedDayBanner(){
 
 function renderViewedDayLabels(){
   const label = isViewingToday() ? 'اليوم' : formatDateHuman(new Date(state.viewDate+'T00:00:00'));
-  ['mealsTodayLabel','foodMealsLabel','foodDistLabel'].forEach(id=>{
+  ['mealsTodayLabel','foodMealsLabel'].forEach(id=>{
     const el = document.getElementById(id);
     if(el) el.textContent = label;
   });
