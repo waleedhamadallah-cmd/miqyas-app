@@ -199,7 +199,12 @@ function bindEvents(){
     closeAllSheets();
   });
 
-  document.querySelectorAll('.acc-head').forEach(head=>{
+  // Scoped to the static Settings accordion only — the food library's
+  // accordion headers are rendered dynamically and already bind their own
+  // click listener per-element inside renderFoodLibList() (food.js). Binding
+  // here too (unscoped) used to double-bind those headers on first load,
+  // causing each click to toggle .open on then back off in the same event.
+  document.querySelectorAll('#sheetSettings .acc-head').forEach(head=>{
     head.addEventListener('click', (e)=>{
       if(e.target.closest('.link')) return;
       head.parentElement.classList.toggle('open');
