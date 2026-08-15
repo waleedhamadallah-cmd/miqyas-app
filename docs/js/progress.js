@@ -51,7 +51,7 @@ function renderWeightCard(){
   const history = getBodyWeightHistory();
   if(history.length===0){
     wrap.innerHTML = `<div class="wc-empty">
-      <div class="wc-icon">⚖️</div>
+      <div class="wc-icon">${ICON_SCALE}</div>
       <div class="wc-tx"><div class="w1">وزن الجسم</div><div class="w2">ما سجلت وزنك بعد — اضغط للبدء</div></div>
     </div>`;
     return;
@@ -662,7 +662,7 @@ function renderSyncStatus(){
       </div>
       <div class="empty-hint" style="padding:0 0 10px; text-align:right;">لازم يكون عندك نفس الرمز <b>ونفس كود Firebase بالحرف</b> بالجهازين. تأكد ما فيه مسافة زايدة أول أو آخر الرمز.</div>
       <div id="syncTestResult"></div>
-      <button class="btn-secondary" id="btnTestSync" style="margin-top:0;">🔄 مزامنة الآن واختبار الاتصال</button>
+      <button class="btn-secondary" id="btnTestSync" style="margin-top:0;">${ICON_SYNC} مزامنة الآن واختبار الاتصال</button>
       <button class="btn-secondary" id="btnDisableSync">فصل المزامنة عن هذا الجهاز</button>
     `;
     document.getElementById('btnDisableSync').addEventListener('click', ()=>{
@@ -685,14 +685,14 @@ function renderSyncStatus(){
           } else if((appState.updatedAt||0) > (cloudState.updatedAt||0)){
             await cloudDoc.set(appState);
           }
-          resEl.innerHTML = `<div class="sync-badge" style="width:100%; box-sizing:border-box;">✅ الاتصال شغال. آخر تحديث بالسحابة: ${cloudDate}</div>`;
+          resEl.innerHTML = `<div class="sync-badge" style="width:100%; box-sizing:border-box;">${ICON_CHECK_CIRCLE} الاتصال شغال. آخر تحديث بالسحابة: ${cloudDate}</div>`;
         } else {
           await cloudDoc.set(appState);
-          resEl.innerHTML = `<div class="sync-badge" style="width:100%; box-sizing:border-box;">✅ الاتصال شغال، وأول نسخة اترفعت الحين</div>`;
+          resEl.innerHTML = `<div class="sync-badge" style="width:100%; box-sizing:border-box;">${ICON_CHECK_CIRCLE} الاتصال شغال، وأول نسخة اترفعت الحين</div>`;
         }
       }catch(e){
         console.error(e);
-        resEl.innerHTML = `<div class="sync-badge off" style="width:100%; box-sizing:border-box; color:var(--danger-text);">❌ فشل: ${escapeHtml(e.code||e.message||'خطأ غير معروف')}</div>`;
+        resEl.innerHTML = `<div class="sync-badge off" style="width:100%; box-sizing:border-box; color:var(--danger-text);">${ICON_X_CIRCLE} فشل: ${escapeHtml(e.code||e.message||'خطأ غير معروف')}</div>`;
       }
     });
   } else {
@@ -768,6 +768,6 @@ async function onEnableSyncClick(){
   }catch(e){
     console.error(e);
     showToast('صار خطأ: ' + (e.code || e.message || 'غير معروف') + ' — راجع صلاحيات Firestore (Rules)');
-    if(resEl) resEl.innerHTML = `<div class="sync-badge off" style="width:100%; box-sizing:border-box; color:var(--danger);">❌ ${escapeHtml(e.code||e.message||'خطأ غير معروف')}</div>`;
+    if(resEl) resEl.innerHTML = `<div class="sync-badge off" style="width:100%; box-sizing:border-box; color:var(--danger);">${ICON_X_CIRCLE} ${escapeHtml(e.code||e.message||'خطأ غير معروف')}</div>`;
   }
 }
