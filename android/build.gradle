@@ -14,7 +14,7 @@ buildscript {
         // and is meant to be called from Kotlin, not bridged awkwardly from Java.
         // Hardcoded here (not read from variables.gradle) because buildscript{} always
         // evaluates before "apply from: variables.gradle" runs, regardless of file order.
-        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.4.10'
+        classpath 'org.jetbrains.kotlin:kotlin-gradle-plugin:2.3.21'
 
         // NOTE: Do not place your application dependencies here; they belong
         // in the individual module build.gradle files
