@@ -433,6 +433,28 @@ const FOOD_CATS = ['الكل','فطور','غدا','عشا','سناك'];
 // needs a visual accent (calorie-distribution chart, meal-list row dots).
 const MEAL_CAT_COLORS = {'فطور':'var(--fat)','غدا':'var(--protein)','عشا':'var(--carb)','سناك':'var(--shoulder)'};
 
+// Shared inline-icon set (24px viewBox, stroke=currentColor to inherit
+// whatever color the surrounding element sets) — used anywhere small action
+// icons are built as HTML strings instead of static markup in index.html,
+// so row actions (delete/edit/favorite), insight badges and status icons
+// all come from the same line-icon system instead of mixing in raw emoji
+// (emoji render inconsistently across Android OEM keyboards/fonts).
+const ICON_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>';
+const ICON_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4L16 5l3 3L8 19z"></path><line x1="14" y1="7" x2="17" y2="10"></line></svg>';
+const ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 20 7"></polyline><path d="M9 7V4h6v3"></path><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
+const ICON_STAR_OUTLINE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2.5 15.1 9 22 9.7 16.8 14.3 18.5 21.5 12 17.6 5.5 21.5 7.2 14.3 2 9.7 8.9 9"></polygon></svg>';
+const ICON_STAR_FILLED = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><polygon points="12 2.5 15.1 9 22 9.7 16.8 14.3 18.5 21.5 12 17.6 5.5 21.5 7.2 14.3 2 9.7 8.9 9"></polygon></svg>';
+const ICON_TREND_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 10 10 14 14 21 7"></polyline><polyline points="15 7 21 7 21 13"></polyline></svg>';
+const ICON_TREND_DOWN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 7 10 14 14 10 21 17"></polyline><polyline points="21 10 21 17 14 17"></polyline></svg>';
+const ICON_TARGET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"></circle></svg>';
+const ICON_BAR_CHART = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="12"></line><line x1="12" y1="20" x2="12" y2="7"></line><line x1="18" y1="20" x2="18" y2="15"></line><line x1="3" y1="20" x2="21" y2="20"></line></svg>';
+const ICON_CALENDAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"></rect><line x1="3" y1="10" x2="21" y2="10"></line><line x1="8" y1="3" x2="8" y2="7"></line><line x1="16" y1="3" x2="16" y2="7"></line></svg>';
+const ICON_MEAL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="3"></circle></svg>';
+const ICON_SCALE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"></line><line x1="5" y1="7" x2="19" y2="7"></line><path d="M5 7l-3 6a3 3 0 0 0 6 0z"></path><path d="M19 7l-3 6a3 3 0 0 0 6 0z"></path></svg>';
+const ICON_CHECK_CIRCLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="8 12.5 11 15.5 16 9.5"></polyline></svg>';
+const ICON_X_CIRCLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>';
+const ICON_SYNC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>';
+
 // Small hand-drawn line-art illustrations for empty states, matching the
 // stroke weight/style of the section-title icons used throughout the app
 // (24px viewBox originals scaled up here) — used instead of emoji so empty
@@ -472,6 +494,19 @@ function animateCount(el, target, opts){
   requestAnimationFrame(tick);
 }
 
+// Centered moving average (window clamped at the array edges) — used to
+// overlay a smoothed trend line on top of raw day-to-day values, which
+// otherwise zigzag from ordinary water-weight/measurement noise and can
+// make an actually-steady trend look erratic at a glance.
+function movingAverage(values, window){
+  const half = Math.floor(window/2);
+  return values.map((_,i)=>{
+    const lo = Math.max(0, i-half), hi = Math.min(values.length-1, i+half);
+    const slice = values.slice(lo, hi+1);
+    return slice.reduce((s,v)=>s+v,0)/slice.length;
+  });
+}
+
 function buildChartSvg(points){
   const w = 300, h = 140, pad = 18;
   if(points.length===0) return emptyStateHtml('chart', 'ما فيه سجل كافي لرسم منحنى بعد');
@@ -482,16 +517,27 @@ function buildChartSvg(points){
   const min = Math.min(...weights), max = Math.max(...weights);
   const range = (max-min) || 1;
   const stepX = (w-pad*2) / (points.length-1);
-  const coords = points.map((p,i)=>{
-    const x = pad + i*stepX;
-    const y = h - pad - ((p.weight-min)/range) * (h-pad*2);
-    return [x,y];
-  });
+  const yFor = v => h - pad - ((v-min)/range) * (h-pad*2);
+  const coords = weights.map((v,i)=> [pad + i*stepX, yFor(v)]);
   const pathD = coords.map((c,i)=> (i===0?'M':'L')+c[0].toFixed(1)+','+c[1].toFixed(1)).join(' ');
-  const dots = coords.map((c,i)=> `<circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="3.5" fill="var(--accent)"/>`).join('');
+
+  // With enough points, the raw line becomes a thin, muted backdrop (data
+  // stays visible, nothing is hidden) and a bold smoothed line on top
+  // carries the actual trend — with too few points a moving average isn't
+  // meaningfully different from the raw line, so skip it below 5.
+  const smoothEnabled = points.length>=5;
+  let smoothPathD = '';
+  if(smoothEnabled){
+    const smoothed = movingAverage(weights, Math.min(5, points.length));
+    const sCoords = smoothed.map((v,i)=> [pad + i*stepX, yFor(v)]);
+    smoothPathD = sCoords.map((c,i)=> (i===0?'M':'L')+c[0].toFixed(1)+','+c[1].toFixed(1)).join(' ');
+  }
+
+  const dots = coords.map((c,i)=> `<circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="${smoothEnabled?2.5:3.5}" fill="var(--accent)" ${smoothEnabled?'opacity=".55"':''}/>`).join('');
   return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="140">
-    <path d="${pathD}" fill="none" stroke="var(--accent)" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="${pathD}" fill="none" stroke="var(--accent)" stroke-width="${smoothEnabled?1.5:2.5}" stroke-linecap="round" stroke-linejoin="round" opacity="${smoothEnabled?'.4':'1'}"/>
     ${dots}
+    ${smoothEnabled ? `<path d="${smoothPathD}" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>` : ''}
   </svg>`;
 }
 
