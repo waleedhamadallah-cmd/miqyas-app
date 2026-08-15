@@ -1,780 +1,624 @@
 /* ============================================================
-   CORE: constants, storage, cloud sync, defaults, shared utils
-   Loaded first — everything else depends on this file.
+   APP BOOTSTRAP: init(), greeting, master renderAll(), all event
+   bindings. Loaded last, starts the app.
    ============================================================ */
-function uid(){ return Date.now().toString(36) + Math.random().toString(36).slice(2,7); }
-
-const LOCAL_KEY = 'miqyas_state_v1';
-
-const SYNC_CFG_KEY = 'miqyas_sync_cfg_v1';
-
-let appState = null;
-
-let cloudDoc = null;
-
-let cloudUnsub = null;
-
-function loadLocalState(){
-  try{
-    const raw = localStorage.getItem(LOCAL_KEY);
-    return raw ? JSON.parse(raw) : null;
-  }catch(e){ return null; }
+function hideSplash(){
+  const splash = document.getElementById('appSplash');
+  if(!splash) return;
+  splash.classList.add('hide');
+  setTimeout(()=> splash.remove(), 400);
 }
+// Safety net: if init() ever throws before reaching hideSplash(), don't
+// leave the user staring at a splash screen forever.
+setTimeout(hideSplash, 4000);
 
-function saveLocalOnly(){
-  try{ localStorage.setItem(LOCAL_KEY, JSON.stringify(appState)); }
-  catch(e){ console.error('local save failed', e); }
-}
+async function init(){
+  state.today = todayKey();
+  state.viewDate = state.today;
+  document.getElementById('dateText').textContent = formatDateHuman(new Date());
+  setGreeting();
 
-function persist(){
-  appState.updatedAt = Date.now();
-  saveLocalOnly();
-  if(cloudDoc){
-    cloudDoc.set(appState).catch(e=> console.error('cloud push failed', e));
-  }
-  syncWidget();
-}
-
-// Pushes today's real calorie/water totals (never whatever day the user
-// happens to be *viewing* via switchViewedDay) to the native home-screen
-// widget, if the app is running inside the installed Android build (this
-// plugin doesn't exist on the plain web/PWA, so it's a silent no-op there).
-// Runs after every persist() (i.e. after almost any action), so it stays
-// completely silent on success/failure — errors just go to the console —
-// instead of interrupting the user with a toast on every unrelated tap.
-function syncWidget(){
-  try{
-    if(!(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.MiqyasWidget)) return;
-    const key = todayKey(new Date());
-    const dayLog = (appState && appState.logs && appState.logs[key]) || {meals:[], waterMl:0};
-    const cal = (dayLog.meals||[]).reduce((s,m)=>s+(m.calories||0),0);
-    const water = dayLog.waterMl || 0;
-    const goals = (appState && appState.goals) || {};
-    const payload = {
-      dateKey: key,
-      calCurrent: Math.round(cal),
-      calGoal: Math.round(goals.calories || 2000),
-      waterCurrent: Math.round(water),
-      waterGoal: Math.round(goals.water || 2500)
-    };
-    Capacitor.Plugins.MiqyasWidget.update(payload)
-      .catch((e)=> console.error('widget update failed', e));
-  }catch(e){ console.error('syncWidget failed', e); }
-}
-
-/* ============================================================
-   HEALTH CONNECT — write-only bridge (nutrition + hydration).
-   No-ops entirely on the plain web/PWA and until the user explicitly
-   grants access from Settings (appState.healthConnectGranted). One record
-   per real event, written from the exact call sites that add a meal/water
-   amount — not recomputed from persist() — matching Health Connect's own
-   guidance to avoid whole-day aggregate records.
-   ============================================================ */
-function healthConnectPlugin(){
-  return (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.MiqyasHealth) ? Capacitor.Plugins.MiqyasHealth : null;
-}
-
-async function healthConnectRequestAccess(){
-  const plugin = healthConnectPlugin();
-  if(!plugin) return {ok:false, reason:'not-native'};
-  try{
-    const avail = await plugin.checkAvailability();
-    if(!avail.available){
-      return {ok:false, reason: avail.needsProviderUpdate ? 'needs-update' : 'not-installed'};
-    }
-    const res = await plugin.requestHealthPermissions();
-    appState.healthConnectGranted = !!res.granted;
-    persist();
-    return {ok: !!res.granted, reason: res.granted ? 'granted' : 'denied'};
-  }catch(e){
-    return {ok:false, reason:'error', message: e && e.message};
-  }
-}
-
-async function healthConnectRefreshStatus(){
-  const plugin = healthConnectPlugin();
-  if(!plugin){ appState.healthConnectGranted = false; return false; }
-  try{
-    const res = await plugin.hasPermissions();
-    appState.healthConnectGranted = !!res.granted;
-    return appState.healthConnectGranted;
-  }catch(e){ return false; }
-}
-
-function syncHealthConnectNutrition(entry){
-  try{
-    if(!appState || !appState.healthConnectGranted) return;
-    const plugin = healthConnectPlugin();
-    if(!plugin || !entry) return;
-    plugin.writeNutrition({
-      name: entry.name || 'وجبة',
-      calories: Math.round(entry.calories||0),
-      protein: Math.round(entry.protein||0),
-      carbs: Math.round(entry.carbs||0),
-      fat: Math.round(entry.fat||0)
-    }).catch(()=>{});
-  }catch(e){ /* no-op outside the native app / without permission */ }
-}
-
-function syncHealthConnectHydration(ml){
-  try{
-    if(!appState || !appState.healthConnectGranted) return;
-    if(!(ml>0)) return; // only real intake events, never the "-250" undo button
-    const plugin = healthConnectPlugin();
-    if(!plugin) return;
-    plugin.writeHydration({volumeMl: Math.round(ml)}).catch(()=>{});
-  }catch(e){ /* no-op outside the native app / without permission */ }
-}
-
-function defaultAppState(){
-  return {
-    library:{foods:defaultFoods()}, goals:defaultGoals(), logs:{},
-    bodyWeights:{}, bodyFat:{}, bodyMeasurements:{}, mealTemplates:[],
-    theme:'dark', onboarded:false, updatedAt:0, healthConnectGranted:false,
-    aiProxyUrl:'', aiProxySecret:'',
-    // heightCm powers the BMI gauge on the Progress tab's weight card;
-    // targetWeightKg (optional) powers the start→target bar there. Both
-    // null until the user fills them in (onboarding sets heightCm; either
-    // can be set/edited from the body-weight sheet).
-    profile:{heightCm:null, targetWeightKg:null},
-    // Local reminder notifications (native app only — no-op on the plain
-    // web/PWA). mealEnabled fires one daily reminder at mealTime; waterEnabled
-    // fires repeating reminders between waterStart/waterEnd every
-    // waterIntervalHours. All off by default.
-    reminders:{
-      mealEnabled:false, mealTime:'20:00',
-      waterEnabled:false, waterStart:'09:00', waterEnd:'21:00', waterIntervalHours:2
-    }
-  };
-}
-
-function rebindFromAppState(){
-  state.library = appState.library;
-  state.goals = appState.goals;
-  if(!appState.logs[state.today]) appState.logs[state.today] = {meals:[], waterMl:0};
-  if(appState.logs[state.today].waterMl===undefined) appState.logs[state.today].waterMl = 0;
-  state.log = appState.logs[state.today];
+  appState = loadLocalState() || defaultAppState();
   if(!appState.bodyWeights) appState.bodyWeights = {};
-  if(!appState.bodyFat) appState.bodyFat = {};
-  if(!appState.bodyMeasurements) appState.bodyMeasurements = {};
-  if(!appState.mealTemplates) appState.mealTemplates = [];
-  if(!appState.theme) appState.theme = 'dark';
-  if(appState.onboarded===undefined) appState.onboarded = true; // existing users skip onboarding
-  if(appState.goals.water===undefined) appState.goals.water = 2500;
-  if(appState.goals.fiber===undefined) appState.goals.fiber = 30;
-  if(appState.goals.sodium===undefined) appState.goals.sodium = 2300;
-  if(appState.healthConnectGranted===undefined) appState.healthConnectGranted = false;
-  if(appState.aiProxyUrl===undefined) appState.aiProxyUrl = '';
-  if(appState.aiProxySecret===undefined) appState.aiProxySecret = '';
-  if(!appState.profile) appState.profile = {};
-  if(appState.profile.heightCm===undefined) appState.profile.heightCm = null;
-  if(appState.profile.targetWeightKg===undefined) appState.profile.targetWeightKg = null;
-  if(!appState.reminders) appState.reminders = {};
-  if(appState.reminders.mealEnabled===undefined) appState.reminders.mealEnabled = false;
-  if(appState.reminders.mealTime===undefined) appState.reminders.mealTime = '20:00';
-  if(appState.reminders.waterEnabled===undefined) appState.reminders.waterEnabled = false;
-  if(appState.reminders.waterStart===undefined) appState.reminders.waterStart = '09:00';
-  if(appState.reminders.waterEnd===undefined) appState.reminders.waterEnd = '21:00';
-  if(appState.reminders.waterIntervalHours===undefined) appState.reminders.waterIntervalHours = 2;
-  (appState.library.foods||[]).forEach(f=>{
-    if(f.fiber===undefined) f.fiber = 0;
-    if(f.sodium===undefined) f.sodium = 0;
-    if(f.sugar===undefined) f.sugar = 0;
-    if(f.satFat===undefined) f.satFat = 0;
-    if(f.servingUnit===undefined) f.servingUnit = 'حصة';
-  });
-  // One-time food-library refresh: replaces the default food list with the
-  // curated menu. Bumping FOOD_LIB_VERSION in the future will re-trigger
-  // this once more without touching custom foods added after this point
-  // (custom foods are preserved; only the original defaults are swapped).
-  const FOOD_LIB_VERSION = 4;
-  if(appState.foodLibraryVersion !== FOOD_LIB_VERSION){
-    const custom = (appState.library.foods||[]).filter(f=>f.isCustom);
-    appState.library.foods = [...defaultFoods(), ...custom];
-    appState.foodLibraryVersion = FOOD_LIB_VERSION;
-    state.library = appState.library;
+  rebindFromAppState();
+
+  // Render immediately from local cache so the app feels instant.
+  // Cloud sync (if configured) happens quietly in the background after.
+  computeStreak();
+  renderAll();
+  bindEvents();
+  hideSplash();
+  syncWidget();
+  applyReminderSettings();
+
+  if(!appState.onboarded){
+    setTimeout(()=>{ startOnboarding(); }, 400);
   }
-  applyTheme(appState.theme);
+
+  const cfg = getSyncConfig();
+  if(cfg){
+    connectCloud(cfg).then((ok)=>{
+      if(!ok) return;
+      cloudDoc.get().then((snap)=>{
+        if(snap.exists){
+          const cloudState = snap.data();
+          if((cloudState.updatedAt||0) > (appState.updatedAt||0)){
+            appState = cloudState;
+            if(!appState.bodyWeights) appState.bodyWeights = {};
+            saveLocalOnly();
+            rebindFromAppState();
+            computeStreak();
+            renderAll();
+            showToast('تم تحديث بياناتك من جهاز ثاني 🔄');
+          } else if((appState.updatedAt||0) > (cloudState.updatedAt||0)){
+            cloudDoc.set(appState);
+          }
+        } else {
+          cloudDoc.set(appState);
+        }
+        subscribeCloud();
+      }).catch((e)=> console.error('initial cloud sync failed', e));
+    });
+  } else {
+    saveLocalOnly();
+  }
 }
 
-function getSyncConfig(){
-  try{ const raw = localStorage.getItem(SYNC_CFG_KEY); return raw ? JSON.parse(raw) : null; }
-  catch(e){ return null; }
+function setGreeting(){
+  const h = new Date().getHours();
+  let g = 'مساء الخير 🌙';
+  if(h < 12) g = 'صباح الخير ☀️';
+  else if(h < 17) g = 'نهارك سعيد 👋';
+  document.getElementById('greetText').textContent = g;
 }
 
-function setSyncConfig(cfg){ localStorage.setItem(SYNC_CFG_KEY, JSON.stringify(cfg)); }
-
-function clearSyncConfig(){ localStorage.removeItem(SYNC_CFG_KEY); }
-
-function loadScript(src){
-  return new Promise((resolve, reject)=>{
-    const s = document.createElement('script');
-    s.src = src; s.onload = ()=>resolve(); s.onerror = ()=>reject(new Error('فشل تحميل '+src));
-    document.head.appendChild(s);
-  });
-}
-
-async function ensureFirebaseLoaded(){
-  if(window.firebase && window.firebase.firestore) return;
-  await loadScript('https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js');
-  await loadScript('https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js');
-}
-
-function parseFirebaseConfigInput(raw){
-  let txt = (raw||'').trim();
-  const m = txt.match(/\{[\s\S]*\}/);
-  if(m) txt = m[0];
-  try{ return JSON.parse(txt); }catch(e){}
-  try{ const fn = new Function('return (' + txt + ')'); return fn(); }
-  catch(e){ return null; }
-}
-
-async function connectCloud(cfg){
-  try{
-    await ensureFirebaseLoaded();
-    let app;
-    try{ app = firebase.app('miqyasApp'); }
-    catch(e){ app = firebase.initializeApp(cfg.firebaseConfig, 'miqyasApp'); }
-    const db = firebase.firestore(app);
-    cloudDoc = db.collection('miqyas_sync').doc(cfg.syncCode);
-    return true;
-  }catch(e){ console.error('firebase connect failed', e); cloudDoc = null; return false; }
-}
-
-function subscribeCloud(){
-  if(cloudUnsub){ cloudUnsub(); cloudUnsub = null; }
-  if(!cloudDoc) return;
-  cloudUnsub = cloudDoc.onSnapshot(snap=>{
-    if(!snap.exists) return;
-    const cloudState = snap.data();
-    if((cloudState.updatedAt||0) > (appState.updatedAt||0)){
-      appState = cloudState;
-      saveLocalOnly();
-      rebindFromAppState();
-      renderAll();
-      showToast('تم التحديث من جهاز ثاني 🔄');
-    }
-  }, err=> console.error('cloud listen error', err));
+function renderAll(){
+  renderViewedDayBanner();
+  renderViewedDayLabels();
+  renderRing();
+  renderStreak();
+  renderWeekProgress();
+  renderInsightCard();
+  renderWeeklyFoodSummary();
+  renderWeightCard();
+  renderWeightCalorieTrend();
+  renderWaterCard();
+  renderTodaySummary();
+  renderPastDaysStrip();
+  renderMealsToday();
+  renderFoodLibList();
 }
 
 /* ============================================================
-   DEFAULT LIBRARY
+   ACTIONS
    ============================================================ */
 
-function defaultFoods(){
-  const mk = (name,category,foodType,calories,protein,carbs,fat)=>({id:uid(),name,category,foodType,calories,protein,carbs,fat,fiber:0,sodium:0,favorite:false,usageCount:0});
-  // Order here is what a brand-new user sees first under "الكل" (favorite/
-  // usageCount are both 0 for everyone at first, so the list falls back to
-  // this insertion order). Mains/carbs/salads first, snacks & desserts last
-  // — so a first-time open doesn't read as "this app is mostly cheesecake".
-  return [
-    mk("كرات اللحم","غدا","protein",470.8,40,10,30),
-    mk("لحم شيلي","غدا","protein",456,48,10,24),
-    mk("لحم ستيك مع مشروم","غدا","protein",510,56,8,30),
-    mk("ستيك مع صوص الفلفل الأسود","غدا","protein",475.8,54,6,28),
-    mk("دجاج باربيكيو","غدا","protein",402.6,56,12,14),
-    mk("دجاج برياني","غدا","protein",368,48,10,16),
-    mk("دجاج تندوري","غدا","protein",573.4,60,12,34.8),
-    mk("دجاج مشوي","غدا","protein",374,60,4,14),
-    mk("دجاج ليمون","غدا","protein",368,56,8,12),
-    mk("دجاج كريسبي","غدا","protein",420,36,24,20),
-    mk("دجاج شيلي","غدا","protein",374,50,12,14),
-    mk("دجاج أبولو","غدا","protein",420,48,12,20),
-    mk("دجاج فاهيتا","غدا","protein",426,54,14,16),
-    mk("لحم بامية","غدا","protein",396,44,14,18.2),
-    mk("دجاج بيتزا","غدا","protein",420,48,16,18.2),
-    mk("دجاج بامية","غدا","protein",388,48,12,16.4),
-    mk("دجاج زعتر","غدا","protein",336,50,6,12.4),
-    mk("صالونة سمك هامور","غدا","protein",214,42,2,4.2),
-    mk("كفتة دجاج","غدا","protein",468,46,10,28),
-    mk("دجاج كبسة","غدا","protein",404,46,16,17.4),
-    mk("شيش طاووق","غدا","protein",442,56,8,20.2),
-    mk("لحم فاهيتا","غدا","protein",436,48,12,24.4),
-    mk("ستيك لحم بالصوص الأبيض","غدا","protein",532,54,8,34.2),
-    mk("روبيان بالزعفران","غدا","protein",214,40,4,4.2),
-    mk("دجاج مندي","غدا","protein",380,54,6,14),
-    mk("دجاج رانش","غدا","protein",368,52,8,14.2),
-    mk("دجاج سيشوان","غدا","protein",487,48,18,25.6),
-    mk("سلمون مشوي","غدا","protein",506,50,0,34),
-    mk("دجاج مع ملوخية","غدا","protein",394,50,12,16),
-    mk("دجاج زبده","غدا","protein",545,48,16,33),
-    mk("كباب دجاج","غدا","protein",374,52,6,16),
-    mk("دجاج بالكاري","غدا","protein",582.6,48,16,37.2),
-    mk("جمبري مشوي","غدا","protein",360,64,4,9.8),
-    mk("صالونة سمك فيليه","غدا","protein",274,46,4,9.2),
-    mk("روبيان مع صوص الليمون والشبت","غدا","protein",471.88,50,12,28.4),
-    mk("دجاج طحينية","غدا","protein",807.2,56,20,54.2),
-    mk("دجاج مسخن","غدا","protein",340,50,6,12.8),
-    mk("دجاج كريمة","غدا","protein",340,48,8,12.8),
-    mk("دجاج مسالا","غدا","protein",410,50,14,17.2),
-    mk("برسكت لحم","غدا","protein",396,44,14,18.2),
-    mk("دجاج زعفران","غدا","protein",420,48,16,18.2),
-    mk("كوفته دجاج صوص أبيض","غدا","protein",388,48,12,16.4),
-    mk("ستيك بارتبيلو","غدا","protein",336,50,6,12.4),
-    mk("دجاج تكا مسالا","غدا","protein",214,42,2,4.2),
-    mk("دجاج كانتون","غدا","protein",468,46,10,28),
-    mk("دجاج ماشروم","غدا","protein",404,46,16,17.4),
-    mk("بيكاتا تندوري","غدا","protein",442,56,8,20.2),
-    mk("أوشن فيليه","غدا","protein",436,48,12,24.4),
-    mk("تشكن إيطالينو","غدا","protein",532,54,8,34.2),
-    mk("دجاج برياني (٢)","غدا","protein",214,40,4,4.2),
-    mk("دجاج جوز الهند المشوي","غدا","protein",916,60,24,64.4),
-    mk("دجاج مقلوبة","غدا","protein",368,52,8,14.2),
-    mk("سلطة فتوش","غدا","salad",95,2,16,3),
-    mk("سلطة خضراء","غدا","salad",50,2,6,2),
-    mk("سلطة تبولة","غدا","salad",220,5,32,8),
-    mk("سلطة فواكه","غدا","salad",130,1.5,32,1),
-    mk("قطع فواكه مشكلة","غدا","salad",130,1.5,32,1),
-    mk("سلطة الذرة","غدا","salad",145,3.5,22,4),
-    mk("جرجير والرمان","غدا","salad",70,2,8,2.5),
-    mk("سلطة بالفاصوليا","غدا","salad",105,5,15,2.5),
-    mk("سلطة ستاندر","غدا","salad",45,1.5,5,1.5),
-    mk("سلطة شمندر","غدا","salad",60,2,12,0),
-    mk("سلطة السيزر","غدا","salad",110,7,9,5),
-    mk("سلطة يونانية","غدا","salad",110,4.5,7,7),
-    mk("سلطة جرجير","غدا","salad",35,1.5,4,1.5),
-    mk("مكرونة سباغتي","غدا","carb",310,11,62,2),
-    mk("مكرونة صوص أحمر","غدا","carb",300,10,56,4),
-    mk("مكرونة مكسيكي","غدا","carb",340,12,56,8),
-    mk("بيستو باستا","غدا","carb",440,14,54,18),
-    mk("بطاطس مشوية","غدا","carb",190,5,42,0.4),
-    mk("بطاطس مهروسة","غدا","carb",220,4,36,6),
-    mk("كشري","غدا","carb",320,10,62,4),
-    mk("ماك آند تشيز","غدا","carb",420,16,48,18),
-    mk("أرز أبيض","غدا","carb",260,5,56,0.6),
-    mk("أرز برياني","غدا","carb",320,6,60,6),
-    mk("أرز صيني","غدا","carb",340,8,60,8),
-    mk("أرز كبسة أحمر","غدا","carb",290,6,60,2),
-    mk("أرز زعفران","غدا","carb",300,6,62,4),
-    mk("أرز أمريكي","غدا","carb",260,5,56,0.6),
-    mk("أرز أمريكي أحمر","غدا","carb",280,6,58,2),
-    mk("رز مندي","غدا","carb",310,6,62,4),
-    mk("رز بخاري","غدا","carb",300,6,62,4),
-    mk("رز صيادية","غدا","carb",310,6,62,4),
-    mk("رز سبانخ","غدا","carb",290,6,58,4),
-    mk("مكرونة ألفريدو","غدا","carb",380,12,48,16),
+function bindEvents(){
+  document.querySelectorAll('.nav-btn').forEach(btn=>{
+    btn.addEventListener('click', ()=> switchTab(btn.getAttribute('data-tab')));
+  });
 
-    mk("تشيز كيك مانجو","سناك","snack",379.9,6,42,21),
-    mk("تشيز كيك شوكلت","سناك","snack",248.72,5,28,14),
-    mk("تشيز كيك توت أزرق","سناك","snack",266.6,5,30,15),
-    mk("بودنق رايس","سناك","snack",136.67,4,22,3),
-    mk("كنافة صحية","سناك","snack",318.54,7,38,15),
-    mk("عريكة صحية","سناك","snack",248,5,35,10),
-    mk("كيك ليمون","سناك","snack",167,3,26,5),
-    mk("كيك ريد فلفيت","سناك","snack",167,3,24,7),
-    mk("تشيز كيك توت","سناك","snack",298,6,32,16),
-    mk("كرات الطاقة","سناك","snack",190,5,18,10),
-    mk("كيك براوني","سناك","snack",120,2,16,5),
-    mk("كنافة رول","سناك","snack",113,2,14,5),
-    mk("سناك مكسرات","سناك","snack",130,4,8,10),
-    mk("كنافة كرانش","سناك","snack",125,3,15,6),
-    mk("بسبوسة صحية","سناك","snack",105,2,18,3),
-    mk("تشيز كيك فراولة","سناك","snack",379.9,6,40,22),
-    mk("كيك شوكلت","سناك","snack",167,3,24,7),
-  ];
+  const fab = document.getElementById('fab');
+  fab.addEventListener('click', ()=>{
+    if(document.getElementById('sheetQuick').classList.contains('show')) closeAllSheets();
+    else{ openSheet('sheetQuick'); fab.classList.add('rot'); }
+  });
+
+  overlay.addEventListener('click', closeAllSheets);
+  document.querySelectorAll('[data-close]').forEach(b=> b.addEventListener('click', closeAllSheets));
+
+  document.getElementById('qaFood').addEventListener('click', ()=>{
+    state.activeSheetFoodCat='الكل';
+    state.mealBuilderMode = false;
+    state.mealBuilderStep = 'protein';
+    state.mealBuilderPicks = {protein:null, carb:null};
+    document.getElementById('sheetFoodSearch').value='';
+    document.getElementById('mealBuilderToggle').classList.remove('on');
+    renderSheetFoodCatBar(); renderMealBuilderBar(); renderSheetFoodList();
+    openSheet('sheetFood');
+  });
+  document.getElementById('mealBuilderToggle').addEventListener('click', toggleMealBuilder);
+  document.getElementById('qaWeight').addEventListener('click', ()=>{
+    openBodyWeightSheet();
+  });
+  document.getElementById('qaAiScan').addEventListener('click', ()=>{
+    resetAiScanSheet();
+    openSheet('sheetAiScan');
+  });
+  document.getElementById('aiScanCameraBtn').addEventListener('click', ()=> document.getElementById('aiScanCameraInput').click());
+  document.getElementById('aiScanGalleryBtn').addEventListener('click', ()=> document.getElementById('aiScanGalleryInput').click());
+  document.getElementById('aiScanCameraInput').addEventListener('change', (e)=>{
+    const f = e.target.files[0]; e.target.value='';
+    if(f) handleAiScanFile(f);
+  });
+  document.getElementById('aiScanGalleryInput').addEventListener('change', (e)=>{
+    const f = e.target.files[0]; e.target.value='';
+    if(f) handleAiScanFile(f);
+  });
+  document.getElementById('btnSaveAiSettings').addEventListener('click', ()=>{
+    appState.aiProxyUrl = document.getElementById('aiProxyUrlInput').value.trim();
+    appState.aiProxySecret = document.getElementById('aiProxySecretInput').value.trim();
+    persist();
+    showToast('تم حفظ إعدادات الذكاء الاصطناعي ✅');
+  });
+  document.getElementById('btnSaveBodyWeight').addEventListener('click', ()=>{
+    const dateKey = bwEditDate || state.today;
+    const val = parseFloat(document.getElementById('bwInput').value);
+    if(!val || val<=0){ showToast('اكتب وزن صحيح أول'); return; }
+    appState.bodyWeights[dateKey] = Math.round(val*10)/10;
+    const bfVal = parseFloat(document.getElementById('bfInput').value);
+    if(bfVal && bfVal>0){
+      if(!appState.bodyFat) appState.bodyFat = {};
+      appState.bodyFat[dateKey] = Math.round(bfVal*10)/10;
+    }
+    const heightVal = parseFloat(document.getElementById('bwHeight').value);
+    appState.profile.heightCm = (heightVal && heightVal>0) ? Math.round(heightVal) : null;
+    const targetVal = parseFloat(document.getElementById('bwTarget').value);
+    appState.profile.targetWeightKg = (targetVal && targetVal>0) ? Math.round(targetVal*10)/10 : null;
+    persist();
+    renderWeightCard();
+    renderBodyWeightSheetBody();
+    renderBodyFatChart();
+    showToast(dateKey===state.today ? 'تم حفظ وزنك 💪' : 'تم تحديث وزن ذاك اليوم 💪');
+  });
+  document.getElementById('bwDateInput').addEventListener('change', (e)=>{
+    let dateKey = e.target.value;
+    if(!dateKey) return;
+    if(dateKey > state.today){ dateKey = state.today; e.target.value = state.today; }
+    loadBodyWeightFieldsForDate(dateKey);
+  });
+
+  document.getElementById('sheetFoodSearch').addEventListener('input', renderSheetFoodList);
+  document.getElementById('foodSearch').addEventListener('input', renderFoodLibList);
+  document.getElementById('btnReturnToday').addEventListener('click', returnToToday);
+
+  document.getElementById('btnAddCustomFood').addEventListener('click', ()=> { resetNewFoodSheet(); openSheet('sheetNewFood'); });
+  document.getElementById('btnAddCustomFood2').addEventListener('click', ()=> { resetNewFoodSheet(); openSheet('sheetNewFood'); });
+
+  document.getElementById('btnSaveNewFood').addEventListener('click', async ()=>{
+    const name = document.getElementById('nfName').value.trim();
+    const cat = document.getElementById('nfCat').value;
+    const cal = parseFloat(document.getElementById('nfCal').value)||0;
+    const p = parseFloat(document.getElementById('nfP').value)||0;
+    const c = parseFloat(document.getElementById('nfC').value)||0;
+    const f = parseFloat(document.getElementById('nfF').value)||0;
+    if(!name){ showToast('اكتب اسم الوجبة أول'); return; }
+
+    if(state.editingFoodId){
+      const food = state.library.foods.find(fd=>fd.id===state.editingFoodId);
+      if(food){
+        // fiber/sodium intentionally left untouched here — the fields were
+        // removed from this form, so whatever value the food already had
+        // (usually 0 from defaultFoods()) just carries forward as-is.
+        Object.assign(food, {name, category:cat, calories:cal, protein:p, carbs:c, fat:f});
+        persist();
+        showToast(`تم تحديث ${name} ✏️`);
+      }
+      resetNewFoodSheet();
+      closeAllSheets();
+      renderAll();
+      return;
+    }
+
+    const food = {id:uid(), name, category:cat, calories:cal, protein:p, carbs:c, fat:f, fiber:0, sodium:0, favorite:false, usageCount:0, isCustom:true};
+    state.library.foods.push(food);
+    resetNewFoodSheet();
+    await quickAddFood(food, null);
+    closeAllSheets();
+  });
+
+  /* ---------- Edit logged meal (quantity / delete) ---------- */
+  document.getElementById('editMealQtyChips').addEventListener('click', (e)=>{
+    const chip = e.target.closest('.filter-chip');
+    if(!chip) return;
+    document.getElementById('editMealQtyCustom').value = '';
+    setEditMealQty(parseFloat(chip.getAttribute('data-qty')));
+  });
+  document.getElementById('editMealQtyCustom').addEventListener('input', (e)=>{
+    const val = parseFloat(e.target.value);
+    if(val>0) setEditMealQty(val);
+  });
+  document.getElementById('btnSaveEditMeal').addEventListener('click', ()=> saveEditMealQty());
+  document.getElementById('btnDeleteEditMeal').addEventListener('click', ()=>{
+    if(!editMealId) return;
+    deleteMealEntry(editMealId);
+    closeAllSheets();
+  });
+
+  // Scoped to the static Settings accordion only — the food library's
+  // accordion headers are rendered dynamically and already bind their own
+  // click listener per-element inside renderFoodLibList() (food.js). Binding
+  // here too (unscoped) used to double-bind those headers on first load,
+  // causing each click to toggle .open on then back off in the same event.
+  document.querySelectorAll('#sheetSettings .acc-head').forEach(head=>{
+    head.addEventListener('click', (e)=>{
+      if(e.target.closest('.link')) return;
+      head.parentElement.classList.toggle('open');
+    });
+  });
+
+  document.getElementById('btnSettings').addEventListener('click', ()=>{
+    document.getElementById('goalCal').value = state.goals.calories;
+    document.getElementById('goalP').value = state.goals.protein;
+    document.getElementById('goalC').value = state.goals.carbs;
+    document.getElementById('goalF').value = state.goals.fat;
+    document.getElementById('goalWater').value = state.goals.water;
+    document.getElementById('aiProxyUrlInput').value = appState.aiProxyUrl || '';
+    document.getElementById('aiProxySecretInput').value = appState.aiProxySecret || '';
+    renderReminderSettings();
+    renderSyncStatus();
+    renderThemeButtons();
+    renderHealthConnectStatus();
+    healthConnectRefreshStatus().then(renderHealthConnectStatus);
+    const syncItem = document.querySelector('.acc-item[data-acc="sync"]');
+    if(syncItem) syncItem.classList.toggle('open', !!getSyncConfig());
+
+    openSheet('sheetSettings');
+  });
+  document.getElementById('btnSaveGoals').addEventListener('click', ()=>{
+    state.goals = {
+      calories: parseInt(document.getElementById('goalCal').value,10) || defaultGoals().calories,
+      protein: parseInt(document.getElementById('goalP').value,10) || defaultGoals().protein,
+      carbs: parseInt(document.getElementById('goalC').value,10) || defaultGoals().carbs,
+      fat: parseInt(document.getElementById('goalF').value,10) || defaultGoals().fat,
+      water: parseInt(document.getElementById('goalWater').value,10) || defaultGoals().water,
+      // No longer user-editable (fields removed from Settings) — keep
+      // whatever was already set so old data/goals reports don't break.
+      fiber: state.goals.fiber,
+      sodium: state.goals.sodium,
+    };
+    appState.goals = state.goals;
+    persist();
+    showToast('تم تحديث الأهداف');
+    closeAllSheets();
+    renderAll();
+  });
+
+  /* ---------- Reminders ---------- */
+  document.getElementById('reminderMealToggle').addEventListener('change', ()=> updateReminderFieldStates());
+  document.getElementById('reminderWaterToggle').addEventListener('change', ()=> updateReminderFieldStates());
+  document.getElementById('btnSaveReminders').addEventListener('click', async ()=>{
+    const mealEnabled = document.getElementById('reminderMealToggle').checked;
+    const waterEnabled = document.getElementById('reminderWaterToggle').checked;
+
+    if((mealEnabled || waterEnabled) && remindersAvailable()){
+      const granted = await hasReminderPermission();
+      if(!granted){
+        const res = await requestReminderPermission();
+        if(!res.ok){
+          showToast('لازم توافق على صلاحية الإشعارات عشان تفعّل التذكيرات');
+          return;
+        }
+      }
+    }
+
+    appState.reminders = {
+      mealEnabled,
+      mealTime: document.getElementById('reminderMealTime').value || '20:00',
+      waterEnabled,
+      waterStart: document.getElementById('reminderWaterStart').value || '09:00',
+      waterEnd: document.getElementById('reminderWaterEnd').value || '21:00',
+      waterIntervalHours: parseInt(document.getElementById('reminderWaterInterval').value,10) || 2,
+    };
+    persist();
+    applyReminderSettings();
+    showToast('تم حفظ التذكيرات 🔔');
+  });
+
+  /* ---------- Theme ---------- */
+  document.getElementById('themeDarkBtn').addEventListener('click', ()=>{ if(appState.theme!=='dark') toggleTheme(); renderThemeButtons(); });
+  document.getElementById('themeLightBtn').addEventListener('click', ()=>{ if(appState.theme!=='light') toggleTheme(); renderThemeButtons(); });
+
+  /* ---------- Water tracker ---------- */
+  document.querySelectorAll('[data-water]').forEach(btn=>{
+    btn.addEventListener('click', ()=> addWater(parseInt(btn.getAttribute('data-water'),10)));
+  });
+  document.getElementById('btnAddCustomWater').addEventListener('click', ()=>{
+    const input = document.getElementById('waterCustomInput');
+    const val = parseInt(input.value,10);
+    if(!val || val<=0){ showToast('اكتب كمية صحيحة بالمل'); return; }
+    addWater(val);
+    input.value = '';
+  });
+
+  /* ---------- Smart goal calculator (opens onboarding flow) ---------- */
+  document.getElementById('btnOpenSmartGoals').addEventListener('click', ()=> startOnboarding(true));
+
+  /* ---------- Backup export / import ---------- */
+  document.getElementById('btnExportData').addEventListener('click', ()=> exportDataFile());
+  document.getElementById('btnImportData').addEventListener('click', ()=> document.getElementById('importFileInput').click());
+
+  document.getElementById('btnHealthConnectConnect').addEventListener('click', async ()=>{
+    const btn = document.getElementById('btnHealthConnectConnect');
+    const oldLabel = btn.textContent;
+    btn.textContent = 'جارٍ الربط...';
+    const res = await healthConnectRequestAccess();
+    btn.textContent = oldLabel;
+    renderHealthConnectStatus();
+    if(res.ok){
+      showToast('تم الربط مع Health Connect ✅');
+      return;
+    }
+    const msgs = {
+      'not-native': 'هذي الميزة تشتغل بس بالتطبيق المثبّت على جوالك، مو بالمتصفح',
+      'not-installed': 'ثبّت تطبيق Health Connect من متجر Play أول',
+      'needs-update': 'حدّث تطبيق Health Connect من متجر Play',
+      'denied': 'ما وافقت على الصلاحيات — تقدر تجرب مرة ثانية من هنا',
+      'error': 'صار خطأ: ' + (res.message||'غير معروف')
+    };
+    showToast(msgs[res.reason] || 'ما قدرنا نربط الحين، جرب مرة ثانية');
+  });
+  document.getElementById('importFileInput').addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(file) importDataFile(file, ()=>{ e.target.value=''; closeAllSheets(); });
+  });
+
+  /* ---------- Share card ---------- */
+  document.getElementById('btnOpenShareCard').addEventListener('click', ()=>{
+    openSheet('sheetShareCard');
+    setTimeout(drawShareCard, 50);
+  });
+  document.getElementById('btnDownloadShareCard').addEventListener('click', ()=>{
+    const canvas = document.getElementById('shareCanvas');
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = `miqyas-week-${state.today}.png`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  });
+
+  /* ---------- Nutrition report (for a doctor / dietitian) ---------- */
+  document.getElementById('btnOpenReport').addEventListener('click', ()=>{
+    document.querySelectorAll('#reportPeriodBar .filter-chip').forEach(c=> c.classList.toggle('active', c.getAttribute('data-period')==='30'));
+    openSheet('sheetReport');
+    setTimeout(()=> renderReportPreview(30), 50);
+  });
+  document.getElementById('reportPeriodBar').addEventListener('click', (e)=>{
+    const chip = e.target.closest('.filter-chip');
+    if(!chip) return;
+    document.querySelectorAll('#reportPeriodBar .filter-chip').forEach(c=> c.classList.remove('active'));
+    chip.classList.add('active');
+    renderReportPreview(parseInt(chip.getAttribute('data-period'),10));
+  });
+  document.getElementById('btnDownloadReport').addEventListener('click', ()=>{
+    const canvas = document.getElementById('reportCanvas');
+    const a = document.createElement('a');
+    a.href = canvas.toDataURL('image/png');
+    a.download = `miqyas-report-${reportPeriod}d-${state.today}.png`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a);
+  });
+
+  /* ---------- Meal templates ---------- */
+  document.getElementById('btnOpenTemplates').addEventListener('click', ()=>{
+    renderTemplateList();
+    openSheet('sheetMealTemplates');
+  });
+  document.getElementById('btnSaveTodayAsTemplate').addEventListener('click', ()=> saveTodayAsTemplate());
+
+  /* ---------- Recipe builder ---------- */
+  document.getElementById('btnOpenRecipeBuilder').addEventListener('click', ()=>{
+    recipeSelectedIds = [];
+    document.getElementById('recipeSearch').value = '';
+    renderRecipePickList();
+    renderRecipeTotals();
+    openSheet('sheetRecipeBuilder');
+  });
+  document.getElementById('recipeSearch').addEventListener('input', renderRecipePickList);
+  document.getElementById('btnSaveRecipe').addEventListener('click', ()=> saveRecipe());
+
+  /* ---------- Body measurements ---------- */
+  document.getElementById('btnSaveMeasurements').addEventListener('click', ()=> saveMeasurements());
+
+  /* ---------- Onboarding ---------- */
+  bindOnboardingEvents();
 }
 
-function defaultGoals(){ return {calories:2200, protein:150, carbs:220, fat:70, water:2500, fiber:30, sodium:2300}; }
+/* ============================================================
+   REMINDER SETTINGS
+   ============================================================ */
+function renderReminderSettings(){
+  const r = (appState.reminders) || {};
+  document.getElementById('reminderMealToggle').checked = !!r.mealEnabled;
+  document.getElementById('reminderMealTime').value = r.mealTime || '20:00';
+  document.getElementById('reminderWaterToggle').checked = !!r.waterEnabled;
+  document.getElementById('reminderWaterStart').value = r.waterStart || '09:00';
+  document.getElementById('reminderWaterEnd').value = r.waterEnd || '21:00';
+  document.getElementById('reminderWaterInterval').value = String(r.waterIntervalHours || 2);
 
-const state = {
-  library: {foods:[]},
-  goals: defaultGoals(),
-  today: '',
-  log: {meals:[]},
-  streak: 0,
-  streakDays: [],
-  weekLoggedDays: 0,
-  activeSheetFoodCat: 'الكل',
-  mealBuilderMode: false,
-  mealBuilderStep: 'protein',
-  mealBuilderPicks: {protein:null, carb:null},
-  // set to a food id while editing an existing custom food, null when adding new
-  editingFoodId: null,
-  // date key (YYYY-MM-DD) the app is currently "viewing" — equals `today` normally,
-  // but switches to a past/future day when picked from the home days strip, so the
-  // whole app (ring, macros, water, meal list, food tab) behaves as if that day is today
-  viewDate: '',
-};
+  const hint = document.getElementById('reminderNativeHint');
+  hint.style.display = remindersAvailable() ? 'none' : 'block';
 
-function todayKey(d){
-  const dt = d || new Date();
-  const y = dt.getFullYear(), m = String(dt.getMonth()+1).padStart(2,'0'), day = String(dt.getDate()).padStart(2,'0');
-  return `${y}-${m}-${day}`;
+  updateReminderFieldStates();
 }
 
-function dateKeyOffset(offsetDays){
-  const d = new Date();
-  d.setDate(d.getDate()-offsetDays);
-  return todayKey(d);
+function updateReminderFieldStates(){
+  const mealOn = document.getElementById('reminderMealToggle').checked;
+  const waterOn = document.getElementById('reminderWaterToggle').checked;
+  document.getElementById('reminderMealTimeField').classList.toggle('disabled', !mealOn);
+  document.getElementById('reminderWaterFields').classList.toggle('disabled', !waterOn);
 }
 
-const WEEKDAYS = ['الأحد','الاثنين','الثلاثاء','الأربعاء','الخميس','الجمعة','السبت'];
+/* ============================================================
+   THEME BUTTONS
+   ============================================================ */
+function renderThemeButtons(){
+  document.getElementById('themeDarkBtn').classList.toggle('active', appState.theme!=='light');
+  document.getElementById('themeLightBtn').classList.toggle('active', appState.theme==='light');
+}
 
-// Short weekday labels for compact UI (e.g. the home days-strip pills), indexed
-// the same as Date#getDay() (0 = Sunday).
-const DAY_LABELS = ['أحد','اثنين','ثلاثاء','أربعاء','خميس','جمعة','سبت'];
+/* ============================================================
+   SHARE CARD (canvas)
+   ============================================================ */
+// Reuses the report card's helpers (drawReportSectionTitle/drawReportStatBox
+// and the REPORT_* colors, defined in progress.js which loads before this
+// file) instead of a separate flat/fixed-height design, so both exportable
+// images look like one system and this one picked up the same fix for the
+// dead blank space a fixed canvas height used to leave below short content.
+function drawShareCard(){
+  const canvas = document.getElementById('shareCanvas');
+  const ctx = canvas.getContext('2d');
+  const W = 600, M = 30, CW = W - M*2;
 
-const MONTHS = ['يناير','فبراير','مارس','أبريل','مايو','يونيو','يوليو','أغسطس','سبتمبر','أكتوبر','نوفمبر','ديسمبر'];
-
-function formatDateHuman(d){ return `${WEEKDAYS[d.getDay()]}، ${d.getDate()} ${MONTHS[d.getMonth()]}`; }
-
-function computeStreak(){
-  // Streak + week progress are based on logging consistency: a day "counts"
-  // if at least one meal was logged that day (matches real "today", not
-  // whatever day the home-strip might currently be viewing).
-  const days = [];
-  let loggedThisWeek = 0;
-  for(let i=6;i>=0;i--){
+  let totalCal=0, totalProtein=0, mealDays=0, waterDays=0, adherentDays=0;
+  for(let i=0;i<=6;i++){
     const key = dateKeyOffset(i);
     const dayLog = appState.logs[key] || {meals:[]};
-    const logged = !!(dayLog.meals && dayLog.meals.length>0);
-    days.push(logged);
-    if(logged) loggedThisWeek++;
-  }
-  state.streakDays = days;
-  state.weekLoggedDays = loggedThisWeek;
-  let streak = 0;
-  for(let i=days.length-1;i>=0;i--){ if(days[i]) streak++; else break; }
-  state.streak = streak;
-}
-
-/* ============================================================
-   RENDER: HOME
-   ============================================================ */
-
-const FOOD_CATS = ['الكل','فطور','غدا','عشا','سناك'];
-
-// Shared meal-category → color mapping, used everywhere a meal's category
-// needs a visual accent (calorie-distribution chart, meal-list row dots).
-const MEAL_CAT_COLORS = {'فطور':'var(--fat)','غدا':'var(--protein)','عشا':'var(--carb)','سناك':'var(--shoulder)'};
-
-// Shared inline-icon set (24px viewBox, stroke=currentColor to inherit
-// whatever color the surrounding element sets) — used anywhere small action
-// icons are built as HTML strings instead of static markup in index.html,
-// so row actions (delete/edit/favorite), insight badges and status icons
-// all come from the same line-icon system instead of mixing in raw emoji
-// (emoji render inconsistently across Android OEM keyboards/fonts).
-const ICON_X = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg>';
-const ICON_PENCIL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 20l1-4L16 5l3 3L8 19z"></path><line x1="14" y1="7" x2="17" y2="10"></line></svg>';
-const ICON_TRASH = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 20 7"></polyline><path d="M9 7V4h6v3"></path><path d="M6 7l1 13a2 2 0 0 0 2 2h6a2 2 0 0 0 2-2l1-13"></path><line x1="10" y1="11" x2="10" y2="17"></line><line x1="14" y1="11" x2="14" y2="17"></line></svg>';
-const ICON_STAR_OUTLINE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2.5 15.1 9 22 9.7 16.8 14.3 18.5 21.5 12 17.6 5.5 21.5 7.2 14.3 2 9.7 8.9 9"></polygon></svg>';
-const ICON_STAR_FILLED = '<svg viewBox="0 0 24 24" fill="currentColor" stroke="currentColor" stroke-width="1.5" stroke-linejoin="round"><polygon points="12 2.5 15.1 9 22 9.7 16.8 14.3 18.5 21.5 12 17.6 5.5 21.5 7.2 14.3 2 9.7 8.9 9"></polygon></svg>';
-const ICON_TREND_UP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 17 10 10 14 14 21 7"></polyline><polyline points="15 7 21 7 21 13"></polyline></svg>';
-const ICON_TREND_DOWN = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 7 10 14 14 10 21 17"></polyline><polyline points="21 10 21 17 14 17"></polyline></svg>';
-const ICON_TARGET = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"></circle><circle cx="12" cy="12" r="5"></circle><circle cx="12" cy="12" r="1" fill="currentColor" stroke="none"></circle></svg>';
-const ICON_BAR_CHART = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="12"></line><line x1="12" y1="20" x2="12" y2="7"></line><line x1="18" y1="20" x2="18" y2="15"></line><line x1="3" y1="20" x2="21" y2="20"></line></svg>';
-const ICON_CALENDAR = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="5" width="18" height="16" rx="2"></rect><line x1="3" y1="10" x2="21" y2="10"></line><line x1="8" y1="3" x2="8" y2="7"></line><line x1="16" y1="3" x2="16" y2="7"></line></svg>';
-const ICON_MEAL = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8"></circle><circle cx="12" cy="12" r="3"></circle></svg>';
-const ICON_SCALE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="3" x2="12" y2="21"></line><line x1="5" y1="7" x2="19" y2="7"></line><path d="M5 7l-3 6a3 3 0 0 0 6 0z"></path><path d="M19 7l-3 6a3 3 0 0 0 6 0z"></path></svg>';
-const ICON_CHECK_CIRCLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><polyline points="8 12.5 11 15.5 16 9.5"></polyline></svg>';
-const ICON_X_CIRCLE = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><line x1="9" y1="9" x2="15" y2="15"></line><line x1="15" y1="9" x2="9" y2="15"></line></svg>';
-const ICON_SYNC = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M18 10h-1.26A8 8 0 1 0 9 20h9a5 5 0 0 0 0-10z"></path></svg>';
-
-// Small hand-drawn line-art illustrations for empty states, matching the
-// stroke weight/style of the section-title icons used throughout the app
-// (24px viewBox originals scaled up here) — used instead of emoji so empty
-// states feel like part of the same design system.
-const EMPTY_ILLOS = {
-  meal: '<svg class="empty-illo" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="32" cy="36" r="17"></circle><path d="M24 36a8 8 0 0 1 16 0"></path><line x1="17" y1="15" x2="22" y2="21"></line><line x1="47" y1="15" x2="42" y2="21"></line><line x1="32" y1="12" x2="32" y2="19"></line></svg>',
-  search: '<svg class="empty-illo" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="27" cy="27" r="15"></circle><line x1="38" y1="38" x2="51" y2="51"></line></svg>',
-  list: '<svg class="empty-illo" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="15" y="10" width="34" height="44" rx="4"></rect><line x1="22" y1="23" x2="42" y2="23"></line><line x1="22" y1="33" x2="42" y2="33"></line><line x1="22" y1="43" x2="34" y2="43"></line></svg>',
-  chart: '<svg class="empty-illo" viewBox="0 0 64 64" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="13" y1="51" x2="13" y2="13"></line><line x1="13" y1="51" x2="51" y2="51"></line><path d="M19 43l9-11 8 7 13-17"></path></svg>'
-};
-function emptyStateHtml(kind, text){
-  const icon = EMPTY_ILLOS[kind] || EMPTY_ILLOS.list;
-  return `<div class="empty-state">${icon}<div class="empty-state-text">${text}</div></div>`;
-}
-
-// Animates a number-bearing element's text from its current displayed value
-// to `target` over a short duration, instead of snapping instantly — used
-// for logged numbers that change (calories remaining, switching viewed day).
-function animateCount(el, target, opts){
-  if(!el) return;
-  opts = opts || {};
-  const duration = opts.duration || 500;
-  const suffix = opts.suffix || '';
-  const formatter = opts.formatter || (n => Math.round(n).toLocaleString('en-US'));
-  const prevRaw = el.dataset.countRaw;
-  const startVal = prevRaw!=null ? parseFloat(prevRaw) : target;
-  el.dataset.countRaw = String(target);
-  if(!isFinite(startVal) || startVal===target){ el.textContent = formatter(target)+suffix; return; }
-  const startTime = performance.now();
-  function tick(now){
-    const t = Math.min((now-startTime)/duration, 1);
-    const eased = 1 - Math.pow(1-t, 3);
-    const val = startVal + (target-startVal)*eased;
-    el.textContent = formatter(val)+suffix;
-    if(t<1) requestAnimationFrame(tick);
-  }
-  requestAnimationFrame(tick);
-}
-
-// Centered moving average (window clamped at the array edges) — used to
-// overlay a smoothed trend line on top of raw day-to-day values, which
-// otherwise zigzag from ordinary water-weight/measurement noise and can
-// make an actually-steady trend look erratic at a glance.
-function movingAverage(values, window){
-  const half = Math.floor(window/2);
-  return values.map((_,i)=>{
-    const lo = Math.max(0, i-half), hi = Math.min(values.length-1, i+half);
-    const slice = values.slice(lo, hi+1);
-    return slice.reduce((s,v)=>s+v,0)/slice.length;
-  });
-}
-
-function buildChartSvg(points){
-  const w = 300, h = 140, pad = 18;
-  if(points.length===0) return emptyStateHtml('chart', 'ما فيه سجل كافي لرسم منحنى بعد');
-  if(points.length===1){
-    return emptyStateHtml('chart', `سجّل مرة ثانية عشان يظهر منحنى التقدم (آخر وزن: ${points[0].weight} كغ)`);
-  }
-  const weights = points.map(p=>p.weight);
-  const min = Math.min(...weights), max = Math.max(...weights);
-  const range = (max-min) || 1;
-  const stepX = (w-pad*2) / (points.length-1);
-  const yFor = v => h - pad - ((v-min)/range) * (h-pad*2);
-  const coords = weights.map((v,i)=> [pad + i*stepX, yFor(v)]);
-  const pathD = coords.map((c,i)=> (i===0?'M':'L')+c[0].toFixed(1)+','+c[1].toFixed(1)).join(' ');
-
-  // With enough points, the raw line becomes a thin, muted backdrop (data
-  // stays visible, nothing is hidden) and a bold smoothed line on top
-  // carries the actual trend — with too few points a moving average isn't
-  // meaningfully different from the raw line, so skip it below 5.
-  const smoothEnabled = points.length>=5;
-  let smoothPathD = '';
-  if(smoothEnabled){
-    const smoothed = movingAverage(weights, Math.min(5, points.length));
-    const sCoords = smoothed.map((v,i)=> [pad + i*stepX, yFor(v)]);
-    smoothPathD = sCoords.map((c,i)=> (i===0?'M':'L')+c[0].toFixed(1)+','+c[1].toFixed(1)).join(' ');
-  }
-
-  const dots = coords.map((c,i)=> `<circle cx="${c[0].toFixed(1)}" cy="${c[1].toFixed(1)}" r="${smoothEnabled?2.5:3.5}" fill="var(--accent)" ${smoothEnabled?'opacity=".55"':''}/>`).join('');
-  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="140">
-    <path d="${pathD}" fill="none" stroke="var(--accent)" stroke-width="${smoothEnabled?1.5:2.5}" stroke-linecap="round" stroke-linejoin="round" opacity="${smoothEnabled?'.4':'1'}"/>
-    ${dots}
-    ${smoothEnabled ? `<path d="${smoothPathD}" fill="none" stroke="var(--accent)" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"/>` : ''}
-  </svg>`;
-}
-
-// Two independently-normalized line series on one chart — e.g. weight vs.
-// average calories, plotted together so trends line up even though the
-// two live on totally different scales (kg vs kcal). Points with value:null
-// break the line for that gap instead of connecting across missing data.
-function buildDualChartSvg(pointsA, pointsB, opts){
-  opts = opts || {};
-  const colorA = opts.colorA || 'var(--shoulder)';
-  const colorB = opts.colorB || 'var(--protein)';
-  const labelA = opts.labelA || '';
-  const labelB = opts.labelB || '';
-  const w = 300, h = 140, pad = 18;
-  const validA = pointsA.filter(p=>p.value!=null);
-  const validB = pointsB.filter(p=>p.value!=null);
-  if(validA.length<2 || validB.length<2){
-    return emptyStateHtml('chart', 'سجّل وزنك وأكلك لأسبوعين متتاليين على الأقل عشان يبين المنحنى');
-  }
-  const n = Math.max(pointsA.length, pointsB.length);
-  const stepX = n>1 ? (w-pad*2)/(n-1) : 0;
-  function pathFor(points){
-    const vals = points.map(p=>p.value).filter(v=>v!=null);
-    if(vals.length<2) return '';
-    const min = Math.min(...vals), max = Math.max(...vals);
-    const range = (max-min) || 1;
-    let d = '', started = false;
-    points.forEach((p,i)=>{
-      const x = pad + i*stepX;
-      if(p.value==null){ started = false; return; }
-      const y = h - pad - ((p.value-min)/range) * (h-pad*2);
-      d += (started ? 'L' : 'M') + x.toFixed(1) + ',' + y.toFixed(1) + ' ';
-      started = true;
-    });
-    return d.trim();
-  }
-  const dA = pathFor(pointsA);
-  const dB = pathFor(pointsB);
-  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="140">
-    ${dA ? `<path d="${dA}" fill="none" stroke="${colorA}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/>` : ''}
-    ${dB ? `<path d="${dB}" fill="none" stroke="${colorB}" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" stroke-dasharray="5,4"/>` : ''}
-  </svg>
-  <div class="chart-legend">
-    <span class="chart-legend-item"><span class="chart-legend-dot" style="background:${colorA}"></span>${escapeHtml(labelA)}</span>
-    <span class="chart-legend-item"><span class="chart-legend-dot" style="background:${colorB}"></span>${escapeHtml(labelB)}</span>
-  </div>`;
-}
-
-function showToast(msg){
-  const t = document.getElementById('toast');
-  document.getElementById('toastMsg').textContent = msg;
-  t.classList.add('show');
-  clearTimeout(showToast._tm);
-  showToast._tm = setTimeout(()=>t.classList.remove('show'), 1800);
-}
-
-function escapeHtml(s){
-  return String(s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-}
-
-/* ============================================================
-   HAPTICS
-   ============================================================ */
-function vibrate(pattern){
-  try{ if(navigator.vibrate) navigator.vibrate(pattern); }catch(e){}
-}
-
-/* ============================================================
-   THEME (dark / light)
-   ============================================================ */
-function applyTheme(theme){
-  document.documentElement.setAttribute('data-theme', theme==='light' ? 'light' : 'dark');
-}
-function toggleTheme(){
-  appState.theme = appState.theme==='light' ? 'dark' : 'light';
-  applyTheme(appState.theme);
-  persist();
-}
-
-/* ============================================================
-   NUTRITION / TRAINING FORMULAS
-   ============================================================ */
-// Mifflin-St Jeor: estimates daily calorie needs from body stats + activity.
-function calcSmartGoals({sex, age, heightCm, weightKg, activity, goal}){
-  let bmr;
-  if(sex==='female') bmr = 10*weightKg + 6.25*heightCm - 5*age - 161;
-  else bmr = 10*weightKg + 6.25*heightCm - 5*age + 5;
-  const activityFactors = {low:1.2, medium:1.55, high:1.725};
-  let tdee = bmr * (activityFactors[activity] || 1.375);
-  if(goal==='lose') tdee -= 400;
-  else if(goal==='gain') tdee += 350;
-  const calories = Math.round(tdee/10)*10;
-  const protein = Math.round(weightKg*1.9);
-  const fat = Math.round((calories*0.27)/9);
-  const carbs = Math.round((calories - protein*4 - fat*9)/4);
-  return {calories, protein, carbs:Math.max(carbs,50), fat};
-}
-/* ============================================================
-   EXPORT / IMPORT BACKUP
-   ============================================================ */
-function exportDataFile(){
-  const blob = new Blob([JSON.stringify(appState, null, 2)], {type:'application/json'});
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
-  a.href = url; a.download = `miqyas-backup-${state.today}.json`;
-  document.body.appendChild(a); a.click(); document.body.removeChild(a);
-  URL.revokeObjectURL(url);
-}
-function importDataFile(file, onDone){
-  const reader = new FileReader();
-  reader.onload = ()=>{
-    try{
-      const parsed = JSON.parse(reader.result);
-      if(!parsed.library || !parsed.logs){ showToast('الملف مو نسخة احتياطية صحيحة'); return; }
-      appState = parsed;
-      appState.updatedAt = Date.now();
-      saveLocalOnly();
-      rebindFromAppState();
-      computeStreak();
-      renderAll();
-      showToast('تم استرجاع النسخة الاحتياطية 🎉');
-      if(onDone) onDone();
-    }catch(e){ showToast('فشل قراءة الملف، تأكد إنه JSON صحيح'); }
-  };
-  reader.readAsText(file);
-}
-
-/* ============================================================
-   UNDO TOAST
-   ============================================================ */
-function showUndoToast(msg, restoreFn){
-  const t = document.getElementById('toast');
-  const msgEl = document.getElementById('toastMsg');
-  msgEl.innerHTML = escapeHtml(msg) + ' <span id="toastUndoBtn" style="color:var(--accent-2); font-weight:800; cursor:pointer; margin-inline-start:8px;">تراجع</span>';
-  t.classList.add('show');
-  clearTimeout(showToast._tm);
-  let undone = false;
-  document.getElementById('toastUndoBtn').addEventListener('click', ()=>{
-    if(undone) return;
-    undone = true;
-    restoreFn();
-    t.classList.remove('show');
-  });
-  showToast._tm = setTimeout(()=>{ t.classList.remove('show'); }, 5000);
-}
-
-/* ============================================================
-   SWIPE TO DELETE
-   ============================================================ */
-function attachSwipeToDelete(rowEl, onConfirmDelete){
-  let startX = 0, curX = 0, dragging = false;
-  const threshold = 70;
-  function onStart(x){ startX = x; curX = x; dragging = true; rowEl.style.transition = 'none'; }
-  function onMove(x){
-    if(!dragging) return;
-    curX = x;
-    const dx = curX - startX;
-    rowEl.style.transform = `translateX(${dx}px)`;
-    rowEl.style.opacity = String(1 - Math.min(Math.abs(dx)/220, 0.5));
-  }
-  function onEnd(){
-    if(!dragging) return;
-    dragging = false;
-    rowEl.style.transition = 'transform .2s ease, opacity .2s ease';
-    const dx = curX - startX;
-    if(Math.abs(dx) > threshold){
-      rowEl.style.transform = `translateX(${dx>0?260:-260}px)`;
-      rowEl.style.opacity = '0';
-      setTimeout(()=> onConfirmDelete(), 180);
-    } else {
-      rowEl.style.transform = 'translateX(0)';
-      rowEl.style.opacity = '1';
+    const meals = dayLog.meals || [];
+    if(meals.length>0){
+      mealDays++;
+      const dCal = meals.reduce((s,m)=>s+m.calories,0);
+      totalCal += dCal;
+      totalProtein += meals.reduce((s,m)=>s+m.protein,0);
+      if(Math.abs(dCal-state.goals.calories) <= state.goals.calories*0.15) adherentDays++;
     }
+    if((dayLog.waterMl||0) > 0) waterDays++;
   }
-  rowEl.addEventListener('touchstart', e=> onStart(e.touches[0].clientX), {passive:true});
-  rowEl.addEventListener('touchmove', e=> onMove(e.touches[0].clientX), {passive:true});
-  rowEl.addEventListener('touchend', onEnd);
+  const avgCal = mealDays ? Math.round(totalCal/mealDays) : 0;
+  const avgProtein = mealDays ? Math.round(totalProtein/mealDays) : 0;
+  const adherencePct = mealDays ? Math.round((adherentDays/mealDays)*100) : 0;
+
+  const HEADER_H = 132, TOP_PAD = 28, STAT_BOX_H = 92, GAP_X = 16, GAP_Y = 14, SECTION_GAP = 30, FOOTER_H = 64;
+  const gridH = 3*STAT_BOX_H + 2*GAP_Y;
+  const totalH = HEADER_H + TOP_PAD + 24 + gridH + SECTION_GAP + FOOTER_H;
+
+  canvas.width = W;
+  canvas.height = Math.round(totalH);
+  const w = canvas.width, h = canvas.height;
+  ctx.direction = 'rtl';
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0,0,w,h);
+
+  const headGrad = ctx.createLinearGradient(0,0,w,0);
+  headGrad.addColorStop(0, REPORT_TEAL_DARK);
+  headGrad.addColorStop(1, REPORT_TEAL);
+  ctx.fillStyle = headGrad;
+  ctx.fillRect(0,0,w,HEADER_H);
+
+  const lx = w/2, ly = 34;
+  ctx.fillStyle = 'rgba(255,255,255,.92)';
+  [[-18,14,8],[0,20,8],[18,26,8]].forEach(([dx,bh,bw])=>{
+    roundRect(ctx, lx+dx-bw/2, ly+26-bh, bw, bh, 3);
+    ctx.fill();
+  });
+
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '900 27px Arial';
+  ctx.fillText('ملخص الأسبوع', w/2, 92);
+  ctx.font = '600 13px Arial';
+  ctx.fillStyle = 'rgba(255,255,255,.85)';
+  ctx.fillText(`مِقياس · ${formatDateHuman(new Date())}`, w/2, 114);
+
+  let y = HEADER_H + TOP_PAD;
+  drawReportSectionTitle(ctx, 'إنجازك هالأسبوع', w-M, y, REPORT_TEAL);
+  y += 24;
+
+  const stats = [
+    [`${mealDays}/7`, 'أيام سجّلت فيها', REPORT_TEAL, '🗓️'],
+    [`${state.streak}`, 'سلسلة الأيام', REPORT_BLUE, '⚡'],
+    [avgCal.toLocaleString('en-US'), 'متوسط السعرات', REPORT_PROTEIN, '🔥'],
+    [`${avgProtein} غ`, 'متوسط البروتين', REPORT_PROTEIN, '🍗'],
+    [`${waterDays}/7`, 'أيام شربت فيها ماء', REPORT_BLUE, '💧'],
+    [`${adherencePct}٪`, 'التزام بهدف السعرات', REPORT_FAT, '🎯'],
+  ];
+  const boxW = (CW-GAP_X)/2;
+  stats.forEach((s,i)=>{
+    const col = i%2, row = Math.floor(i/2);
+    const x = M + col*(boxW+GAP_X);
+    const by = y + row*(STAT_BOX_H+GAP_Y);
+    drawReportStatBox(ctx, x, by, boxW, STAT_BOX_H, s[0], s[1], s[2], s[3]);
+  });
+  y += gridH + SECTION_GAP;
+
+  ctx.strokeStyle = REPORT_LINE; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(M,y); ctx.lineTo(w-M,y); ctx.stroke();
+  y += 30;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = REPORT_TEAL;
+  ctx.font = '700 13px Arial';
+  ctx.fillText('صُنع بتطبيق مِقياس', w/2, y);
+
+  return canvas;
+}
+function roundRect(ctx,x,y,width,height,radius){
+  ctx.beginPath();
+  ctx.moveTo(x+radius,y);
+  ctx.arcTo(x+width,y,x+width,y+height,radius);
+  ctx.arcTo(x+width,y+height,x,y+height,radius);
+  ctx.arcTo(x,y+height,x,y,radius);
+  ctx.arcTo(x,y,x+width,y,radius);
+  ctx.closePath();
 }
 
 /* ============================================================
-   SHEETS CONTROL
+   ONBOARDING FLOW
    ============================================================ */
+let obCurrentStep = 1;
+let obSelectedGoal = null;
 
-const overlay = document.getElementById('overlay');
-
-const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetEditMeal','sheetAiScan','sheetSettings','sheetBodyWeight','sheetOnboarding','sheetRecipeBuilder','sheetMealTemplates','sheetShareCard','sheetReport'];
-
-function openSheet(id){
-  closeAllSheets();
-  overlay.classList.add('show');
-  document.getElementById(id).classList.add('show');
+function startOnboarding(fromSettings){
+  obCurrentStep = 1;
+  obSelectedGoal = null;
+  document.querySelectorAll('.ob-choice').forEach(c=>c.classList.remove('active'));
+  renderOnboardingStep();
+  openSheet('sheetOnboarding');
+}
+function renderOnboardingStep(){
+  document.querySelectorAll('.ob-step').forEach(s=>s.classList.remove('active'));
+  document.getElementById('obStep'+obCurrentStep).classList.add('active');
+  ['obDot1','obDot2','obDot3'].forEach((id,i)=>{
+    document.getElementById(id).classList.toggle('done', i < obCurrentStep);
+  });
+  document.getElementById('obBackBtn').style.display = obCurrentStep>1 ? 'block' : 'none';
+  document.getElementById('obNextBtn').textContent = obCurrentStep===3 ? 'اعتمد الأهداف' : 'التالي';
+  if(obCurrentStep===3) computeAndShowOnboardingResult();
+}
+function computeAndShowOnboardingResult(){
+  const sex = document.getElementById('obSex').value;
+  const age = parseInt(document.getElementById('obAge').value,10) || 25;
+  const heightCm = parseFloat(document.getElementById('obHeight').value) || 175;
+  const weightKg = parseFloat(document.getElementById('obWeight').value) || 75;
+  const activity = document.getElementById('obActivity').value;
+  const goals = calcSmartGoals({sex, age, heightCm, weightKg, activity, goal: obSelectedGoal || 'maintain'});
+  document.getElementById('obCalResult').textContent = goals.calories.toLocaleString('en-US');
+  document.getElementById('obPResult').textContent = goals.protein;
+  document.getElementById('obCResult').textContent = goals.carbs;
+  document.getElementById('obFResult').textContent = goals.fat;
+}
+function bindOnboardingEvents(){
+  document.querySelectorAll('.ob-choice').forEach(el=>{
+    el.addEventListener('click', ()=>{
+      document.querySelectorAll('.ob-choice').forEach(c=>c.classList.remove('active'));
+      el.classList.add('active');
+      obSelectedGoal = el.getAttribute('data-goal');
+    });
+  });
+  document.getElementById('obNextBtn').addEventListener('click', ()=>{
+    if(obCurrentStep===1 && !obSelectedGoal){ showToast('اختر هدفك أول'); return; }
+    if(obCurrentStep<3){ obCurrentStep++; renderOnboardingStep(); return; }
+    // finalize
+    const sex = document.getElementById('obSex').value;
+    const age = parseInt(document.getElementById('obAge').value,10) || 25;
+    const heightCm = parseFloat(document.getElementById('obHeight').value) || 175;
+    const weightKg = parseFloat(document.getElementById('obWeight').value) || 75;
+    const activity = document.getElementById('obActivity').value;
+    const goals = calcSmartGoals({sex, age, heightCm, weightKg, activity, goal: obSelectedGoal || 'maintain'});
+    state.goals = {...state.goals, ...goals};
+    appState.goals = state.goals;
+    appState.onboarded = true;
+    if(weightKg) appState.bodyWeights[state.today] = weightKg;
+    // Height was already being collected here for the calorie calc above —
+    // it just wasn't kept afterwards. Persisting it now is what lets the
+    // Progress tab's weight card show a BMI gauge without asking again.
+    if(heightCm) appState.profile.heightCm = heightCm;
+    persist();
+    closeAllSheets();
+    renderAll();
+    showToast('تمام! أهدافك جاهزة 🎉');
+  });
+  document.getElementById('obBackBtn').addEventListener('click', ()=>{
+    if(obCurrentStep>1){ obCurrentStep--; renderOnboardingStep(); }
+  });
 }
 
-function closeAllSheets(){
-  overlay.classList.remove('show');
-  allSheets.forEach(id=>document.getElementById(id).classList.remove('show'));
-  document.getElementById('fab').classList.remove('rot');
-}
-
-/* ============================================================
-   TABS
-   ============================================================ */
-
-function switchTab(tab){
-  document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
-  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
-  document.getElementById('view-'+tab).classList.add('active');
-  document.querySelector(`.nav-btn[data-tab="${tab}"]`).classList.add('active');
-  // The floating (+) button is redundant on Home — water already has its
-  // own +/- buttons right there, and the FAB used to just float on top of
-  // the meals list with nothing useful to add from Home anyway. Keep it on
-  // Food/Progress, where it's still the fastest way to add a meal or log a
-  // weight/AI scan. #app.has-fab gives the active view extra bottom padding
-  // (see styles.css) so the last card in a long list never ends up hidden
-  // behind it.
-  const fab = document.getElementById('fab');
-  const showFab = tab !== 'home';
-  if(fab) fab.classList.toggle('fab-hidden', !showFab);
-  const appEl = document.getElementById('app');
-  if(appEl) appEl.classList.toggle('has-fab', showFab);
-}
-
-/* ============================================================
-   FOOD SHEET (picker within FAB flow)
-   ============================================================ */
+init();
