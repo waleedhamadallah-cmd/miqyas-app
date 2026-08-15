@@ -98,7 +98,11 @@ input{font-family:inherit; color:inherit;}
 .tabular{ font-variant-numeric: tabular-nums; }
 
 /* ============ SHELL ============ */
-#app{ max-width:480px; margin:0 auto; min-height:100vh; position:relative; padding-bottom:104px; }
+#app{ max-width:480px; margin:0 auto; min-height:100vh; position:relative; padding-bottom:120px; }
+/* Extra bottom clearance on Food/Progress so the last card in a scrolled
+   list never ends up sitting behind the floating (+) button — it used to,
+   because #app's base padding only accounted for the bottom nav. */
+#app.has-fab .view.active{ padding-bottom:200px; }
 
 /* ============ LOADING SPLASH (covers the brief flash of empty/zero
    values while init() runs; also carries the logo's teal→blue identity
@@ -225,9 +229,7 @@ input{font-family:inherit; color:inherit;}
 .week-progress .wtrack{height:8px; background:var(--border-soft); border-radius:var(--r-pill); overflow:hidden;}
 .week-progress .wfill{height:100%; background:linear-gradient(90deg,var(--accent),var(--carb)); border-radius:var(--r-pill); transition:width .6s ease;}
 
-/* ============ QUICK ADD CHIPS ============ */
-.chip-scroll{ display:flex; gap:10px; overflow-x:auto; padding:2px 2px 6px; scrollbar-width:none; }
-.chip-scroll::-webkit-scrollbar{display:none;}
+/* ============ FOOD CHIP (AI scan match rows) ============ */
 .food-chip{
   flex:0 0 auto; background:var(--surface); border:1px solid var(--border-soft);
   border-radius:var(--r-lg); padding:13px 15px 13px 32px; min-width:118px; box-shadow:var(--shadow-2);
@@ -328,22 +330,27 @@ input{font-family:inherit; color:inherit;}
 }
 .viewday-btn:active{transform:scale(.95);}
 
-/* ============ BOTTOM NAV ============ */
+/* ============ BOTTOM NAV ============
+   A floating rounded pill instead of a flush-to-the-edge bar — reads as a
+   lot more current, and doubles as the visual anchor the FAB/toast offsets
+   below are measured from (see the three bottom: values in this section,
+   they're deliberately staggered: nav → fab → toast). */
 .bottomnav{
-  position:fixed; bottom:0; left:50%; transform:translateX(-50%);
-  width:100%; max-width:480px; background:var(--bg-elev);
-  border-top:1px solid var(--border); display:flex; padding:10px 14px calc(10px + env(safe-area-inset-bottom)); z-index:40;
+  position:fixed; bottom:calc(14px + env(safe-area-inset-bottom)); left:50%; transform:translateX(-50%);
+  width:calc(100% - 28px); max-width:452px; background:var(--bg-elev);
+  border:1px solid var(--border-soft); border-radius:22px; display:flex; padding:8px 10px; z-index:40;
+  box-shadow:var(--shadow-1);
 }
 .nav-btn{
-  flex:1; display:flex; flex-direction:column; align-items:center; gap:4px;
-  background:none; border:none; cursor:pointer; padding:6px 0; color:var(--text-mute); transition:color .15s ease;
+  flex:1; display:flex; flex-direction:column; align-items:center; gap:4px; border-radius:16px;
+  background:none; border:none; cursor:pointer; padding:8px 0 7px; color:var(--text-mute); transition:color .15s ease, background .15s ease;
 }
 .nav-btn svg{width:22px; height:22px;}
 .nav-btn span{font-size:11px; font-weight:600;}
-.nav-btn.active{color:var(--accent-text);}
+.nav-btn.active{color:var(--accent-text); background:var(--accent-soft);}
 
 .fab{
-  position:fixed; bottom:78px; left:50%; transform:translate(calc(-50%),0);
+  position:fixed; bottom:calc(94px + env(safe-area-inset-bottom)); left:50%; transform:translate(calc(-50%),0);
   width:58px; height:58px; border-radius:50%; background:linear-gradient(145deg, var(--accent), var(--accent-2));
   border:none; color:#161113; font-size:28px; font-weight:800; display:flex; align-items:center; justify-content:center;
   box-shadow:0 10px 24px rgba(47,211,166,.4); cursor:pointer; z-index:41; transition:transform .18s cubic-bezier(.3,1.4,.5,1);
@@ -466,12 +473,21 @@ input{font-family:inherit; color:inherit;}
 /* ============ FOOD PAGE LAYOUT ============ */
 .qa-row{display:flex; gap:10px; margin-top:12px;}
 .qa-row .btn-secondary{margin-top:0; flex:1;}
-.lib-card{
-  background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:14px 14px 16px;
+.lib-search-wrap{margin-top:14px;}
+.lib-add-btn{width:100%;}
+
+/* Food library groups (بروتين/كارب/سلطة/سناك) reuse the exact accordion
+   card look from Settings — same "several short cards" pattern instead of
+   one long scrolling list. */
+.lib-group-ic{
+  width:26px; height:26px; border-radius:9px; display:flex; align-items:center; justify-content:center;
+  font-size:14px; flex:0 0 auto;
 }
-.lib-card .search-wrap{margin-bottom:10px;}
-.lib-card .chipbar{margin-bottom:10px;}
-.lib-card #btnAddCustomFood{width:100%; margin-top:14px;}
+.acc-count{
+  font-family:var(--font-b); font-weight:700; font-size:11px; color:var(--text-mute);
+  background:var(--surface-2); border-radius:var(--r-pill); padding:2px 8px; margin-inline-start:2px;
+}
+.lib-group-rows .lib-row:first-child{padding-top:4px;}
 
 .form-field{margin-bottom:12px;}
 .form-field label{display:block; font-size:13px; color:var(--text-dim); margin-bottom:6px; font-weight:600;}
@@ -496,7 +512,8 @@ input{font-family:inherit; color:inherit;}
 
 /* ============ INSIGHT CARDS ============ */
 .insight-card{
-  margin-top:12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:16px 18px;
+  margin-top:12px; background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-lg); padding:16px 18px;
+  box-shadow:var(--shadow-2);
 }
 .insight-row{display:flex; align-items:center; gap:12px; padding:8px 0;}
 .insight-row:not(:last-child){border-bottom:1px solid var(--border-soft);}
@@ -529,10 +546,10 @@ input{font-family:inherit; color:inherit;}
 
 /* ============ EXERCISE DETAIL CHART ============ */
 .ex-detail-stats{display:flex; gap:10px; margin-bottom:16px;}
-.ex-stat{flex:1; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-md); padding:10px; text-align:center;}
+.ex-stat{flex:1; background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-md); padding:10px; text-align:center; box-shadow:var(--shadow-2);}
 .ex-stat .sv{font-family:var(--font-d); font-weight:900; font-size:18px;}
 .ex-stat .sl{font-size:11px; color:var(--text-mute); margin-top:3px;}
-.chart-wrap{background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:16px 10px;}
+.chart-wrap{background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-lg); padding:16px 10px; box-shadow:var(--shadow-2);}
 .chart-legend{display:flex; justify-content:center; gap:18px; margin-top:8px;}
 .chart-legend-item{display:flex; align-items:center; gap:6px; font-size:12px; color:var(--text-dim); font-weight:600;}
 .chart-legend-dot{width:9px; height:9px; border-radius:50%; flex:0 0 auto;}
@@ -551,9 +568,11 @@ input{font-family:inherit; color:inherit;}
    an optional BMI gauge (needs profile.heightCm — see sheetBodyWeight). The
    whole card stays clickable through to the full body-weight sheet. */
 .weight-card{
-  margin-top:12px; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg);
-  padding:18px; cursor:pointer; display:flex; flex-direction:column; gap:14px;
+  margin-top:12px; background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-lg);
+  padding:18px; cursor:pointer; display:flex; flex-direction:column; gap:14px; box-shadow:var(--shadow-2);
+  transition:transform .12s ease;
 }
+.weight-card:active{ transform:scale(.99); }
 .weight-card .wc-empty{ display:flex; align-items:center; gap:14px; }
 .weight-card .wc-icon{
   width:44px; height:44px; border-radius:14px; background:var(--shoulder-soft); color:var(--shoulder-text);
@@ -600,18 +619,23 @@ input{font-family:inherit; color:inherit;}
 .weight-input-row .btn-primary{width:auto; padding:14px 20px; margin-top:0; white-space:nowrap;}
 
 .btn-primary{
-  width:100%; padding:15px; border:none; border-radius:var(--r-pill); background:var(--accent); color:#161113;
-  font-weight:800; font-size:15px; cursor:pointer; margin-top:6px; transition:transform .12s ease, opacity .2s;
+  width:100%; padding:15px; border:none; border-radius:var(--r-pill);
+  background:linear-gradient(135deg, var(--accent), var(--accent-2)); color:#0E1013;
+  font-weight:800; font-size:15px; cursor:pointer; margin-top:6px;
+  box-shadow:0 10px 22px rgba(47,211,166,.3);
+  transition:transform .15s cubic-bezier(.3,1.4,.5,1), box-shadow .15s ease, opacity .2s;
 }
-.btn-primary:active{transform:scale(.98);}
-.btn-primary:disabled{opacity:.4;}
+.btn-primary:active{transform:scale(.97); box-shadow:0 4px 10px rgba(47,211,166,.22);}
+.btn-primary:disabled{opacity:.4; box-shadow:none;}
 .btn-secondary{
-  width:100%; padding:14px; border:1px solid var(--border); border-radius:var(--r-pill); background:transparent;
+  width:100%; padding:14px; border:1px solid var(--border-soft); border-radius:var(--r-pill); background:var(--surface);
   color:var(--text-dim); font-weight:700; font-size:14px; cursor:pointer; margin-top:8px;
+  transition:transform .12s ease, border-color .12s ease;
 }
+.btn-secondary:active{transform:scale(.97);}
 
 .ex-picked-card{
-  background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:16px;
+  background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-lg); padding:16px; box-shadow:var(--shadow-2);
   margin-bottom:14px; display:flex; align-items:center; gap:14px;
 }
 .ex-picked-card .tx{flex:1; min-width:0;}
@@ -640,7 +664,7 @@ input{font-family:inherit; color:inherit;}
 .set-chip .x{color:var(--text-mute); cursor:pointer; font-weight:400;}
 
 #toast{
-  position:fixed; bottom:96px; left:50%; transform:translate(-50%, 20px);
+  position:fixed; bottom:calc(164px + env(safe-area-inset-bottom)); left:50%; transform:translate(-50%, 20px);
   background:var(--surface-2); border:1px solid var(--border); color:var(--text);
   padding:12px 20px; border-radius:var(--r-pill); font-size:13px; font-weight:600;
   box-shadow:var(--shadow-1); opacity:0; pointer-events:none; transition:all .25s cubic-bezier(.2,.8,.2,1);
@@ -649,7 +673,7 @@ input{font-family:inherit; color:inherit;}
 #toast.show{opacity:1; transform:translate(-50%,0);}
 #toast .tick{color:var(--success); font-size:15px;}
 
-.day-card{ background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:14px 16px; margin-bottom:10px; }
+.day-card{ background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-lg); padding:14px 16px; margin-bottom:10px; box-shadow:var(--shadow-2); }
 .day-card .dh{display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;}
 .day-card .dh .dd{font-family:var(--font-d); font-weight:800; font-size:14px;}
 .day-card .dh .dc{font-size:12px; color:var(--text-mute);}
@@ -699,6 +723,8 @@ html[data-theme="light"]{
   --shadow-soft: 0 1px 0 rgba(255,255,255,.6) inset, 0 6px 16px rgba(30,32,36,.08);
 }
 html[data-theme="light"] .fab{ box-shadow:0 10px 22px rgba(47,211,166,.28); }
+html[data-theme="light"] .btn-primary{ box-shadow:0 8px 18px rgba(47,211,166,.22); }
+html[data-theme="light"] .btn-primary:active{ box-shadow:0 3px 8px rgba(47,211,166,.16); }
 html[data-theme="light"] .field-btn .fv{ color:var(--text); }
 html[data-theme="light"] #toast{ color:var(--text); background:var(--surface); border:1px solid var(--border); }
 html[data-theme="light"] .hero-card::before{ background:radial-gradient(420px 220px at 50% -25%, rgba(47,211,166,.07), transparent 62%); }
@@ -764,7 +790,8 @@ html[data-theme="light"] .entry-del, html[data-theme="light"] .tdel{ background:
 .ob-nav{display:flex; gap:10px; margin-top:16px;}
 .ob-nav .btn-secondary{margin-top:0;}
 .ob-result{
-  background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:18px; text-align:center; margin-bottom:14px;
+  background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-lg); padding:18px; text-align:center; margin-bottom:14px;
+  box-shadow:var(--shadow-2);
 }
 .ob-result .orv{font-family:var(--font-d); font-weight:900; font-size:34px; color:var(--accent-text);}
 .ob-result .orl{font-size:12px; color:var(--text-mute); margin-top:2px;}
@@ -818,7 +845,7 @@ html[data-theme="light"] .entry-del, html[data-theme="light"] .tdel{ background:
 /* ============ RECIPE BUILDER ============ */
 .recipe-pick-row{display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--border-soft);}
 .recipe-pick-row input[type="checkbox"]{width:18px; height:18px; accent-color:var(--accent); flex:0 0 auto;}
-.recipe-totals{background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:14px 16px; margin:14px 0;}
+.recipe-totals{background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-lg); padding:14px 16px; margin:14px 0; box-shadow:var(--shadow-2);}
 .recipe-totals .rt-row{display:flex; justify-content:space-between; font-size:13px; padding:4px 0; color:var(--text-dim);}
 .recipe-totals .rt-row b{color:var(--text);}
 
