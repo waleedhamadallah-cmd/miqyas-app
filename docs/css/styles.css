@@ -680,10 +680,20 @@ html[data-theme="light"] .entry-del, html[data-theme="light"] .tdel{ background:
 }
 .theme-opt.active{border-color:var(--accent); color:var(--accent-text); background:rgba(47,211,166,.08);}
 
-/* ============ SETTINGS ACCORDION ============ */
-.acc-list{
-  margin-top:20px; background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-lg);
+/* ============ SETTINGS ACCORDION ============
+   Settings grew from one flat list into 7 sections over time (goals, backup,
+   share, sync, Health Connect, AI scan...), which made the single card feel
+   like it never ends. Split into labeled groups (كل مجموعة بطاقتها الخاصة)
+   so related settings cluster together and each card stays short/scannable
+   instead of one long scroll. */
+.acc-list{ margin-top:20px; display:flex; flex-direction:column; gap:22px; }
+.acc-group{
+  background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-lg);
   padding:2px 16px; box-shadow:var(--shadow-2);
+}
+.acc-group-label{
+  font-family:var(--font-b); font-weight:700; font-size:11.5px; letter-spacing:.2px;
+  color:var(--text-mute); padding:14px 2px 4px;
 }
 .acc-item{border-bottom:1px solid var(--border-soft);}
 .acc-item:last-child{border-bottom:none;}
