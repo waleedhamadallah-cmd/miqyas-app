@@ -39,17 +39,12 @@ function persist(){
 // happens to be *viewing* via switchViewedDay) to the native home-screen
 // widget, if the app is running inside the installed Android build (this
 // plugin doesn't exist on the plain web/PWA, so it's a silent no-op there).
-//
-// TEMPORARY DEBUG BUILD: shows a toast every time this runs, so we can see
-// from the phone's screen alone whether the JS→native bridge call is even
-// reaching the plugin, without needing a computer/devtools attached. Remove
-// the showToast(...) calls once the widget is confirmed working.
+// Runs after every persist() (i.e. after almost any action), so it stays
+// completely silent on success/failure — errors just go to the console —
+// instead of interrupting the user with a toast on every unrelated tap.
 function syncWidget(){
   try{
-    if(!(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.MiqyasWidget)){
-      if(window.Capacitor && typeof showToast==='function') showToast('⚠️ ويدجت: MiqyasWidget مو موجود بالـ bridge');
-      return;
-    }
+    if(!(window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.MiqyasWidget)) return;
     const key = todayKey(new Date());
     const dayLog = (appState && appState.logs && appState.logs[key]) || {meals:[], waterMl:0};
     const cal = (dayLog.meals||[]).reduce((s,m)=>s+(m.calories||0),0);
@@ -63,9 +58,8 @@ function syncWidget(){
       waterGoal: Math.round(goals.water || 2500)
     };
     Capacitor.Plugins.MiqyasWidget.update(payload)
-      .then(()=>{ if(typeof showToast==='function') showToast(`✅ ويدجت اتحدّث: ${payload.calCurrent}/${payload.calGoal} سعرة`); })
-      .catch((e)=>{ if(typeof showToast==='function') showToast('❌ ويدجت رفض الطلب: ' + (e && e.message ? e.message : String(e))); });
-  }catch(e){ if(window.Capacitor && typeof showToast==='function') showToast('❌ ويدجت استثناء: ' + e.message); }
+      .catch((e)=> console.error('widget update failed', e));
+  }catch(e){ console.error('syncWidget failed', e); }
 }
 
 /* ============================================================
@@ -137,7 +131,12 @@ function defaultAppState(){
     library:{foods:defaultFoods()}, goals:defaultGoals(), logs:{},
     bodyWeights:{}, bodyFat:{}, bodyMeasurements:{}, mealTemplates:[],
     theme:'dark', onboarded:false, updatedAt:0, healthConnectGranted:false,
-    aiProxyUrl:'', aiProxySecret:''
+    aiProxyUrl:'', aiProxySecret:'',
+    // heightCm powers the BMI gauge on the Progress tab's weight card;
+    // targetWeightKg (optional) powers the start→target bar there. Both
+    // null until the user fills them in (onboarding sets heightCm; either
+    // can be set/edited from the body-weight sheet).
+    profile:{heightCm:null, targetWeightKg:null}
   };
 }
 
@@ -159,6 +158,9 @@ function rebindFromAppState(){
   if(appState.healthConnectGranted===undefined) appState.healthConnectGranted = false;
   if(appState.aiProxyUrl===undefined) appState.aiProxyUrl = '';
   if(appState.aiProxySecret===undefined) appState.aiProxySecret = '';
+  if(!appState.profile) appState.profile = {};
+  if(appState.profile.heightCm===undefined) appState.profile.heightCm = null;
+  if(appState.profile.targetWeightKg===undefined) appState.profile.targetWeightKg = null;
   (appState.library.foods||[]).forEach(f=>{
     if(f.fiber===undefined) f.fiber = 0;
     if(f.sodium===undefined) f.sodium = 0;
@@ -246,24 +248,11 @@ function subscribeCloud(){
 
 function defaultFoods(){
   const mk = (name,category,foodType,calories,protein,carbs,fat)=>({id:uid(),name,category,foodType,calories,protein,carbs,fat,fiber:0,sodium:0,favorite:false,usageCount:0});
+  // Order here is what a brand-new user sees first under "الكل" (favorite/
+  // usageCount are both 0 for everyone at first, so the list falls back to
+  // this insertion order). Mains/carbs/salads first, snacks & desserts last
+  // — so a first-time open doesn't read as "this app is mostly cheesecake".
   return [
-    mk("تشيز كيك مانجو","سناك","snack",379.9,6,42,21),
-    mk("تشيز كيك شوكلت","سناك","snack",248.72,5,28,14),
-    mk("تشيز كيك توت أزرق","سناك","snack",266.6,5,30,15),
-    mk("بودنق رايس","سناك","snack",136.67,4,22,3),
-    mk("كنافة صحية","سناك","snack",318.54,7,38,15),
-    mk("عريكة صحية","سناك","snack",248,5,35,10),
-    mk("كيك ليمون","سناك","snack",167,3,26,5),
-    mk("كيك ريد فلفيت","سناك","snack",167,3,24,7),
-    mk("تشيز كيك توت","سناك","snack",298,6,32,16),
-    mk("كرات الطاقة","سناك","snack",190,5,18,10),
-    mk("كيك براوني","سناك","snack",120,2,16,5),
-    mk("كنافة رول","سناك","snack",113,2,14,5),
-    mk("سناك مكسرات","سناك","snack",130,4,8,10),
-    mk("كنافة كرانش","سناك","snack",125,3,15,6),
-    mk("بسبوسة صحية","سناك","snack",105,2,18,3),
-    mk("تشيز كيك فراولة","سناك","snack",379.9,6,40,22),
-    mk("كيك شوكلت","سناك","snack",167,3,24,7),
     mk("كرات اللحم","غدا","protein",470.8,40,10,30),
     mk("لحم شيلي","غدا","protein",456,48,10,24),
     mk("لحم ستيك مع مشروم","غدا","protein",510,56,8,30),
@@ -349,6 +338,24 @@ function defaultFoods(){
     mk("رز صيادية","غدا","carb",310,6,62,4),
     mk("رز سبانخ","غدا","carb",290,6,58,4),
     mk("مكرونة ألفريدو","غدا","carb",380,12,48,16),
+
+    mk("تشيز كيك مانجو","سناك","snack",379.9,6,42,21),
+    mk("تشيز كيك شوكلت","سناك","snack",248.72,5,28,14),
+    mk("تشيز كيك توت أزرق","سناك","snack",266.6,5,30,15),
+    mk("بودنق رايس","سناك","snack",136.67,4,22,3),
+    mk("كنافة صحية","سناك","snack",318.54,7,38,15),
+    mk("عريكة صحية","سناك","snack",248,5,35,10),
+    mk("كيك ليمون","سناك","snack",167,3,26,5),
+    mk("كيك ريد فلفيت","سناك","snack",167,3,24,7),
+    mk("تشيز كيك توت","سناك","snack",298,6,32,16),
+    mk("كرات الطاقة","سناك","snack",190,5,18,10),
+    mk("كيك براوني","سناك","snack",120,2,16,5),
+    mk("كنافة رول","سناك","snack",113,2,14,5),
+    mk("سناك مكسرات","سناك","snack",130,4,8,10),
+    mk("كنافة كرانش","سناك","snack",125,3,15,6),
+    mk("بسبوسة صحية","سناك","snack",105,2,18,3),
+    mk("تشيز كيك فراولة","سناك","snack",379.9,6,40,22),
+    mk("كيك شوكلت","سناك","snack",167,3,24,7),
   ];
 }
 
@@ -694,9 +701,14 @@ function switchTab(tab){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('view-'+tab).classList.add('active');
   document.querySelector(`.nav-btn[data-tab="${tab}"]`).classList.add('active');
+  // The floating (+) button is redundant on Home — it already has its own
+  // "إضافة سريعة" chips plus per-card add controls (water, weight card...)
+  // — and it used to sit on top of that content. Keep it on Food/Progress
+  // where it's still the fastest way to add a meal or log a weight/AI scan.
+  const fab = document.getElementById('fab');
+  if(fab) fab.classList.toggle('fab-hidden', tab === 'home');
 }
 
 /* ============================================================
    FOOD SHEET (picker within FAB flow)
    ============================================================ */
-
