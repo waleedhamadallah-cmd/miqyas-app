@@ -195,8 +195,11 @@ function bindEvents(){
     document.getElementById('goalSodium').value = state.goals.sodium;
     renderSyncStatus();
     renderThemeButtons();
+    renderHealthConnectStatus();
+    healthConnectRefreshStatus().then(renderHealthConnectStatus);
     const syncItem = document.querySelector('.acc-item[data-acc="sync"]');
     if(syncItem) syncItem.classList.toggle('open', !!getSyncConfig());
+
     openSheet('sheetSettings');
   });
   document.getElementById('btnSaveGoals').addEventListener('click', ()=>{
@@ -238,6 +241,27 @@ function bindEvents(){
   /* ---------- Backup export / import ---------- */
   document.getElementById('btnExportData').addEventListener('click', ()=> exportDataFile());
   document.getElementById('btnImportData').addEventListener('click', ()=> document.getElementById('importFileInput').click());
+
+  document.getElementById('btnHealthConnectConnect').addEventListener('click', async ()=>{
+    const btn = document.getElementById('btnHealthConnectConnect');
+    const oldLabel = btn.textContent;
+    btn.textContent = 'جارٍ الربط...';
+    const res = await healthConnectRequestAccess();
+    btn.textContent = oldLabel;
+    renderHealthConnectStatus();
+    if(res.ok){
+      showToast('تم الربط مع Health Connect ✅');
+      return;
+    }
+    const msgs = {
+      'not-native': 'هذي الميزة تشتغل بس بالتطبيق المثبّت على جوالك، مو بالمتصفح',
+      'not-installed': 'ثبّت تطبيق Health Connect من متجر Play أول',
+      'needs-update': 'حدّث تطبيق Health Connect من متجر Play',
+      'denied': 'ما وافقت على الصلاحيات — تقدر تجرب مرة ثانية من هنا',
+      'error': 'صار خطأ: ' + (res.message||'غير معروف')
+    };
+    showToast(msgs[res.reason] || 'ما قدرنا نربط الحين، جرب مرة ثانية');
+  });
   document.getElementById('importFileInput').addEventListener('change', (e)=>{
     const file = e.target.files[0];
     if(file) importDataFile(file, ()=>{ e.target.value=''; closeAllSheets(); });

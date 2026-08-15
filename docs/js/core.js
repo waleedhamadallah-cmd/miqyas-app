@@ -68,11 +68,75 @@ function syncWidget(){
   }catch(e){ if(window.Capacitor && typeof showToast==='function') showToast('❌ ويدجت استثناء: ' + e.message); }
 }
 
+/* ============================================================
+   HEALTH CONNECT — write-only bridge (nutrition + hydration).
+   No-ops entirely on the plain web/PWA and until the user explicitly
+   grants access from Settings (appState.healthConnectGranted). One record
+   per real event, written from the exact call sites that add a meal/water
+   amount — not recomputed from persist() — matching Health Connect's own
+   guidance to avoid whole-day aggregate records.
+   ============================================================ */
+function healthConnectPlugin(){
+  return (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.MiqyasHealth) ? Capacitor.Plugins.MiqyasHealth : null;
+}
+
+async function healthConnectRequestAccess(){
+  const plugin = healthConnectPlugin();
+  if(!plugin) return {ok:false, reason:'not-native'};
+  try{
+    const avail = await plugin.checkAvailability();
+    if(!avail.available){
+      return {ok:false, reason: avail.needsProviderUpdate ? 'needs-update' : 'not-installed'};
+    }
+    const res = await plugin.requestPermissions();
+    appState.healthConnectGranted = !!res.granted;
+    persist();
+    return {ok: !!res.granted, reason: res.granted ? 'granted' : 'denied'};
+  }catch(e){
+    return {ok:false, reason:'error', message: e && e.message};
+  }
+}
+
+async function healthConnectRefreshStatus(){
+  const plugin = healthConnectPlugin();
+  if(!plugin){ appState.healthConnectGranted = false; return false; }
+  try{
+    const res = await plugin.hasPermissions();
+    appState.healthConnectGranted = !!res.granted;
+    return appState.healthConnectGranted;
+  }catch(e){ return false; }
+}
+
+function syncHealthConnectNutrition(entry){
+  try{
+    if(!appState || !appState.healthConnectGranted) return;
+    const plugin = healthConnectPlugin();
+    if(!plugin || !entry) return;
+    plugin.writeNutrition({
+      name: entry.name || 'وجبة',
+      calories: Math.round(entry.calories||0),
+      protein: Math.round(entry.protein||0),
+      carbs: Math.round(entry.carbs||0),
+      fat: Math.round(entry.fat||0)
+    }).catch(()=>{});
+  }catch(e){ /* no-op outside the native app / without permission */ }
+}
+
+function syncHealthConnectHydration(ml){
+  try{
+    if(!appState || !appState.healthConnectGranted) return;
+    if(!(ml>0)) return; // only real intake events, never the "-250" undo button
+    const plugin = healthConnectPlugin();
+    if(!plugin) return;
+    plugin.writeHydration({volumeMl: Math.round(ml)}).catch(()=>{});
+  }catch(e){ /* no-op outside the native app / without permission */ }
+}
+
 function defaultAppState(){
   return {
     library:{foods:defaultFoods()}, goals:defaultGoals(), logs:{},
     bodyWeights:{}, bodyFat:{}, bodyMeasurements:{}, mealTemplates:[],
-    theme:'dark', onboarded:false, updatedAt:0
+    theme:'dark', onboarded:false, updatedAt:0, healthConnectGranted:false
   };
 }
 
@@ -91,6 +155,7 @@ function rebindFromAppState(){
   if(appState.goals.water===undefined) appState.goals.water = 2500;
   if(appState.goals.fiber===undefined) appState.goals.fiber = 30;
   if(appState.goals.sodium===undefined) appState.goals.sodium = 2300;
+  if(appState.healthConnectGranted===undefined) appState.healthConnectGranted = false;
   (appState.library.foods||[]).forEach(f=>{
     if(f.fiber===undefined) f.fiber = 0;
     if(f.sodium===undefined) f.sodium = 0;
@@ -631,3 +696,4 @@ function switchTab(tab){
 /* ============================================================
    FOOD SHEET (picker within FAB flow)
    ============================================================ */
+

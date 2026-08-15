@@ -153,18 +153,18 @@ function renderWeeklyFoodSummary(){
   });
 
   if(loggedDays===0){
-    wrap.innerHTML = `<div class="insight-row"><div class="insight-icon" style="background:var(--carb-soft); color:var(--carb);">📅</div>
+    wrap.innerHTML = `<div class="insight-row"><div class="insight-icon" style="background:var(--carb-soft); color:var(--carb-text);">📅</div>
       <div class="insight-tx"><div class="it1">ما فيه بيانات كافية هالأسبوع</div><div class="it2">سجل وجباتك عشان يبين لك ملخص أسبوعي</div></div></div>`;
     return;
   }
 
   const avgCal = Math.round(totalCal/loggedDays);
-  const avgHtml = `<div class="insight-row"><div class="insight-icon" style="background:var(--protein-soft); color:var(--protein);">📊</div>
+  const avgHtml = `<div class="insight-row"><div class="insight-icon" style="background:var(--protein-soft); color:var(--protein-text);">📊</div>
     <div class="insight-tx"><div class="it1">متوسط سعراتك ${avgCal.toLocaleString('en-US')} سعرة باليوم</div><div class="it2">على أساس ${loggedDays} من آخر 7 أيام سجلتها</div></div></div>`;
 
   const topCat = Object.keys(catSums).reduce((a,b)=> catSums[b]>catSums[a] ? b : a);
   const topCatPct = totalCal ? Math.round((catSums[topCat]/totalCal)*100) : 0;
-  const catHtml = totalCal ? `<div class="insight-row"><div class="insight-icon" style="background:var(--fat-soft); color:var(--fat);">🍽️</div>
+  const catHtml = totalCal ? `<div class="insight-row"><div class="insight-icon" style="background:var(--fat-soft); color:var(--fat-text);">🍽️</div>
     <div class="insight-tx"><div class="it1">أكثر فئة تاكل منها: ${topCat}</div><div class="it2">${topCatPct}٪ من سعرات الأسبوع</div></div></div>` : '';
 
   wrap.innerHTML = avgHtml + catHtml;
@@ -181,6 +181,7 @@ async function quickAddFood(food, chipEl){
   state.log.meals.push(entry);
   food.usageCount = (food.usageCount||0)+1;
   persist();
+  syncHealthConnectNutrition(entry);
   vibrate(10);
 
   if(chipEl){ chipEl.classList.add('pulse'); setTimeout(()=>chipEl.classList.remove('pulse'), 400); }
@@ -246,8 +247,10 @@ function renderTemplateList(){
       const t = templates.find(x=>x.id===btn.getAttribute('data-apply'));
       if(!t) return;
       t.foods.forEach(f=>{
-        state.log.meals.push({id:uid(), foodId:f.foodId, name:f.name, category:f.category,
-          calories:f.calories, protein:f.protein, carbs:f.carbs, fat:f.fat, fiber:f.fiber||0, sodium:f.sodium||0, time:Date.now()});
+        const entry = {id:uid(), foodId:f.foodId, name:f.name, category:f.category,
+          calories:f.calories, protein:f.protein, carbs:f.carbs, fat:f.fat, fiber:f.fiber||0, sodium:f.sodium||0, time:Date.now()};
+        state.log.meals.push(entry);
+        syncHealthConnectNutrition(entry);
       });
       persist();
       renderAll();
@@ -425,6 +428,7 @@ async function finishMealBuilder(){
   state.log.meals.push(entry);
   items.forEach(f=> f.usageCount = (f.usageCount||0)+1);
   persist();
+  syncHealthConnectNutrition(entry);
   vibrate(10);
   showToast(`أضيفت ${name} 🍽️`);
   renderAll();

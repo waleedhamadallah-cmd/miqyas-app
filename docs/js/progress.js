@@ -408,7 +408,7 @@ function renderSyncStatus(){
         }
       }catch(e){
         console.error(e);
-        resEl.innerHTML = `<div class="sync-badge off" style="width:100%; box-sizing:border-box; color:var(--danger);">❌ فشل: ${escapeHtml(e.code||e.message||'خطأ غير معروف')}</div>`;
+        resEl.innerHTML = `<div class="sync-badge off" style="width:100%; box-sizing:border-box; color:var(--danger-text);">❌ فشل: ${escapeHtml(e.code||e.message||'خطأ غير معروف')}</div>`;
       }
     });
   } else {
@@ -437,6 +437,15 @@ service cloud.firestore {
     `;
     document.getElementById('btnEnableSync').addEventListener('click', onEnableSyncClick);
   }
+}
+
+function renderHealthConnectStatus(){
+  const box = document.getElementById('healthConnectStatusBox');
+  if(!box) return;
+  const connected = !!(appState && appState.healthConnectGranted);
+  box.innerHTML = connected
+    ? '<div class="sync-badge"><span class="sync-dot"></span>متصل — وجباتك وماءك يترسلون لـ Health Connect</div>'
+    : '<div class="sync-badge off"><span class="sync-dot"></span>غير متصل</div>';
 }
 
 async function onEnableSyncClick(){

@@ -93,17 +93,17 @@ function renderInsightCard(){
   const prevAvg = prevDays ? prevProtein/prevDays : 0;
   let compareHtml;
   if(prevDays===0 || thisDays===0){
-    compareHtml = `<div class="insight-row"><div class="insight-icon" style="background:var(--carb-soft); color:var(--carb);">📊</div>
+    compareHtml = `<div class="insight-row"><div class="insight-icon" style="background:var(--carb-soft); color:var(--carb-text);">📊</div>
       <div class="insight-tx"><div class="it1">لسا مب كافي بيانات للمقارنة</div><div class="it2">سجل أكثر عشان تشوف مقارنة شهرية</div></div></div>`;
   } else {
     const diffPct = Math.round(((thisAvg-prevAvg)/prevAvg)*100);
     const up = diffPct>=0;
-    compareHtml = `<div class="insight-row"><div class="insight-icon" style="background:var(--protein-soft); color:var(--protein);">${up?'📈':'📉'}</div>
+    compareHtml = `<div class="insight-row"><div class="insight-icon" style="background:var(--protein-soft); color:var(--protein-text);">${up?'📈':'📉'}</div>
       <div class="insight-tx"><div class="it1">بروتينك هالشهر ${up?'أعلى':'أقل'} ${Math.abs(diffPct)}٪ من الشهر اللي فات</div><div class="it2">متوسط ${Math.round(thisAvg)}غ يومياً مقابل ${Math.round(prevAvg)}غ</div></div></div>`;
   }
 
   const adherencePct = thisLoggedDays ? Math.round((thisAdherent/thisLoggedDays)*100) : 0;
-  const adherenceHtml = `<div class="insight-row"><div class="insight-icon" style="background:var(--fat-soft); color:var(--fat);">🎯</div>
+  const adherenceHtml = `<div class="insight-row"><div class="insight-icon" style="background:var(--fat-soft); color:var(--fat-text);">🎯</div>
     <div class="insight-tx"><div class="it1">التزمت بهدف السعرات ${thisAdherent} من ${thisLoggedDays} يوم هالشهر</div><div class="it2">${adherencePct}٪ من الأيام اللي سجلتها ضمن الهدف</div></div></div>`;
 
   wrap.innerHTML = compareHtml + adherenceHtml;
@@ -161,6 +161,7 @@ function renderWaterCard(){
 function addWater(deltaMl){
   state.log.waterMl = Math.max(0, (state.log.waterMl||0) + deltaMl);
   persist();
+  syncHealthConnectHydration(deltaMl);
   renderWaterCard();
   vibrate(12);
 }
