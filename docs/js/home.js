@@ -221,8 +221,10 @@ function renderPastDaysStrip(){
     const label = isToday ? 'اليوم' : DAY_LABELS[d.getDay()];
     pill.innerHTML = `<div class="dpl">${label}</div><div class="dpn tabular">${d.getDate()}</div><div class="dpdot"></div>`;
     pill.addEventListener('click', ()=>{
+      // Just switch the viewed day in place — it used to also force-navigate
+      // to the food tab, which yanked the user off the home screen every
+      // time they tapped a past day just to glance at it.
       switchViewedDay(key);
-      if(!isToday) switchTab('food');
     });
     return pill;
   };
@@ -243,4 +245,3 @@ function renderPastDaysStrip(){
 /* ============================================================
    RENDER: FOOD VIEW
    ============================================================ */
-
