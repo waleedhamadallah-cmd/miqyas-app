@@ -55,7 +55,7 @@
     <div class="hero-card">
       <div class="ring-wrap">
         <svg id="ringSvg" width="200" height="200" viewBox="0 0 200 200">
-          <circle cx="100" cy="100" r="86" fill="none" stroke="#232B32" stroke-width="14"/>
+          <circle class="ring-track" cx="100" cy="100" r="86" fill="none" stroke-width="14"/>
           <circle id="ringProgress" cx="100" cy="100" r="86" fill="none" stroke="url(#ringGrad)" stroke-width="14" stroke-linecap="round" transform="rotate(-90 100 100)"/>
           <defs>
             <linearGradient id="ringGrad" x1="0%" y1="0%" x2="100%" y2="100%">
@@ -199,11 +199,11 @@
   <div class="sheet-head"><h3>إضافة سريعة</h3><div class="sheet-close" data-close aria-label="إغلاق" role="button">✕</div></div>
   <div class="sheet-body">
     <div class="qa-option" id="qaFood">
-      <div class="ic" style="background:var(--protein-soft); color:var(--protein);">🍽️</div>
+      <div class="ic" style="background:var(--protein-soft); color:var(--protein-text);">🍽️</div>
       <div class="tx"><b>إضافة وجبة</b><span>من مكتبتك أو وجبة جديدة</span></div>
     </div>
     <div class="qa-option" id="qaWeight">
-      <div class="ic" style="background:var(--shoulder-soft); color:var(--shoulder);">⚖️</div>
+      <div class="ic" style="background:var(--shoulder-soft); color:var(--shoulder-text);">⚖️</div>
       <div class="tx"><b>تسجيل وزن الجسم</b><span>تابع تقدمك بمنحنى بياني</span></div>
     </div>
   </div>
@@ -312,6 +312,18 @@
         </div>
         <div class="acc-body">
           <div id="syncStatusBox"></div>
+        </div>
+      </div>
+
+      <div class="acc-item" data-acc="health">
+        <div class="acc-head">
+          <span class="acc-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20.8 4.6a5.5 5.5 0 0 0-7.8 0L12 5.6l-1-1a5.5 5.5 0 0 0-7.8 7.8l1 1L12 21l7.8-7.6 1-1a5.5 5.5 0 0 0 0-7.8z"></path></svg>Health Connect</span>
+          <span class="acc-side"><span class="acc-chevron">⌄</span></span>
+        </div>
+        <div class="acc-body">
+          <div class="empty-hint" style="padding:0 0 10px; text-align:right;">اربط مِقياس بـ Health Connect عشان تطبيقات زي Samsung Health تشوف السعرات والماكروز والماء اللي تسجّلها. إرسال فقط — مِقياس ما يقرأ أي شي من تطبيقات ثانية.</div>
+          <div id="healthConnectStatusBox" style="margin-bottom:10px;"></div>
+          <button class="btn-secondary" id="btnHealthConnectConnect" style="margin-top:0;">ربط مع Health Connect</button>
         </div>
       </div>
     </div>
