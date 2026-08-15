@@ -136,7 +136,15 @@ function defaultAppState(){
     // targetWeightKg (optional) powers the start→target bar there. Both
     // null until the user fills them in (onboarding sets heightCm; either
     // can be set/edited from the body-weight sheet).
-    profile:{heightCm:null, targetWeightKg:null}
+    profile:{heightCm:null, targetWeightKg:null},
+    // Local reminder notifications (native app only — no-op on the plain
+    // web/PWA). mealEnabled fires one daily reminder at mealTime; waterEnabled
+    // fires repeating reminders between waterStart/waterEnd every
+    // waterIntervalHours. All off by default.
+    reminders:{
+      mealEnabled:false, mealTime:'20:00',
+      waterEnabled:false, waterStart:'09:00', waterEnd:'21:00', waterIntervalHours:2
+    }
   };
 }
 
@@ -161,6 +169,13 @@ function rebindFromAppState(){
   if(!appState.profile) appState.profile = {};
   if(appState.profile.heightCm===undefined) appState.profile.heightCm = null;
   if(appState.profile.targetWeightKg===undefined) appState.profile.targetWeightKg = null;
+  if(!appState.reminders) appState.reminders = {};
+  if(appState.reminders.mealEnabled===undefined) appState.reminders.mealEnabled = false;
+  if(appState.reminders.mealTime===undefined) appState.reminders.mealTime = '20:00';
+  if(appState.reminders.waterEnabled===undefined) appState.reminders.waterEnabled = false;
+  if(appState.reminders.waterStart===undefined) appState.reminders.waterStart = '09:00';
+  if(appState.reminders.waterEnd===undefined) appState.reminders.waterEnd = '21:00';
+  if(appState.reminders.waterIntervalHours===undefined) appState.reminders.waterIntervalHours = 2;
   (appState.library.foods||[]).forEach(f=>{
     if(f.fiber===undefined) f.fiber = 0;
     if(f.sodium===undefined) f.sodium = 0;
@@ -763,3 +778,4 @@ function switchTab(tab){
 /* ============================================================
    FOOD SHEET (picker within FAB flow)
    ============================================================ */
+

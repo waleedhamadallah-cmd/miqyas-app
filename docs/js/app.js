@@ -29,6 +29,7 @@ async function init(){
   bindEvents();
   hideSplash();
   syncWidget();
+  applyReminderSettings();
 
   if(!appState.onboarded){
     setTimeout(()=>{ startOnboarding(); }, 400);
@@ -141,13 +142,14 @@ function bindEvents(){
     showToast('تم حفظ إعدادات الذكاء الاصطناعي ✅');
   });
   document.getElementById('btnSaveBodyWeight').addEventListener('click', ()=>{
+    const dateKey = bwEditDate || state.today;
     const val = parseFloat(document.getElementById('bwInput').value);
     if(!val || val<=0){ showToast('اكتب وزن صحيح أول'); return; }
-    appState.bodyWeights[state.today] = Math.round(val*10)/10;
+    appState.bodyWeights[dateKey] = Math.round(val*10)/10;
     const bfVal = parseFloat(document.getElementById('bfInput').value);
     if(bfVal && bfVal>0){
       if(!appState.bodyFat) appState.bodyFat = {};
-      appState.bodyFat[state.today] = Math.round(bfVal*10)/10;
+      appState.bodyFat[dateKey] = Math.round(bfVal*10)/10;
     }
     const heightVal = parseFloat(document.getElementById('bwHeight').value);
     appState.profile.heightCm = (heightVal && heightVal>0) ? Math.round(heightVal) : null;
@@ -157,7 +159,13 @@ function bindEvents(){
     renderWeightCard();
     renderBodyWeightSheetBody();
     renderBodyFatChart();
-    showToast('تم حفظ وزنك 💪');
+    showToast(dateKey===state.today ? 'تم حفظ وزنك 💪' : 'تم تحديث وزن ذاك اليوم 💪');
+  });
+  document.getElementById('bwDateInput').addEventListener('change', (e)=>{
+    let dateKey = e.target.value;
+    if(!dateKey) return;
+    if(dateKey > state.today){ dateKey = state.today; e.target.value = state.today; }
+    loadBodyWeightFieldsForDate(dateKey);
   });
 
   document.getElementById('sheetFoodSearch').addEventListener('input', renderSheetFoodList);
@@ -219,6 +227,7 @@ function bindEvents(){
     document.getElementById('goalWater').value = state.goals.water;
     document.getElementById('aiProxyUrlInput').value = appState.aiProxyUrl || '';
     document.getElementById('aiProxySecretInput').value = appState.aiProxySecret || '';
+    renderReminderSettings();
     renderSyncStatus();
     renderThemeButtons();
     renderHealthConnectStatus();
@@ -245,6 +254,37 @@ function bindEvents(){
     showToast('تم تحديث الأهداف');
     closeAllSheets();
     renderAll();
+  });
+
+  /* ---------- Reminders ---------- */
+  document.getElementById('reminderMealToggle').addEventListener('change', ()=> updateReminderFieldStates());
+  document.getElementById('reminderWaterToggle').addEventListener('change', ()=> updateReminderFieldStates());
+  document.getElementById('btnSaveReminders').addEventListener('click', async ()=>{
+    const mealEnabled = document.getElementById('reminderMealToggle').checked;
+    const waterEnabled = document.getElementById('reminderWaterToggle').checked;
+
+    if((mealEnabled || waterEnabled) && remindersAvailable()){
+      const granted = await hasReminderPermission();
+      if(!granted){
+        const res = await requestReminderPermission();
+        if(!res.ok){
+          showToast('لازم توافق على صلاحية الإشعارات عشان تفعّل التذكيرات');
+          return;
+        }
+      }
+    }
+
+    appState.reminders = {
+      mealEnabled,
+      mealTime: document.getElementById('reminderMealTime').value || '20:00',
+      waterEnabled,
+      waterStart: document.getElementById('reminderWaterStart').value || '09:00',
+      waterEnd: document.getElementById('reminderWaterEnd').value || '21:00',
+      waterIntervalHours: parseInt(document.getElementById('reminderWaterInterval').value,10) || 2,
+    };
+    persist();
+    applyReminderSettings();
+    showToast('تم حفظ التذكيرات 🔔');
   });
 
   /* ---------- Theme ---------- */
@@ -355,6 +395,31 @@ function bindEvents(){
 }
 
 /* ============================================================
+   REMINDER SETTINGS
+   ============================================================ */
+function renderReminderSettings(){
+  const r = (appState.reminders) || {};
+  document.getElementById('reminderMealToggle').checked = !!r.mealEnabled;
+  document.getElementById('reminderMealTime').value = r.mealTime || '20:00';
+  document.getElementById('reminderWaterToggle').checked = !!r.waterEnabled;
+  document.getElementById('reminderWaterStart').value = r.waterStart || '09:00';
+  document.getElementById('reminderWaterEnd').value = r.waterEnd || '21:00';
+  document.getElementById('reminderWaterInterval').value = String(r.waterIntervalHours || 2);
+
+  const hint = document.getElementById('reminderNativeHint');
+  hint.style.display = remindersAvailable() ? 'none' : 'block';
+
+  updateReminderFieldStates();
+}
+
+function updateReminderFieldStates(){
+  const mealOn = document.getElementById('reminderMealToggle').checked;
+  const waterOn = document.getElementById('reminderWaterToggle').checked;
+  document.getElementById('reminderMealTimeField').classList.toggle('disabled', !mealOn);
+  document.getElementById('reminderWaterFields').classList.toggle('disabled', !waterOn);
+}
+
+/* ============================================================
    THEME BUTTONS
    ============================================================ */
 function renderThemeButtons(){
@@ -365,63 +430,97 @@ function renderThemeButtons(){
 /* ============================================================
    SHARE CARD (canvas)
    ============================================================ */
+// Reuses the report card's helpers (drawReportSectionTitle/drawReportStatBox
+// and the REPORT_* colors, defined in progress.js which loads before this
+// file) instead of a separate flat/fixed-height design, so both exportable
+// images look like one system and this one picked up the same fix for the
+// dead blank space a fixed canvas height used to leave below short content.
 function drawShareCard(){
   const canvas = document.getElementById('shareCanvas');
   const ctx = canvas.getContext('2d');
-  const w = canvas.width, h = canvas.height;
+  const W = 600, M = 30, CW = W - M*2;
 
-  // background gradient
-  const grad = ctx.createLinearGradient(0,0,0,h);
-  grad.addColorStop(0, '#171C21'); grad.addColorStop(1, '#12161A');
-  ctx.fillStyle = grad; ctx.fillRect(0,0,w,h);
-
-  // week stats
-  let totalCal=0, totalProtein=0, mealDays=0, waterDays=0;
+  let totalCal=0, totalProtein=0, mealDays=0, waterDays=0, adherentDays=0;
   for(let i=0;i<=6;i++){
     const key = dateKeyOffset(i);
     const dayLog = appState.logs[key] || {meals:[]};
-    if((dayLog.meals||[]).length>0){
+    const meals = dayLog.meals || [];
+    if(meals.length>0){
       mealDays++;
-      totalCal += dayLog.meals.reduce((s,m)=>s+m.calories,0);
-      totalProtein += dayLog.meals.reduce((s,m)=>s+m.protein,0);
+      const dCal = meals.reduce((s,m)=>s+m.calories,0);
+      totalCal += dCal;
+      totalProtein += meals.reduce((s,m)=>s+m.protein,0);
+      if(Math.abs(dCal-state.goals.calories) <= state.goals.calories*0.15) adherentDays++;
     }
     if((dayLog.waterMl||0) > 0) waterDays++;
   }
   const avgCal = mealDays ? Math.round(totalCal/mealDays) : 0;
   const avgProtein = mealDays ? Math.round(totalProtein/mealDays) : 0;
+  const adherencePct = mealDays ? Math.round((adherentDays/mealDays)*100) : 0;
 
-  ctx.textAlign = 'center';
-  ctx.fillStyle = '#F3F1EA';
-  ctx.font = '900 34px Arial';
-  ctx.fillText('ملخص أسبوعي — مِقياس', w/2, 70);
-  ctx.font = '500 16px Arial';
-  ctx.fillStyle = '#8A9199';
-  ctx.fillText(formatDateHuman(new Date()), w/2, 100);
+  const HEADER_H = 132, TOP_PAD = 28, STAT_BOX_H = 92, GAP_X = 16, GAP_Y = 14, SECTION_GAP = 30, FOOTER_H = 64;
+  const gridH = 3*STAT_BOX_H + 2*GAP_Y;
+  const totalH = HEADER_H + TOP_PAD + 24 + gridH + SECTION_GAP + FOOTER_H;
 
-  // ring-ish stat blocks
-  const stats = [
-    {label:'أيام سجّلت فيها', value:mealDays, color:'#2FD3A6'},
-    {label:'سلسلة الأيام', value:state.streak, color:'#5B9DFF'},
-    {label:'متوسط السعرات', value:avgCal.toLocaleString('en-US'), color:'#F2B84B'},
-    {label:'متوسط البروتين (غ)', value:avgProtein.toLocaleString('en-US'), color:'#FF6B4A'},
-  ];
-  const boxW = (w-80)/2, boxH = 130, gap=20;
-  stats.forEach((s,i)=>{
-    const col = i%2, row = Math.floor(i/2);
-    const x = 40 + col*(boxW+gap), y = 150 + row*(boxH+gap);
-    ctx.fillStyle = '#1C2329';
-    roundRect(ctx, x, y, boxW, boxH, 20); ctx.fill();
-    ctx.fillStyle = s.color;
-    ctx.font = '900 40px Arial';
-    ctx.fillText(String(s.value), x+boxW/2, y+65);
-    ctx.fillStyle = '#8A9199';
-    ctx.font = '500 15px Arial';
-    ctx.fillText(s.label, x+boxW/2, y+95);
+  canvas.width = W;
+  canvas.height = Math.round(totalH);
+  const w = canvas.width, h = canvas.height;
+  ctx.direction = 'rtl';
+
+  ctx.fillStyle = '#FFFFFF';
+  ctx.fillRect(0,0,w,h);
+
+  const headGrad = ctx.createLinearGradient(0,0,w,0);
+  headGrad.addColorStop(0, REPORT_TEAL_DARK);
+  headGrad.addColorStop(1, REPORT_TEAL);
+  ctx.fillStyle = headGrad;
+  ctx.fillRect(0,0,w,HEADER_H);
+
+  const lx = w/2, ly = 34;
+  ctx.fillStyle = 'rgba(255,255,255,.92)';
+  [[-18,14,8],[0,20,8],[18,26,8]].forEach(([dx,bh,bw])=>{
+    roundRect(ctx, lx+dx-bw/2, ly+26-bh, bw, bh, 3);
+    ctx.fill();
   });
 
-  ctx.fillStyle = '#4A5058';
-  ctx.font = '500 13px Arial';
-  ctx.fillText('صُنع بتطبيق مِقياس', w/2, h-30);
+  ctx.textAlign = 'center';
+  ctx.fillStyle = '#FFFFFF';
+  ctx.font = '900 27px Arial';
+  ctx.fillText('ملخص الأسبوع', w/2, 92);
+  ctx.font = '600 13px Arial';
+  ctx.fillStyle = 'rgba(255,255,255,.85)';
+  ctx.fillText(`مِقياس · ${formatDateHuman(new Date())}`, w/2, 114);
+
+  let y = HEADER_H + TOP_PAD;
+  drawReportSectionTitle(ctx, 'إنجازك هالأسبوع', w-M, y, REPORT_TEAL);
+  y += 24;
+
+  const stats = [
+    [`${mealDays}/7`, 'أيام سجّلت فيها', REPORT_TEAL, '🗓️'],
+    [`${state.streak}`, 'سلسلة الأيام', REPORT_BLUE, '⚡'],
+    [avgCal.toLocaleString('en-US'), 'متوسط السعرات', REPORT_PROTEIN, '🔥'],
+    [`${avgProtein} غ`, 'متوسط البروتين', REPORT_PROTEIN, '🍗'],
+    [`${waterDays}/7`, 'أيام شربت فيها ماء', REPORT_BLUE, '💧'],
+    [`${adherencePct}٪`, 'التزام بهدف السعرات', REPORT_FAT, '🎯'],
+  ];
+  const boxW = (CW-GAP_X)/2;
+  stats.forEach((s,i)=>{
+    const col = i%2, row = Math.floor(i/2);
+    const x = M + col*(boxW+GAP_X);
+    const by = y + row*(STAT_BOX_H+GAP_Y);
+    drawReportStatBox(ctx, x, by, boxW, STAT_BOX_H, s[0], s[1], s[2], s[3]);
+  });
+  y += gridH + SECTION_GAP;
+
+  ctx.strokeStyle = REPORT_LINE; ctx.lineWidth = 1;
+  ctx.beginPath(); ctx.moveTo(M,y); ctx.lineTo(w-M,y); ctx.stroke();
+  y += 30;
+  ctx.textAlign = 'center';
+  ctx.fillStyle = REPORT_TEAL;
+  ctx.font = '700 13px Arial';
+  ctx.fillText('صُنع بتطبيق مِقياس', w/2, y);
+
+  return canvas;
 }
 function roundRect(ctx,x,y,width,height,radius){
   ctx.beginPath();
