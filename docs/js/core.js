@@ -369,7 +369,6 @@ const state = {
   streak: 0,
   streakDays: [],
   weekLoggedDays: 0,
-  activeFoodCat: 'الكل',
   activeSheetFoodCat: 'الكل',
   mealBuilderMode: false,
   mealBuilderStep: 'protein',
@@ -701,12 +700,18 @@ function switchTab(tab){
   document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
   document.getElementById('view-'+tab).classList.add('active');
   document.querySelector(`.nav-btn[data-tab="${tab}"]`).classList.add('active');
-  // The floating (+) button is redundant on Home — it already has its own
-  // "إضافة سريعة" chips plus per-card add controls (water, weight card...)
-  // — and it used to sit on top of that content. Keep it on Food/Progress
-  // where it's still the fastest way to add a meal or log a weight/AI scan.
+  // The floating (+) button is redundant on Home — water already has its
+  // own +/- buttons right there, and the FAB used to just float on top of
+  // the meals list with nothing useful to add from Home anyway. Keep it on
+  // Food/Progress, where it's still the fastest way to add a meal or log a
+  // weight/AI scan. #app.has-fab gives the active view extra bottom padding
+  // (see styles.css) so the last card in a long list never ends up hidden
+  // behind it.
   const fab = document.getElementById('fab');
-  if(fab) fab.classList.toggle('fab-hidden', tab === 'home');
+  const showFab = tab !== 'home';
+  if(fab) fab.classList.toggle('fab-hidden', !showFab);
+  const appEl = document.getElementById('app');
+  if(appEl) appEl.classList.toggle('has-fab', showFab);
 }
 
 /* ============================================================
