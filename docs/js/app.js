@@ -82,13 +82,10 @@ function renderAll(){
   renderWeightCard();
   renderWeightCalorieTrend();
   renderWaterCard();
-  renderQuickChips();
   renderTodaySummary();
   renderPastDaysStrip();
   renderMealsToday();
-  renderFoodCatBar();
   renderFoodLibList();
-  renderCalDist();
 }
 
 /* ============================================================
@@ -99,7 +96,6 @@ function bindEvents(){
   document.querySelectorAll('.nav-btn').forEach(btn=>{
     btn.addEventListener('click', ()=> switchTab(btn.getAttribute('data-tab')));
   });
-  document.getElementById('goFoodLib').addEventListener('click', ()=> switchTab('food'));
 
   const fab = document.getElementById('fab');
   fab.addEventListener('click', ()=>{
