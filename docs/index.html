@@ -188,7 +188,7 @@
     </button>
   </nav>
 
-  <button class="fab" id="fab" aria-label="إضافة">+</button>
+  <button class="fab fab-hidden" id="fab" aria-label="إضافة">+</button>
 
 </div>
 
@@ -247,8 +247,6 @@
       <div class="form-field"><label>بروتين (غ)</label><input type="number" id="nfP" placeholder="0" inputmode="numeric"></div>
       <div class="form-field"><label>كارب (غ)</label><input type="number" id="nfC" placeholder="0" inputmode="numeric"></div>
       <div class="form-field"><label>دهون (غ)</label><input type="number" id="nfF" placeholder="0" inputmode="numeric"></div>
-      <div class="form-field"><label>ألياف (غ) — اختياري</label><input type="number" id="nfFiber" placeholder="0" inputmode="numeric"></div>
-      <div class="form-field"><label>صوديوم (مغ) — اختياري</label><input type="number" id="nfSodium" placeholder="0" inputmode="numeric"></div>
     </div>
     <button class="btn-primary" id="btnSaveNewFood"><span id="btnSaveNewFoodLabel">حفظ وإضافة لليوم</span></button>
   </div>
@@ -304,8 +302,6 @@
             <div class="form-field"><label>كارب (غ)</label><input type="number" id="goalC" inputmode="numeric"></div>
             <div class="form-field"><label>دهون (غ)</label><input type="number" id="goalF" inputmode="numeric"></div>
             <div class="form-field"><label>ماء (مل)</label><input type="number" id="goalWater" inputmode="numeric"></div>
-            <div class="form-field"><label>ألياف (غ)</label><input type="number" id="goalFiber" inputmode="numeric"></div>
-            <div class="form-field"><label>صوديوم (مغ)</label><input type="number" id="goalSodium" inputmode="numeric"></div>
           </div>
           <button class="btn-primary" id="btnSaveGoals">حفظ الأهداف</button>
         </div>
@@ -390,6 +386,13 @@
       <button class="btn-primary" id="btnSaveBodyWeight">حفظ</button>
     </div>
     <div class="form-field"><label>نسبة الدهون (%) — اختياري</label><input type="number" id="bfInput" step="0.1" inputmode="decimal" placeholder="مثال: 18.5"></div>
+
+    <div class="empty-hint" style="padding:8px 0 6px; text-align:right;">عشان نحسب مؤشر كتلة جسمك (BMI) وشريط التقدم نحو هدفك بصفحة التقدم:</div>
+    <div class="form-grid">
+      <div class="form-field"><label>طولك (سم)</label><input type="number" id="bwHeight" inputmode="numeric" placeholder="مثال: 175"></div>
+      <div class="form-field"><label>وزن مستهدف (كغ) — اختياري</label><input type="number" id="bwTarget" step="0.1" inputmode="decimal" placeholder="مثال: 75"></div>
+    </div>
+
     <div id="bwStatsWrap"></div>
     <div class="chart-wrap" id="bwChartWrap"></div>
     <div id="bfChartWrap"></div>
