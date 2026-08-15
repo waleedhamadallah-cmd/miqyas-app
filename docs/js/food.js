@@ -25,7 +25,7 @@ function renderMealsToday(){
     row.innerHTML = `<div class="entry-dot" style="background:${dotColor}"></div>
       <div class="entry-main"><div class="t1">${escapeHtml(m.name)}</div><div class="t2">${m.category} · ب${Math.round(m.protein)} ك${Math.round(m.carbs)} د${Math.round(m.fat)}</div></div>
       <div class="entry-side tabular">${m.calories}</div>
-      <div class="entry-del" data-del-meal="${m.id}" aria-label="حذف ${escapeHtml(m.name)}" role="button">✕</div>`;
+      <div class="entry-del" data-del-meal="${m.id}" aria-label="حذف ${escapeHtml(m.name)}" role="button">${ICON_X}</div>`;
     attachSwipeToDelete(row, ()=> deleteMeal(m.id));
     wrap.appendChild(row);
   });
@@ -82,9 +82,9 @@ function buildLibRow(food){
   const customTag = food.isCustom ? '<span class="custom-tag">مخصصة</span>' : '';
   row.innerHTML = `<div class="lm"><div class="n">${escapeHtml(food.name)}${customTag}</div><div class="d">${food.category} · ${food.calories} سعرة · ب${food.protein} ك${food.carbs} د${food.fat}</div></div>
     <div class="lib-actions">
-      <div class="fav-star${food.favorite?' on':''}" data-fav-food="${food.id}" aria-label="${food.favorite?'إزالة من المفضلة':'إضافة للمفضلة'}" role="button">${food.favorite?'★':'☆'}</div>
-      ${food.isCustom ? `<div class="lib-edit" data-edit-food="${food.id}" aria-label="تعديل" role="button">✏️</div>` : ''}
-      ${food.isCustom ? `<div class="lib-delete" data-del-food="${food.id}" aria-label="حذف" role="button">🗑️</div>` : ''}
+      <div class="fav-star${food.favorite?' on':''}" data-fav-food="${food.id}" aria-label="${food.favorite?'إزالة من المفضلة':'إضافة للمفضلة'}" role="button">${food.favorite?ICON_STAR_FILLED:ICON_STAR_OUTLINE}</div>
+      ${food.isCustom ? `<div class="lib-edit" data-edit-food="${food.id}" aria-label="تعديل" role="button">${ICON_PENCIL}</div>` : ''}
+      ${food.isCustom ? `<div class="lib-delete" data-del-food="${food.id}" aria-label="حذف" role="button">${ICON_TRASH}</div>` : ''}
       <div class="lib-add" aria-label="إضافة لليوم" role="button">+</div>
     </div>`;
   row.querySelector('.lib-add').addEventListener('click', (e)=>{ e.stopPropagation(); quickAddFood(food, null); });
@@ -199,18 +199,18 @@ function renderWeeklyFoodSummary(){
   });
 
   if(loggedDays===0){
-    wrap.innerHTML = `<div class="insight-row"><div class="insight-icon" style="background:var(--carb-soft); color:var(--carb-text);">📅</div>
+    wrap.innerHTML = `<div class="insight-row"><div class="insight-icon" style="background:var(--carb-soft); color:var(--carb-text);">${ICON_CALENDAR}</div>
       <div class="insight-tx"><div class="it1">ما فيه بيانات كافية هالأسبوع</div><div class="it2">سجل وجباتك عشان يبين لك ملخص أسبوعي</div></div></div>`;
     return;
   }
 
   const avgCal = Math.round(totalCal/loggedDays);
-  const avgHtml = `<div class="insight-row"><div class="insight-icon" style="background:var(--protein-soft); color:var(--protein-text);">📊</div>
+  const avgHtml = `<div class="insight-row"><div class="insight-icon" style="background:var(--protein-soft); color:var(--protein-text);">${ICON_BAR_CHART}</div>
     <div class="insight-tx"><div class="it1">متوسط سعراتك ${avgCal.toLocaleString('en-US')} سعرة باليوم</div><div class="it2">على أساس ${loggedDays} من آخر 7 أيام سجلتها</div></div></div>`;
 
   const topCat = Object.keys(catSums).reduce((a,b)=> catSums[b]>catSums[a] ? b : a);
   const topCatPct = totalCal ? Math.round((catSums[topCat]/totalCal)*100) : 0;
-  const catHtml = totalCal ? `<div class="insight-row"><div class="insight-icon" style="background:var(--fat-soft); color:var(--fat-text);">🍽️</div>
+  const catHtml = totalCal ? `<div class="insight-row"><div class="insight-icon" style="background:var(--fat-soft); color:var(--fat-text);">${ICON_MEAL}</div>
     <div class="insight-tx"><div class="it1">أكثر فئة تاكل منها: ${topCat}</div><div class="it2">${topCatPct}٪ من سعرات الأسبوع</div></div></div>` : '';
 
   wrap.innerHTML = avgHtml + catHtml;
