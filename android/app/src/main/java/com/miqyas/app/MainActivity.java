@@ -13,6 +13,7 @@ public class MainActivity extends BridgeActivity {
         // registration contract, so the JS bridge can see it as soon as the
         // page loads.
         registerPlugin(MiqyasWidgetPlugin.class);
+        registerPlugin(HealthConnectPlugin.class);
         super.onCreate(savedInstanceState);
 
         // The app targets SDK 36 (Android 15+), where the OS enforces edge-to-edge
