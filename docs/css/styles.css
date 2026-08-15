@@ -409,6 +409,14 @@ input{font-family:inherit; color:inherit;}
   margin-top:14px; padding:12px 14px; border-radius:var(--r-md); font-size:13px;
   background:var(--surface); color:var(--text-dim); border:1px solid var(--border-soft); line-height:1.7;
 }
+.ai-scan-item-row{margin-bottom:10px;}
+.ai-scan-item-row:last-child{margin-bottom:0;}
+.ai-scan-item-chip.added{
+  opacity:.55; pointer-events:none;
+}
+.ai-scan-item-chip.added .plus{
+  background:var(--carb-soft); color:var(--carb-text);
+}
 
 .search-wrap{position:relative; margin-bottom:12px;}
 .search-wrap input{
