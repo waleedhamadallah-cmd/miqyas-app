@@ -83,19 +83,26 @@ class HealthConnectPlugin : Plugin() {
         }
     }
 
+    // NOTE: deliberately NOT named "requestPermissions" — Capacitor's own
+    // Plugin base class already declares an open member with that exact
+    // name (part of its standard @Permission-annotation permission system),
+    // so a same-named Kotlin function here silently overrides it and fails
+    // to compile ("hides member of supertype ... needs an 'override' modifier").
+    // This plugin doesn't use Capacitor's standard permission system at all
+    // (Health Connect has its own permission model), hence the distinct name.
     @PluginMethod
-    fun requestPermissions(call: PluginCall) {
+    fun requestHealthPermissions(call: PluginCall) {
         if (getClientOrNull() == null) {
             call.reject("Health Connect غير متوفر على هذا الجهاز")
             return
         }
         val contract = PermissionController.createRequestPermissionResultContract()
         val intent = contract.createIntent(activity, writePermissions)
-        startActivityForResult(call, intent, "onPermissionsResult")
+        startActivityForResult(call, intent, "onHealthPermissionsResult")
     }
 
     @ActivityCallback
-    private fun onPermissionsResult(call: PluginCall?, result: ActivityResult) {
+    private fun onHealthPermissionsResult(call: PluginCall?, result: ActivityResult) {
         if (call == null) return
         val contract = PermissionController.createRequestPermissionResultContract()
         val granted = contract.parseResult(result.resultCode, result.data)
