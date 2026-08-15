@@ -18,6 +18,19 @@
   --fat-soft:rgba(242,184,75,.14);
   --shoulder:#5B9DFF;
   --shoulder-soft:rgba(91,157,255,.14);
+  /* Text/border-safe variants of the four macro colors above — same hue,
+     darkened so they clear WCAG AA (4.5:1 text / 3:1 UI-component) on this
+     theme's surfaces. Equal to the vivid base color here (dark theme
+     already clears both thresholds against --bg-elev); overridden with
+     darker values in the light theme block below. Use these, never the
+     raw --protein/--carb/--fat/--shoulder, anywhere the color paints text
+     or a border directly on the page background — keep the vivid originals
+     for fills/bars/chart segments, where contrast against the neutral
+     track (not WCAG text contrast) is what matters. */
+  --protein-text:#FF6B4A;
+  --carb-text:#2FD3A6;
+  --fat-text:#F2B84B;
+  --shoulder-text:#5B9DFF;
 
   /* Brand identity — matches the app icon's teal→blue mark. Kept separate
      from the food-macro colors above (protein/carb/fat/etc. stay put) so
@@ -32,6 +45,7 @@
   --accent-text:#2FD3A6;
   --accent-2-text:#588BE6;
   --danger:#E5555B;
+  --danger-text:#E5555B;
   --success:#2FD3A6;
 
   --r-xl:26px;
@@ -153,11 +167,16 @@ input{font-family:inherit; color:inherit;}
 .ring-wrap{ display:flex; justify-content:center; position:relative; margin-bottom:10px; }
 #ringSvg{ filter:drop-shadow(0 4px 16px rgba(47,211,166,.18)); transition:filter .3s ease; }
 #ringSvg.over-goal{ filter:drop-shadow(0 4px 16px rgba(229,85,91,.22)); }
+/* Unfilled portion of the calorie ring. Used to be a hardcoded #232B32 SVG
+   attribute — fine on the dark theme (a near-black bg), but on the light
+   theme that same dark-slate track read as a bold black ring dominating
+   the whole home screen. var(--border-soft) makes it theme-aware. */
+.ring-track{ stroke:var(--border-soft); }
 .ring-center{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; }
 .ring-center .num{ font-family:var(--font-d); font-weight:900; font-size:42px; line-height:1; letter-spacing:-.5px; transition:color .2s ease; }
 .ring-center .lbl{font-size:13px; color:var(--text-mute); font-weight:500;}
 .ring-center .sub{font-size:12px; color:var(--text-mute); margin-top:5px;}
-.ring-center.over-goal .num{ color:var(--danger); }
+.ring-center.over-goal .num{ color:var(--danger-text); }
 
 .macro-row{display:flex; gap:10px; margin-top:22px;}
 .macro-pill{ flex:1; background:var(--bg-elev); border:1px solid var(--border-soft); border-radius:var(--r-md); padding:11px 12px 10px; transition:background .2s ease, border-color .2s ease; }
@@ -166,14 +185,14 @@ input{font-family:inherit; color:inherit;}
 .macro-pill .val{font-size:12px; font-weight:700; font-family:var(--font-d); transition:color .2s ease;}
 .macro-track{height:6px; border-radius:var(--r-pill); background:var(--border-soft); overflow:hidden;}
 .macro-fill{height:100%; border-radius:var(--r-pill); transition:width .6s cubic-bezier(.2,.8,.2,1), background .2s ease;}
-.macro-pill.protein .val{color:var(--protein);}
+.macro-pill.protein .val{color:var(--protein-text);}
 .macro-pill.protein .macro-fill{background:var(--protein);}
-.macro-pill.carb .val{color:var(--carb);}
+.macro-pill.carb .val{color:var(--carb-text);}
 .macro-pill.carb .macro-fill{background:var(--carb);}
-.macro-pill.fat .val{color:var(--fat);}
+.macro-pill.fat .val{color:var(--fat-text);}
 .macro-pill.fat .macro-fill{background:var(--fat);}
 .macro-pill.over{ border-color:rgba(229,85,91,.4); }
-.macro-pill.over .val{color:var(--danger) !important;}
+.macro-pill.over .val{color:var(--danger-text) !important;}
 .macro-pill.over .macro-fill{background:var(--danger) !important;}
 .macro-pill.over .val::after{content:' ⚠'; font-size:10px;}
 
@@ -247,7 +266,7 @@ input{font-family:inherit; color:inherit;}
 .entry-main .t2{font-size:12px; color:var(--text-mute); margin-top:2px;}
 .entry-side{font-family:var(--font-d); font-weight:800; font-size:14px; color:var(--text-dim);}
 .entry-del{
-  width:32px; height:32px; border-radius:50%; background:var(--bg-elev); border:1px solid var(--border);
+  width:var(--tap-min); height:var(--tap-min); border-radius:50%; background:var(--bg-elev); border:1px solid var(--border);
   display:flex; align-items:center; justify-content:center; color:var(--text-mute); cursor:pointer; flex:0 0 auto;
 }
 
@@ -350,7 +369,7 @@ input{font-family:inherit; color:inherit;}
 .sheet-head h3{font-family:var(--font-d); font-weight:800; font-size:17px; margin:0;}
 .sheet-body{padding:8px 20px 26px; overflow-y:auto;}
 .sheet-close{
-  width:32px; height:32px; border-radius:50%; background:var(--surface); border:1px solid var(--border);
+  width:var(--tap-min); height:var(--tap-min); border-radius:50%; background:var(--surface); border:1px solid var(--border);
   display:flex; align-items:center; justify-content:center; cursor:pointer; color:var(--text-dim);
 }
 
@@ -363,6 +382,33 @@ input{font-family:inherit; color:inherit;}
 .qa-option .ic{width:44px; height:44px; border-radius:14px; display:flex; align-items:center; justify-content:center; font-size:21px; flex:0 0 auto;}
 .qa-option .tx b{display:block; font-size:14px; margin-bottom:2px;}
 .qa-option .tx span{font-size:12px; color:var(--text-mute);}
+
+/* ============ AI DISH SCAN ============ */
+.ai-scan-btns{display:flex; gap:10px; margin-top:14px;}
+.ai-scan-btns .btn-secondary{flex:1;}
+#aiScanPreview{
+  width:100%; max-height:220px; object-fit:cover; border-radius:var(--r-lg);
+  border:1px solid var(--border-soft); margin-top:4px;
+}
+.ai-scan-loading{
+  display:flex; flex-direction:column; align-items:center; gap:10px;
+  padding:22px 0; color:var(--text-dim); font-size:13px;
+}
+.ai-scan-spinner{
+  width:30px; height:30px; border-radius:50%;
+  border:3px solid var(--border-soft); border-top-color:var(--accent);
+  animation:splashSpin .8s linear infinite;
+}
+.ai-scan-match{ margin-top:14px; }
+.ai-scan-match-title{ font-size:13px; font-weight:700; color:var(--text-dim); margin-bottom:8px; }
+.ai-scan-error{
+  margin-top:14px; padding:12px 14px; border-radius:var(--r-md); font-size:13px;
+  background:rgba(229,85,91,.1); color:var(--danger-text); border:1px solid rgba(229,85,91,.3);
+}
+.ai-scan-noguess{
+  margin-top:14px; padding:12px 14px; border-radius:var(--r-md); font-size:13px;
+  background:var(--surface); color:var(--text-dim); border:1px solid var(--border-soft); line-height:1.7;
+}
 
 .search-wrap{position:relative; margin-bottom:12px;}
 .search-wrap input{
@@ -385,14 +431,14 @@ input{font-family:inherit; color:inherit;}
 .lib-row .lm{flex:1; min-width:0;}
 .lib-row .lm .n{font-size:14px; font-weight:700; display:flex; align-items:center; gap:6px;}
 .lib-row .lm .d{font-size:12px; color:var(--text-mute); margin-top:3px;}
-.lib-row .star{color:var(--fat); font-size:12px;}
+.lib-row .star{color:var(--fat-text); font-size:12px;}
 .lib-add{
   width:32px; height:32px; border-radius:50%; background:var(--surface-2); border:1px solid var(--border);
   color:var(--accent-text); font-size:17px; font-weight:800; display:flex; align-items:center; justify-content:center; flex:0 0 auto;
 }
 .lib-actions{display:flex; align-items:center; gap:8px; flex:0 0 auto;}
 .lib-edit{
-  width:34px; height:34px; border-radius:50%; background:var(--bg-elev); border:1px solid var(--border);
+  width:var(--tap-min); height:var(--tap-min); border-radius:50%; background:var(--bg-elev); border:1px solid var(--border);
   display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:13px; flex:0 0 auto; color:var(--text-dim);
 }
 .custom-tag{font-size:10px; font-weight:700; color:var(--accent-text); background:var(--carb-soft); border-radius:6px; padding:1px 6px; margin-inline-start:2px;}
@@ -423,7 +469,7 @@ input{font-family:inherit; color:inherit;}
 .form-grid{display:grid; grid-template-columns:1fr 1fr; gap:10px;}
 .sync-badge{
   display:inline-flex; align-items:center; gap:6px; font-size:12px; font-weight:700; padding:5px 10px;
-  border-radius:var(--r-pill); background:var(--carb-soft); color:var(--carb); margin-bottom:12px;
+  border-radius:var(--r-pill); background:var(--carb-soft); color:var(--carb-text); margin-bottom:12px;
 }
 .sync-badge.off{background:var(--surface-2); color:var(--text-mute);}
 .sync-dot{width:6px; height:6px; border-radius:50%; background:currentColor;}
@@ -445,7 +491,7 @@ input{font-family:inherit; color:inherit;}
   background:var(--surface); border:1px solid var(--border); font-size:13px; font-weight:700; color:var(--text-dim);
   cursor:pointer; margin-bottom:12px;
 }
-.meal-builder-toggle.on{background:var(--protein-soft); border-color:var(--protein); color:var(--protein);}
+.meal-builder-toggle.on{background:var(--protein-soft); border-color:var(--protein-text); color:var(--protein-text);}
 .mb-bar{
   background:var(--bg-elev); border:1px solid var(--border); border-radius:var(--r-lg); padding:12px 14px; margin-bottom:12px;
 }
@@ -455,7 +501,7 @@ input{font-family:inherit; color:inherit;}
   text-align:center; font-size:12px; color:var(--text-mute);
 }
 .mb-step.active{border-color:var(--accent); color:var(--accent-text); background:var(--accent-soft); font-weight:700;}
-.mb-step.done{color:var(--carb); border-color:var(--carb);}
+.mb-step.done{color:var(--carb-text); border-color:var(--carb-text);}
 .mb-picks{font-size:12px; color:var(--text-dim); margin-bottom:8px; line-height:1.8;}
 .mb-picks b{color:var(--text);}
 .mb-actions{display:flex; gap:8px;}
@@ -474,9 +520,9 @@ input{font-family:inherit; color:inherit;}
 /* ============ FAVORITE STAR (exercise picker) ============ */
 .fav-star{
   font-size:19px; color:var(--text-mute); cursor:pointer; flex:0 0 auto; line-height:1; transition:transform .12s ease;
-  width:32px; height:32px; display:flex; align-items:center; justify-content:center;
+  width:var(--tap-min); height:var(--tap-min); display:flex; align-items:center; justify-content:center;
 }
-.fav-star.on{color:var(--fat);}
+.fav-star.on{color:var(--fat-text);}
 .fav-star:active{transform:scale(1.3);}
 
 /* ============ BODY WEIGHT CARD ============ */
@@ -485,7 +531,7 @@ input{font-family:inherit; color:inherit;}
   padding:16px 18px; display:flex; align-items:center; gap:14px; cursor:pointer;
 }
 .weight-card .wc-icon{
-  width:44px; height:44px; border-radius:14px; background:var(--shoulder-soft); color:var(--shoulder);
+  width:44px; height:44px; border-radius:14px; background:var(--shoulder-soft); color:var(--shoulder-text);
   display:flex; align-items:center; justify-content:center; font-size:20px; flex:0 0 auto;
 }
 .weight-card .wc-tx{flex:1; min-width:0;}
@@ -576,6 +622,15 @@ html[data-theme="light"]{
   --text-mute:#63686F;
   --accent-text:#197159;
   --accent-2-text:#2D6AD7;
+  /* Darkened macro/danger colors — the vivid --protein/--carb/--fat/--shoulder
+     values were tuned to pop on a near-black background; against this
+     theme's white surfaces they drop to 1.8-2.8:1, well under the 4.5:1
+     (text) / 3:1 (border) WCAG minimums. These clear ~4.5:1 on white. */
+  --protein-text:#E32900;
+  --carb-text:#1C8568;
+  --fat-text:#9E6B0B;
+  --shoulder-text:#096CFF;
+  --danger-text:#DF2D35;
 }
 html[data-theme="light"] body{
   background:
@@ -660,13 +715,13 @@ html[data-theme="light"] .entry-del, html[data-theme="light"] .tdel{ background:
 }
 .water-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:11px;}
 .water-head .wh-title{font-size:13px; font-weight:700; color:var(--text-dim); display:flex; align-items:center; gap:6px;}
-.water-head .wh-val{font-family:var(--font-d); font-weight:800; font-size:14px; color:var(--shoulder);}
+.water-head .wh-val{font-family:var(--font-d); font-weight:800; font-size:14px; color:var(--shoulder-text);}
 .water-track{height:8px; background:var(--border-soft); border-radius:var(--r-pill); overflow:hidden; margin-bottom:13px;}
 .water-fill{height:100%; background:linear-gradient(90deg,var(--shoulder),#8ec2ff); border-radius:var(--r-pill); transition:width .5s ease;}
 .water-btns{display:flex; gap:8px;}
 .water-btn{
   flex:1; padding:10px 0; border-radius:var(--r-pill); background:var(--shoulder-soft); border:1px solid transparent;
-  text-align:center; font-size:12px; font-weight:700; color:var(--shoulder); cursor:pointer; transition:transform .12s ease, background .12s ease;
+  text-align:center; font-size:12px; font-weight:700; color:var(--shoulder-text); cursor:pointer; transition:transform .12s ease, background .12s ease;
 }
 .water-btn:active{transform:scale(.94); background:rgba(91,157,255,.22);}
 .water-custom-row{display:flex; gap:8px; margin-top:9px;}
@@ -674,7 +729,7 @@ html[data-theme="light"] .entry-del, html[data-theme="light"] .tdel{ background:
   flex:1; min-width:0; background:var(--bg-elev); border:1px solid var(--border-soft); border-radius:var(--r-md);
   padding:10px 12px; font-size:13px; color:var(--text); outline:none;
 }
-.water-custom-row input:focus{border-color:var(--shoulder);}
+.water-custom-row input:focus{border-color:var(--shoulder-text);}
 .water-custom-btn{
   flex:0 0 auto; padding:10px 20px; border-radius:var(--r-pill); background:var(--shoulder); color:#12161A;
   font-size:12px; font-weight:800; cursor:pointer; display:flex; align-items:center; justify-content:center;
