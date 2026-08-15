@@ -139,9 +139,11 @@ function renderTodaySummary(){
     const row = document.createElement('div');
     row.className = 'entry-row';
     const dotColor = MEAL_CAT_COLORS[m.category] || 'var(--protein)';
+    const qtyTag = (m.qty!==undefined && m.qty!==1) ? ` · ×${trimQtyDisplay(m.qty)}` : '';
     row.innerHTML = `<div class="entry-dot" style="background:${dotColor}"></div>
-      <div class="entry-main"><div class="t1">${escapeHtml(m.name)}</div><div class="t2">${m.category} · ب${Math.round(m.protein)} ك${Math.round(m.carbs)} د${Math.round(m.fat)}</div></div>
+      <div class="entry-main"><div class="t1">${escapeHtml(m.name)}</div><div class="t2">${m.category} · ب${Math.round(m.protein)} ك${Math.round(m.carbs)} د${Math.round(m.fat)}${qtyTag}</div></div>
       <div class="entry-side tabular">${m.calories}</div>`;
+    row.addEventListener('click', ()=> openEditMealSheet(m.id));
     wrap.appendChild(row);
   });
 }
