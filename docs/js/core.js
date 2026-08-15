@@ -738,7 +738,7 @@ function attachSwipeToDelete(rowEl, onConfirmDelete){
 
 const overlay = document.getElementById('overlay');
 
-const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetAiScan','sheetSettings','sheetBodyWeight','sheetOnboarding','sheetRecipeBuilder','sheetMealTemplates','sheetShareCard','sheetReport'];
+const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetEditMeal','sheetAiScan','sheetSettings','sheetBodyWeight','sheetOnboarding','sheetRecipeBuilder','sheetMealTemplates','sheetShareCard','sheetReport'];
 
 function openSheet(id){
   closeAllSheets();
@@ -778,4 +778,3 @@ function switchTab(tab){
 /* ============================================================
    FOOD SHEET (picker within FAB flow)
    ============================================================ */
-
