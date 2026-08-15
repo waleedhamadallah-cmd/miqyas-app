@@ -113,35 +113,67 @@ async function handleAiScanFile(file){
 
 function renderAiScanResult(data){
   const result = document.getElementById('aiScanResult');
+  result.innerHTML = '';
 
-  if(data.match){
-    const food = (state.library.foods||[]).find(f=>f.name===data.match);
-    if(food){
-      result.innerHTML = `
-        <div class="ai-scan-match">
-          <div class="ai-scan-match-title">لقيت طبق يطابق:</div>
-          <div class="food-chip" id="aiScanMatchChip" style="width:100%; max-width:none;">
-            <div class="plus">+</div>
-            <div class="fname">${escapeHtml(food.name)}</div>
-            <div class="fcal tabular">${food.calories} سعرة</div>
-          </div>
-          <button class="btn-secondary" id="aiScanNotThis" style="margin-top:10px;">مو هذا، سجّل يدوياً</button>
-        </div>`;
-      document.getElementById('aiScanMatchChip').addEventListener('click', async ()=>{
-        await quickAddFood(food, null);
-        closeAllSheets();
-      });
-      document.getElementById('aiScanNotThis').addEventListener('click', ()=> openAiScanManualFallback(data.guess));
-      return;
-    }
+  // The server always returns {items:[...]} — one entry per distinct food
+  // item it spotted in the photo (a plate can be rice + meat + salad, three
+  // separate items, not one). Each renders as its own row so the user can
+  // tap to add each one individually, instead of only ever getting one dish
+  // out of a photo that clearly has several.
+  const items = Array.isArray(data.items) ? data.items : [];
+
+  if(!items.length){
+    result.innerHTML = `<div class="ai-scan-noguess">ما قدرت أميّز أي صنف واضح بالصورة.</div>
+      <button class="btn-secondary" id="aiScanManualBtn" style="margin-top:10px;">سجّل يدوياً</button>`;
+    document.getElementById('aiScanManualBtn').addEventListener('click', ()=> openAiScanManualFallback(''));
+    return;
   }
 
-  result.innerHTML = `
-    <div class="ai-scan-noguess">
-      ما لقيت تطابق واضح بمكتبتك${data.guess ? ` — تخميني إنه "${escapeHtml(data.guess)}"` : ''}.
-    </div>
-    <button class="btn-secondary" id="aiScanManualBtn" style="margin-top:10px;">كمّل التسجيل يدوياً</button>`;
-  document.getElementById('aiScanManualBtn').addEventListener('click', ()=> openAiScanManualFallback(data.guess));
+  const titleEl = document.createElement('div');
+  titleEl.className = 'ai-scan-match-title';
+  titleEl.textContent = items.length > 1 ? `لقيت ${items.length} أصناف بالصورة:` : 'لقيت صنف يطابق:';
+  result.appendChild(titleEl);
+
+  const listEl = document.createElement('div');
+  listEl.id = 'aiScanItemsList';
+  result.appendChild(listEl);
+
+  items.forEach(item=>{
+    const food = item.match ? (state.library.foods||[]).find(f=>f.name===item.match) : null;
+    const row = document.createElement('div');
+    row.className = 'ai-scan-item-row';
+
+    if(food){
+      row.innerHTML = `
+        <div class="food-chip ai-scan-item-chip" style="width:100%; max-width:none;">
+          <div class="plus">+</div>
+          <div class="fname">${escapeHtml(food.name)}</div>
+          <div class="fcal tabular">${food.calories} سعرة</div>
+        </div>`;
+      const chip = row.querySelector('.ai-scan-item-chip');
+      chip.addEventListener('click', async ()=>{
+        if(chip.classList.contains('added')) return;
+        chip.classList.add('added');
+        chip.querySelector('.plus').textContent = '✓';
+        await quickAddFood(food, null);
+      });
+    }else{
+      row.innerHTML = `
+        <div class="ai-scan-noguess" style="margin-top:0;">
+          ${item.guess ? `ما لقيت تطابق — تخميني إنه "${escapeHtml(item.guess)}"` : 'ما لقيت تطابق واضح لهذا الصنف'}
+        </div>
+        <button class="btn-secondary ai-scan-manual-item-btn" style="margin-top:8px;">أضفه يدوياً</button>`;
+      row.querySelector('.ai-scan-manual-item-btn').addEventListener('click', ()=> openAiScanManualFallback(item.guess));
+    }
+    listEl.appendChild(row);
+  });
+
+  const doneBtn = document.createElement('button');
+  doneBtn.className = 'btn-primary';
+  doneBtn.style.marginTop = '14px';
+  doneBtn.textContent = 'تم';
+  doneBtn.addEventListener('click', ()=> closeAllSheets());
+  result.appendChild(doneBtn);
 }
 
 function openAiScanManualFallback(guess){
