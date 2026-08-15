@@ -124,10 +124,7 @@
     </div>
 
     <div class="home-secondary">
-      <div class="section-title"><span class="st-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"></circle><line x1="12" y1="8" x2="12" y2="16"></line><line x1="8" y1="12" x2="16" y2="12"></line></svg>إضافة سريعة</span><span class="link" id="goFoodLib">المكتبة كاملة ←</span></div>
-      <div class="chip-scroll" id="quickChips"></div>
-
-      <div class="section-title"><span class="st-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="14" y2="17"></line></svg><span id="mealsTodayLabel">اليوم</span></span></div>
+      <div class="section-title" style="margin-top:0;"><span class="st-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="4" y1="7" x2="20" y2="7"></line><line x1="4" y1="12" x2="20" y2="12"></line><line x1="4" y1="17" x2="14" y2="17"></line></svg><span id="mealsTodayLabel">اليوم</span></span></div>
       <div class="entry-list" id="todaySummary"></div>
     </div>
   </section>
@@ -142,19 +139,13 @@
       <button class="btn-secondary" id="btnOpenRecipeBuilder">🍲 بناء وصفة</button>
     </div>
 
-    <div class="section-title"><span class="st-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="18" y1="20" x2="18" y2="14"></line></svg>توزيع السعرات <span id="foodDistLabel">اليوم</span></span></div>
-    <div class="chart-wrap" id="calDistWrap"></div>
-
     <div class="section-title"><span class="st-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="4" width="16" height="16" rx="2"></rect><line x1="9" y1="4" x2="9" y2="20"></line></svg>مكتبة الأكل</span></div>
-    <div class="lib-card">
-      <div class="search-wrap">
-        <input type="text" id="foodSearch" placeholder="ابحث عن وجبة...">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
-      </div>
-      <div class="chipbar" id="foodCatBar"></div>
-      <div id="foodLibList"></div>
-      <button class="btn-secondary" id="btnAddCustomFood">+ إضافة وجبة جديدة للمكتبة</button>
+    <div class="search-wrap lib-search-wrap">
+      <input type="text" id="foodSearch" placeholder="ابحث عن وجبة...">
+      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
     </div>
+    <div class="acc-list" id="foodLibList"></div>
+    <button class="btn-secondary lib-add-btn" id="btnAddCustomFood">+ إضافة وجبة جديدة للمكتبة</button>
   </section>
 
   <!-- PROGRESS VIEW -->
