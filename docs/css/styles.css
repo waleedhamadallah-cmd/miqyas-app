@@ -273,7 +273,7 @@ input{font-family:inherit; color:inherit;}
 /* ============ LIST ITEMS (meals / workouts) ============ */
 .entry-list{display:flex; flex-direction:column; gap:8px;}
 .entry-row{
-  display:flex; align-items:center; gap:12px;
+  display:flex; align-items:center; gap:12px; cursor:pointer;
   background:var(--surface); border:1px solid var(--border-soft);
   border-radius:var(--r-md); padding:11px 14px; box-shadow:var(--shadow-2);
 }
@@ -841,6 +841,11 @@ html[data-theme="light"] .entry-del, html[data-theme="light"] .tdel{ background:
   padding:7px 12px; border-radius:var(--r-pill); background:var(--accent); color:#161113; font-size:12px; font-weight:800; cursor:pointer; flex:0 0 auto;
 }
 .template-row .tdel{width:32px; height:32px; border-radius:50%; background:var(--bg-elev); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; color:var(--text-mute); cursor:pointer; flex:0 0 auto;}
+
+/* ============ EDIT MEAL ENTRY (quantity + delete) ============ */
+.edit-meal-name{font-size:17px; font-weight:800; color:var(--text); margin-bottom:14px;}
+#editMealQtyCustom{margin-top:2px;}
+#btnDeleteEditMeal{color:var(--danger-text); border-color:rgba(229,85,91,.35);}
 
 /* ============ REMINDERS (Settings) ============ */
 .reminder-row{display:flex; align-items:center; gap:10px; padding:6px 4px;}
