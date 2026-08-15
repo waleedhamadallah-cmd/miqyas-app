@@ -76,6 +76,10 @@
     <uses-permission android:name="android.permission.health.WRITE_NUTRITION" />
     <uses-permission android:name="android.permission.health.WRITE_HYDRATION" />
 
+    <!-- Reminders: runtime permission required on Android 13+ before any
+         local notification (meal/water reminders) can be shown. -->
+    <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
+
     <!-- Lets the app check whether Health Connect is installed. -->
     <queries>
         <package android:name="com.google.android.apps.healthdata" />
