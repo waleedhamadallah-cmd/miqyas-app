@@ -28,6 +28,7 @@ async function init(){
   renderAll();
   bindEvents();
   bindAndroidBackButton();
+  bindDateRolloverCheck();
   hideSplash();
   syncWidget();
   applyReminderSettings();
