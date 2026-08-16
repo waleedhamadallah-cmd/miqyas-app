@@ -25,6 +25,13 @@ function renderAiScanModeToggle(){
   const genBtn = document.getElementById('aiModeGeneralBtn');
   if(libBtn) libBtn.classList.toggle('active', mode==='library');
   if(genBtn) genBtn.classList.toggle('active', mode==='general');
+
+  const explainer = document.getElementById('aiScanModeExplainer');
+  if(explainer){
+    explainer.textContent = mode==='general'
+      ? 'يقدّر لك القيم الغذائية مباشرة، حتى لو الصنف مو بمكتبتك'
+      : 'يطابق مع أطباقك المحفوظة أول، وإلا يعطيك تخمين بالاسم بس';
+  }
 }
 
 function setAiScanMode(mode){
