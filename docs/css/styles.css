@@ -412,7 +412,7 @@ input{font-family:inherit; color:inherit;}
   padding:12px 16px; font-size:14px; outline:none; min-width:0;
 }
 .ai-scan-text-row input:focus{border-color:var(--accent);}
-.ai-scan-text-row .btn-primary{flex:0 0 auto; padding:0 20px;}
+.ai-scan-text-row .btn-primary{flex:0 0 auto; width:auto; padding:0 20px; white-space:nowrap;}
 #aiScanPreview{
   width:100%; max-height:220px; object-fit:cover; border-radius:var(--r-lg);
   border:1px solid var(--border-soft); margin-top:4px;
