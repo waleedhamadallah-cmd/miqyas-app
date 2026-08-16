@@ -135,6 +135,14 @@ function bindEvents(){
     const f = e.target.files[0]; e.target.value='';
     if(f) handleAiScanFile(f);
   });
+  document.getElementById('aiModeLibraryBtn').addEventListener('click', ()=> setAiScanMode('library'));
+  document.getElementById('aiModeGeneralBtn').addEventListener('click', ()=> setAiScanMode('general'));
+  document.getElementById('aiScanTextSubmitBtn').addEventListener('click', ()=>{
+    handleAiScanText(document.getElementById('aiScanTextInput').value);
+  });
+  document.getElementById('aiScanTextInput').addEventListener('keydown', (e)=>{
+    if(e.key==='Enter'){ e.preventDefault(); handleAiScanText(e.target.value); }
+  });
   document.getElementById('btnSaveAiSettings').addEventListener('click', ()=>{
     appState.aiProxyUrl = document.getElementById('aiProxyUrlInput').value.trim();
     appState.aiProxySecret = document.getElementById('aiProxySecretInput').value.trim();
