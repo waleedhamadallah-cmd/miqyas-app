@@ -827,5 +827,45 @@ function bindAndroidBackButton(){
 }
 
 /* ============================================================
+   MIDNIGHT ROLLOVER — state.today is only ever set once, at init(). A
+   phone app very commonly stays alive in the background for hours (the
+   user checks it before bed, then again the next morning without ever
+   force-closing it) — without this, every log/water tap in that second
+   session would silently land on YESTERDAY's date until the user manually
+   killed and reopened the app. This re-checks the real date whenever the
+   app becomes visible again (tab refocus on web, resume on native) and
+   quietly rolls the whole app state over to the new day if it changed.
+   Deliberately does NOT yank the user off a past day they're mid-editing —
+   only advances state.viewDate/state.log along with state.today when they
+   were actually looking at "today" at the moment it rolled over.
+   ============================================================ */
+function checkDateRollover(){
+  const freshToday = todayKey();
+  if(freshToday === state.today) return;
+  const wasViewingToday = (state.viewDate === state.today);
+  state.today = freshToday;
+  if(!appState.logs[state.today]) appState.logs[state.today] = {meals:[], waterMl:0};
+  if(appState.logs[state.today].waterMl===undefined) appState.logs[state.today].waterMl = 0;
+  if(wasViewingToday){
+    state.viewDate = state.today;
+    state.log = appState.logs[state.today];
+  }
+  const dateTextEl = document.getElementById('dateText');
+  if(dateTextEl) dateTextEl.textContent = formatDateHuman(new Date());
+  if(typeof setGreeting==='function') setGreeting();
+  computeStreak();
+  renderAll();
+}
+
+function bindDateRolloverCheck(){
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) checkDateRollover(); });
+  const appPlugin = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.App;
+  if(appPlugin && appPlugin.addListener){
+    appPlugin.addListener('appStateChange', ({isActive})=>{ if(isActive) checkDateRollover(); });
+    appPlugin.addListener('resume', ()=> checkDateRollover());
+  }
+}
+
+/* ============================================================
    FOOD SHEET (picker within FAB flow)
    ============================================================ */
