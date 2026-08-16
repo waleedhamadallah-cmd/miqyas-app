@@ -781,5 +781,51 @@ function switchTab(tab){
 }
 
 /* ============================================================
+   ANDROID HARDWARE/GESTURE BACK BUTTON
+   Silent no-op on the plain web/PWA (Capacitor.Plugins.App doesn't exist
+   there — the browser's own back button behavior applies instead, which is
+   fine/expected outside the installed app).
+
+   Without this, Capacitor's default Android behavior is to check the
+   WebView's own history and exit the app immediately if there's nothing to
+   go back to — and since مِقياس is a single-page app that never pushes
+   browser history entries (tabs/sheets/viewed-day are all plain JS state,
+   not URLs), canGoBack() is always false, so ANY back press instantly
+   exited the whole app instead of just closing whatever sheet/state was
+   open. This listener takes over that decision entirely: close an open
+   sheet first, then return from a non-today viewed day, then return to the
+   Home tab, and only actually exit once the user is already at that true
+   root screen — with one "press again to exit" confirmation so a single
+   stray back tap from Home can't kick them out by accident.
+   ============================================================ */
+function bindAndroidBackButton(){
+  const appPlugin = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.App;
+  if(!appPlugin) return;
+  let lastBackPressAt = 0;
+  appPlugin.addListener('backButton', ()=>{
+    if(document.querySelector('.sheet.show')){
+      closeAllSheets();
+      return;
+    }
+    if(typeof isViewingToday==='function' && !isViewingToday()){
+      returnToToday();
+      return;
+    }
+    const homeBtn = document.querySelector('.nav-btn[data-tab="home"]');
+    if(homeBtn && !homeBtn.classList.contains('active')){
+      switchTab('home');
+      return;
+    }
+    const now = Date.now();
+    if(now - lastBackPressAt < 2000){
+      appPlugin.exitApp();
+    } else {
+      lastBackPressAt = now;
+      showToast('اضغط رجوع مرة ثانية للخروج');
+    }
+  });
+}
+
+/* ============================================================
    FOOD SHEET (picker within FAB flow)
    ============================================================ */
