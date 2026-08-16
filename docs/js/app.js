@@ -27,6 +27,7 @@ async function init(){
   computeStreak();
   renderAll();
   bindEvents();
+  bindAndroidBackButton();
   hideSplash();
   syncWidget();
   applyReminderSettings();
