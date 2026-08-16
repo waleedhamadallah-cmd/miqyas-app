@@ -132,6 +132,10 @@ function defaultAppState(){
     bodyWeights:{}, bodyFat:{}, bodyMeasurements:{}, mealTemplates:[],
     theme:'dark', onboarded:false, updatedAt:0, healthConnectGranted:false,
     aiProxyUrl:'', aiProxySecret:'',
+    // 'library' matches only against the user's own saved foods (fast,
+    // trusted, no macros shown for a non-match); 'general' asks the AI to
+    // estimate full macros for anything, even foods outside the library.
+    aiScanMode:'library',
     // heightCm powers the BMI gauge on the Progress tab's weight card;
     // targetWeightKg (optional) powers the start→target bar there. Both
     // null until the user fills them in (onboarding sets heightCm; either
@@ -166,6 +170,7 @@ function rebindFromAppState(){
   if(appState.healthConnectGranted===undefined) appState.healthConnectGranted = false;
   if(appState.aiProxyUrl===undefined) appState.aiProxyUrl = '';
   if(appState.aiProxySecret===undefined) appState.aiProxySecret = '';
+  if(appState.aiScanMode!=='library' && appState.aiScanMode!=='general') appState.aiScanMode = 'library';
   if(!appState.profile) appState.profile = {};
   if(appState.profile.heightCm===undefined) appState.profile.heightCm = null;
   if(appState.profile.targetWeightKg===undefined) appState.profile.targetWeightKg = null;
