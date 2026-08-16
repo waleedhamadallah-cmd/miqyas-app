@@ -30,6 +30,7 @@ function renderMealsToday(){
     row.innerHTML = `<div class="entry-dot" style="background:${dotColor}"></div>
       <div class="entry-main"><div class="t1">${escapeHtml(m.name)}</div><div class="t2">${m.category} · ب${Math.round(m.protein)} ك${Math.round(m.carbs)} د${Math.round(m.fat)}${qtyTag}</div></div>
       <div class="entry-side tabular">${m.calories}</div>
+      <div class="entry-edit-hint">${ICON_PENCIL}</div>
       <div class="entry-del" data-del-meal="${m.id}" aria-label="حذف ${escapeHtml(m.name)}" role="button">${ICON_X}</div>`;
     row.addEventListener('click', (e)=>{
       if(e.target.closest('.entry-del')) return;
@@ -483,8 +484,13 @@ function renderSheetFoodList(){
   list.forEach(food=>{
     const row = document.createElement('div');
     row.className = 'lib-row';
+    // In meal-builder mode tapping a row only PICKS it as a component (step
+    // 1 of 2) — it doesn't log anything yet, unlike normal mode where "+"
+    // means instant add. Showing the same "+" in both modes used to imply
+    // the food was logged the moment you tapped it, even mid-pick.
+    const marker = state.mealBuilderMode ? '›' : '+';
     row.innerHTML = `<div class="lm"><div class="n">${escapeHtml(food.name)}</div><div class="d">${food.category} · ${food.calories} سعرة · ب${food.protein} ك${food.carbs} د${food.fat}</div></div>
-      <div class="lib-add">+</div>`;
+      <div class="lib-add">${marker}</div>`;
     row.addEventListener('click', async ()=>{
       if(state.mealBuilderMode){ pickMealBuilderFood(food); }
       else{ await quickAddFood(food, null); closeAllSheets(); }
