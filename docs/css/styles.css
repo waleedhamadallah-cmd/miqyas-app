@@ -282,6 +282,11 @@ input{font-family:inherit; color:inherit;}
 .entry-main .t1{font-size:14px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
 .entry-main .t2{font-size:12px; color:var(--text-mute); margin-top:2px;}
 .entry-side{font-family:var(--font-d); font-weight:800; font-size:14px; color:var(--text-dim);}
+/* Passive hint that the whole row is tappable to edit the logged quantity —
+   not its own tap target (the row click handler already covers it), just a
+   visual cue so the interaction isn't invisible/undiscoverable. */
+.entry-edit-hint{width:14px; height:14px; color:var(--text-mute); opacity:.45; flex:0 0 auto;}
+.entry-edit-hint svg{width:100%; height:100%;}
 .entry-del{
   width:var(--tap-min); height:var(--tap-min); border-radius:50%; background:var(--bg-elev); border:1px solid var(--border);
   display:flex; align-items:center; justify-content:center; color:var(--text-mute); cursor:pointer; flex:0 0 auto;
@@ -413,6 +418,8 @@ input{font-family:inherit; color:inherit;}
 }
 .ai-scan-text-row input:focus{border-color:var(--accent);}
 .ai-scan-text-row .btn-primary{flex:0 0 auto; width:auto; padding:0 20px; white-space:nowrap;}
+.ai-scan-divider{display:flex; align-items:center; gap:10px; margin:12px 0; color:var(--text-mute); font-size:12px;}
+.ai-scan-divider .line{flex:1; height:1px; background:var(--border-soft);}
 #aiScanPreview{
   width:100%; max-height:220px; object-fit:cover; border-radius:var(--r-lg);
   border:1px solid var(--border-soft); margin-top:4px;
