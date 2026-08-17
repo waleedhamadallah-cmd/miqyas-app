@@ -17,6 +17,28 @@ android {
             ignoreAssetsPattern = '!.svn:!.git:!.ds_store:!*.scc:.*:!CVS:!thumbs.db:!picasa.ini:!*~'
         }
     }
+    // Without this, debug builds fall back to Android Gradle Plugin's default
+    // debug signing, which auto-generates ~/.android/debug.keystore the
+    // first time it's needed. That's fine on a laptop (the file persists
+    // between builds), but GitHub Actions runners are a fresh VM every run —
+    // so every CI-built APK was getting signed with a brand-new random key.
+    // Android refuses to install an APK as an "update" over one signed with
+    // a different key (package signature mismatch), which is exactly why
+    // installing a newer build required deleting the app first and losing
+    // local data / Health Connect permissions / Firebase linking every time.
+    // debug.keystore here is a checked-in, fixed debug-only key (the standard
+    // "android"/"android" debug password — never used for the release build,
+    // so this is the normal, safe way to do this) — every build from now on,
+    // local or CI, signs with the same identity, so a fresh APK installs as
+    // a normal in-place update and keeps all app data.
+    signingConfigs {
+        debug {
+            storeFile file('debug.keystore')
+            storePassword 'android'
+            keyAlias 'androiddebugkey'
+            keyPassword 'android'
+        }
+    }
     buildTypes {
         release {
             minifyEnabled false
