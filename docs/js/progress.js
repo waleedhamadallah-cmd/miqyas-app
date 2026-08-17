@@ -47,7 +47,7 @@ function buildBmiGauge(bmi){
 
 function renderWeightCard(){
   const wrap = document.getElementById('weightCard');
-  wrap.onclick = openBodyWeightSheet;
+  wrap.onclick = ()=> openBodyWeightSheet();
   const history = getBodyWeightHistory();
   if(history.length===0){
     wrap.innerHTML = `<div class="wc-empty">
@@ -107,15 +107,34 @@ function renderWeightCard(){
   `;
 }
 
-function openBodyWeightSheet(){
-  const todayW = appState.bodyWeights[state.today];
-  document.getElementById('bwInput').value = todayW || '';
-  const todayBF = (appState.bodyFat||{})[state.today];
-  document.getElementById('bfInput').value = todayBF || '';
-  const todayM = (appState.bodyMeasurements||{})[state.today] || {};
-  document.getElementById('measArm').value = todayM.arm || '';
-  document.getElementById('measWaist').value = todayM.waist || '';
-  document.getElementById('measChest').value = todayM.chest || '';
+// Which date the weight/body-fat/measurement fields in #sheetBodyWeight
+// currently read from and save to — defaults to today (the fast, common
+// path: log today's weigh-in) but the date field lets it point at any past
+// day, so a bad entry from last week can actually be corrected instead of
+// only ever being able to add/overwrite *today's* value.
+let bwEditDate = null;
+
+// Loads the weight/fat/measurement inputs for `dateKey` without touching
+// the date field itself or reopening the sheet — used both by
+// openBodyWeightSheet() (first open) and the date input's change handler
+// (switching which day you're editing while the sheet stays open).
+function loadBodyWeightFieldsForDate(dateKey){
+  bwEditDate = dateKey;
+  const w = appState.bodyWeights[dateKey];
+  document.getElementById('bwInput').value = w || '';
+  const bf = (appState.bodyFat||{})[dateKey];
+  document.getElementById('bfInput').value = bf || '';
+  const m = (appState.bodyMeasurements||{})[dateKey] || {};
+  document.getElementById('measArm').value = m.arm || '';
+  document.getElementById('measWaist').value = m.waist || '';
+  document.getElementById('measChest').value = m.chest || '';
+}
+
+function openBodyWeightSheet(dateKey){
+  const targetDate = dateKey || state.today;
+  document.getElementById('bwDateInput').value = targetDate;
+  document.getElementById('bwDateInput').max = state.today;
+  loadBodyWeightFieldsForDate(targetDate);
   document.getElementById('bwHeight').value = appState.profile.heightCm || '';
   document.getElementById('bwTarget').value = appState.profile.targetWeightKg || '';
   renderBodyWeightSheetBody();
@@ -215,16 +234,17 @@ function getMeasurementHistory(key){
   return Object.keys(m).sort().filter(date=> m[date][key]!==undefined).map(date=>({date, weight:m[date][key]}));
 }
 function saveMeasurements(){
+  const dateKey = bwEditDate || state.today;
   const arm = parseFloat(document.getElementById('measArm').value);
   const waist = parseFloat(document.getElementById('measWaist').value);
   const chest = parseFloat(document.getElementById('measChest').value);
   if(!appState.bodyMeasurements) appState.bodyMeasurements = {};
-  const entry = appState.bodyMeasurements[state.today] || {};
+  const entry = appState.bodyMeasurements[dateKey] || {};
   if(!isNaN(arm)) entry.arm = arm;
   if(!isNaN(waist)) entry.waist = waist;
   if(!isNaN(chest)) entry.chest = chest;
   if(Object.keys(entry).length===0){ showToast('عبّي قياس وحد على الأقل'); return; }
-  appState.bodyMeasurements[state.today] = entry;
+  appState.bodyMeasurements[dateKey] = entry;
   persist();
   showToast('تم حفظ القياسات 📏');
   renderMeasurementCharts();
