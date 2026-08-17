@@ -198,6 +198,12 @@ function renderViewedDayLabels(){
     const el = document.getElementById(id);
     if(el) el.textContent = label;
   });
+  // "Save as template" saves whichever day is currently being viewed/edited
+  // (same state.log the quick-add/backdating flow writes to) — so on a past
+  // day this must say so, otherwise it reads as "today" while quietly
+  // saving yesterday's meals instead.
+  const templateLabelEl = document.getElementById('btnSaveTodayAsTemplateLabel');
+  if(templateLabelEl) templateLabelEl.textContent = `احفظ وجبات ${label} كقالب`;
 }
 
 let pastStripInitialized = false;
