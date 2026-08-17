@@ -51,6 +51,15 @@ async function init(){
             rebindFromAppState();
             computeStreak();
             renderAll();
+            // saveLocalOnly() (not persist()) is used here on purpose, to
+            // avoid immediately pushing the just-pulled data straight back
+            // to the cloud — but that also means it skips persist()'s own
+            // syncWidget() call, so without this the home-screen widget and
+            // any reminder schedule silently keep showing/using whatever
+            // was on THIS device before the sync, until the app is fully
+            // closed and reopened.
+            syncWidget();
+            applyReminderSettings();
             showToast('تم تحديث بياناتك من جهاز ثاني 🔄');
           } else if((appState.updatedAt||0) > (cloudState.updatedAt||0)){
             cloudDoc.set(appState);
@@ -75,6 +84,12 @@ function setGreeting(){
 }
 
 function renderAll(){
+  // Recomputed on every render (cheap — a 7-day loop) so the streak flame
+  // and week-progress bar never lag behind a meal just logged/deleted this
+  // session; previously this only refreshed on init/rollover/cloud-sync, so
+  // logging today's first meal wouldn't light up "today" until the app was
+  // reopened.
+  computeStreak();
   renderViewedDayBanner();
   renderViewedDayLabels();
   renderRing();
@@ -188,6 +203,7 @@ function bindEvents(){
   document.getElementById('btnSaveNewFood').addEventListener('click', async ()=>{
     const name = document.getElementById('nfName').value.trim();
     const cat = document.getElementById('nfCat').value;
+    const type = document.getElementById('nfType').value;
     const cal = parseFloat(document.getElementById('nfCal').value)||0;
     const p = parseFloat(document.getElementById('nfP').value)||0;
     const c = parseFloat(document.getElementById('nfC').value)||0;
@@ -200,7 +216,7 @@ function bindEvents(){
         // fiber/sodium intentionally left untouched here — the fields were
         // removed from this form, so whatever value the food already had
         // (usually 0 from defaultFoods()) just carries forward as-is.
-        Object.assign(food, {name, category:cat, calories:cal, protein:p, carbs:c, fat:f});
+        Object.assign(food, {name, category:cat, foodType: type || undefined, calories:cal, protein:p, carbs:c, fat:f});
         persist();
         showToast(`تم تحديث ${name} ✏️`);
       }
@@ -210,7 +226,7 @@ function bindEvents(){
       return;
     }
 
-    const food = {id:uid(), name, category:cat, calories:cal, protein:p, carbs:c, fat:f, fiber:0, sodium:0, favorite:false, usageCount:0, isCustom:true};
+    const food = {id:uid(), name, category:cat, foodType: type || undefined, calories:cal, protein:p, carbs:c, fat:f, fiber:0, sodium:0, favorite:false, usageCount:0, isCustom:true};
     state.library.foods.push(food);
     resetNewFoodSheet();
     await quickAddFood(food, null);
