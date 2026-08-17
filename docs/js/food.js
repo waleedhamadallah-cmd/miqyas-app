@@ -237,6 +237,7 @@ function openEditFood(food){
   document.getElementById('btnSaveNewFoodLabel').textContent = 'حفظ التعديلات';
   document.getElementById('nfName').value = food.name;
   document.getElementById('nfCat').value = food.category;
+  document.getElementById('nfType').value = food.foodType || '';
   document.getElementById('nfCal').value = food.calories;
   document.getElementById('nfP').value = food.protein;
   document.getElementById('nfC').value = food.carbs;
@@ -248,7 +249,7 @@ function resetNewFoodSheet(){
   state.editingFoodId = null;
   document.getElementById('sheetNewFoodTitle').textContent = 'وجبة جديدة';
   document.getElementById('btnSaveNewFoodLabel').textContent = 'حفظ وإضافة لليوم';
-  ['nfName','nfCal','nfP','nfC','nfF'].forEach(id=> document.getElementById(id).value='');
+  ['nfName','nfCal','nfP','nfC','nfF','nfType'].forEach(id=> document.getElementById(id).value='');
 }
 
 function deleteCustomFood(food){
@@ -435,6 +436,7 @@ function renderRecipeTotals(){
 function saveRecipe(){
   const name = (document.getElementById('recipeName').value||'').trim();
   const cat = document.getElementById('recipeCat').value;
+  const type = document.getElementById('recipeType').value;
   if(!name){ showToast('اكتب اسم الوصفة أول'); return; }
   if(recipeSelectedIds.length===0){ showToast('اختر مكوّن وحد على الأقل'); return; }
   const items = state.library.foods.filter(f=>recipeSelectedIds.includes(f.id));
@@ -442,13 +444,14 @@ function saveRecipe(){
     calories:acc.calories+f.calories, protein:acc.protein+f.protein, carbs:acc.carbs+f.carbs,
     fat:acc.fat+f.fat, fiber:acc.fiber+(f.fiber||0), sodium:acc.sodium+(f.sodium||0)
   }), {calories:0,protein:0,carbs:0,fat:0,fiber:0,sodium:0});
-  const food = {id:uid(), name, category:cat, calories:Math.round(totals.calories), protein:Math.round(totals.protein),
+  const food = {id:uid(), name, category:cat, foodType: type || undefined, calories:Math.round(totals.calories), protein:Math.round(totals.protein),
     carbs:Math.round(totals.carbs), fat:Math.round(totals.fat), fiber:Math.round(totals.fiber), sodium:Math.round(totals.sodium),
     favorite:false, usageCount:0, isCustom:true};
   state.library.foods.push(food);
   persist();
   recipeSelectedIds = [];
   document.getElementById('recipeName').value = '';
+  document.getElementById('recipeType').value = '';
   closeAllSheets();
   renderAll();
   showToast(`تم حفظ وصفة ${name} 🍲`);
