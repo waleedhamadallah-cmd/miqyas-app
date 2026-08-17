@@ -44,8 +44,17 @@ self.addEventListener('fetch', (e) => {
   e.respondWith(
     fetch(freshRequest)
       .then((res) => {
-        const resClone = res.clone();
-        caches.open(CACHE_NAME).then((cache) => cache.put(e.request, resClone)).catch(() => {});
+        // fetch() only REJECTS on a network-level failure — an HTTP error
+        // status (404/500/503/a mid-deploy hiccup on GitHub Pages) still
+        // resolves normally. Without this res.ok check, that error response
+        // would get cached over the last good copy of a core file, and then
+        // get served forever on every future offline load until the next
+        // successful online fetch — the opposite of the "falls back to the
+        // last cached copy" behavior this is supposed to give you.
+        if (res.ok) {
+          const resClone = res.clone();
+          caches.open(CACHE_NAME).then((cache) => cache.put(e.request, resClone)).catch(() => {});
+        }
         return res;
       })
       .catch(() => caches.match(e.request).then((cached) => cached || caches.match('./index.html')))

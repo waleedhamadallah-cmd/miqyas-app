@@ -152,7 +152,15 @@ function renderTodaySummary(){
 function renderWaterCard(){
   const ml = state.log.waterMl || 0;
   const goal = state.goals.water || 2500;
-  document.getElementById('waterValText').textContent = `${ml.toLocaleString('en-US')} / ${goal.toLocaleString('en-US')} مل`;
+  // "current / goal" needs an explicit LTR bidi isolate around the numeric
+  // part — without it, the browser's bidi algorithm sees two numbers
+  // separated by "/" immediately followed by an Arabic word ("مل") and
+  // silently swaps which number reads first, so the DOM correctly says
+  // e.g. "100 / 9,000" while the screen shows "9,000 / 100" (confirmed by
+  // screenshot). Same fix already applied to the BMI gauge's tick labels
+  // (.bmi-ticks{direction:ltr}) for the same reason.
+  document.getElementById('waterValText').innerHTML =
+    `<span class="ltr-num">${ml.toLocaleString('en-US')} / ${goal.toLocaleString('en-US')}</span> مل`;
   const pct = Math.min((ml/Math.max(goal,1))*100, 100);
   document.getElementById('waterFill').style.width = pct+'%';
 }
@@ -249,3 +257,4 @@ function renderPastDaysStrip(){
 /* ============================================================
    RENDER: FOOD VIEW
    ============================================================ */
+

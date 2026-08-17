@@ -1,0 +1,1053 @@
+From 8702f00ccea49d72232013feb4008411076ef033 Mon Sep 17 00:00:00 2001
+From: Waleed <waleedhamadallah@gmail.com>
+Date: Mon, 17 Aug 2026 07:29:39 +0000
+Subject: [PATCH] Fix undo-toast unclickability, water bidi reversal,
+ sync/reminder refresh gaps, and wire native plugin build files
+
+- css/js: fix #toast.show missing pointer-events (undo button was never
+  actually clickable), undo restoring meals to the wrong day, RTL bidi
+  reversal on the water counter, stale select dropdowns (nfCat/recipeCat),
+  small quick-add tap target, missing template delete icon, and a stale
+  weight/calorie trend chart after saving a weigh-in
+- core.js/progress.js: refresh the home-screen widget and reminder schedule
+  after every cloud-sync pull and backup restore, not just on app init
+- sw.js: don't cache failed HTTP responses over the last good cached copy
+- android: regenerate capacitor.plugins.json / capacitor.settings.gradle /
+  capacitor.build.gradle via `cap sync` so @capacitor/app and
+  @capacitor/local-notifications are actually linked into the native build;
+  add the missing ic_stat_icon notification drawable
+- server/ai-proxy-worker.js: add this file to the repo (was only living on
+  Cloudflare), guard against a null JSON body, translate the last English
+  error string
+- package-lock.json: back in sync with package.json
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+---
+ android/app/capacitor.build.gradle            |   3 +-
+ .../src/main/assets/capacitor.plugins.json    |  11 +-
+ .../main/res/drawable-hdpi/ic_stat_icon.png   | Bin 0 -> 1247 bytes
+ .../main/res/drawable-mdpi/ic_stat_icon.png   | Bin 0 -> 723 bytes
+ .../main/res/drawable-xhdpi/ic_stat_icon.png  | Bin 0 -> 1854 bytes
+ .../main/res/drawable-xxhdpi/ic_stat_icon.png | Bin 0 -> 3254 bytes
+ .../res/drawable-xxxhdpi/ic_stat_icon.png     | Bin 0 -> 4845 bytes
+ android/capacitor.settings.gradle             |   6 +
+ docs/css/styles.css                           |  23 +-
+ docs/js/app.js                                |  13 +
+ docs/js/core.js                               |   7 +
+ docs/js/food.js                               |  40 +-
+ docs/js/home.js                               |  11 +-
+ docs/js/progress.js                           |  11 +
+ docs/sw.js                                    |  13 +-
+ package-lock.json                             |  22 +-
+ server/ai-proxy-worker.js                     | 352 ++++++++++++++++++
+ 17 files changed, 498 insertions(+), 14 deletions(-)
+ create mode 100644 android/app/src/main/res/drawable-hdpi/ic_stat_icon.png
+ create mode 100644 android/app/src/main/res/drawable-mdpi/ic_stat_icon.png
+ create mode 100644 android/app/src/main/res/drawable-xhdpi/ic_stat_icon.png
+ create mode 100644 android/app/src/main/res/drawable-xxhdpi/ic_stat_icon.png
+ create mode 100644 android/app/src/main/res/drawable-xxxhdpi/ic_stat_icon.png
+ create mode 100644 server/ai-proxy-worker.js
+
+diff --git a/android/app/capacitor.build.gradle b/android/app/capacitor.build.gradle
+index bbfb44f..39ca20c 100644
+--- a/android/app/capacitor.build.gradle
++++ b/android/app/capacitor.build.gradle
+@@ -9,7 +9,8 @@ android {
+ 
+ apply from: "../capacitor-cordova-android-plugins/cordova.variables.gradle"
+ dependencies {
+-
++    implementation project(':capacitor-app')
++    implementation project(':capacitor-local-notifications')
+ 
+ }
+ 
+diff --git a/android/app/src/main/assets/capacitor.plugins.json b/android/app/src/main/assets/capacitor.plugins.json
+index fe51488..4881319 100644
+--- a/android/app/src/main/assets/capacitor.plugins.json
++++ b/android/app/src/main/assets/capacitor.plugins.json
+@@ -1 +1,10 @@
+-[]
++[
++	{
++		"pkg": "@capacitor/app",
++		"classpath": "com.capacitorjs.plugins.app.AppPlugin"
++	},
++	{
++		"pkg": "@capacitor/local-notifications",
++		"classpath": "com.capacitorjs.plugins.localnotifications.LocalNotificationsPlugin"
++	}
++]
+diff --git a/android/app/src/main/res/drawable-hdpi/ic_stat_icon.png b/android/app/src/main/res/drawable-hdpi/ic_stat_icon.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..52f7b9081fcea282567e7c5c5a5ee0398fe1d617
+GIT binary patch
+literal 1247
+zcmV<51R(o~P)<h;3K|Lk000e1NJLTq001Na001Ni1^@s6;Q*MJ000E0Nkl<Zc%1E+
+zOK+7`6o#Mo^hSHC&>Q6<DhMi~3>s}>qKQ$|L=)mbFpiu$apVv1C-5JfXre~EkZ4G?
+zaiV2lm1wXckYbwJ7Fyb)v~b$99IUnJ?r9Ibgv!K~oSc5&`SxDVe)qcUukgQtnaRv_
+zSDn`asJ_2xlx8MLw!-};pam$#rvVt2R5CNwZx)awGqXCN8Q2Qk8z9Yq0XKoa<N6+;
+z1h6SUW>x?W1V}T`1Y8GZfHB}2FdL8e0Od4x(-guL*$(^(3;{Q)x6sUrKmnLb_X>By
+z^RmE{D!`Ax2(Sa_iY-h5p8Pfk!;Khc8v?4%ntbKyzN7_7gTN^8q?zqZkK-`}9@G^!
+zx@9SI5<oa_3@7uF=Bwc9fL350n2X;mTTClZ&d017D8ZOnJ+K?tiDyS0F1yTZ77yBU
+z0r?Ej4fIQzGP8DIo1}{|Z3`akx8`3HPzJLb&x#^&75EEJSBuHJSd{;{fcaL^xS4eV
+zPXSG4wgvb-#!TkERt3sn9*YUbfIdkRD?ENK#=HpZ0lt<rYGxh4v%my!9yrLNy0iHN
+zw*|^z4goI!1HhS;DsVhs0A2zf0KSqmVrJdI%K<YWscdFtT<Hp4AXf*<VA_Erz>uVY
+z6p(R$AJBnIU&7OPKk%ibVKdtiFeTudfGNap1>k<XSguW>u-^FY&men%r-3WLWnelc
+z?*dLsIv;8NDli3n0W8G$N_<}eE+r>P^%a3K$IZaQz@VhL`0deH^%>whNhyebFtehh
+ze?pnpLYY%Q8?aZ>KyqHI`PM3osZQ*{w__+^3V13HOX^Eokg9LMYzL0vwdeC#NC&XX
+z%o?i|Su0So4m^!Zaoq-V0)qiqho^knif-UI9;hEmnu(aZiWksgjH`L<Sq-Q?CaHuv
+ztpP9-*A|t#VrB<`w{T_N#|!0_P+}o`ZCS<N?XwK{6}XVa&sdD<lr$3ey70j71%`o-
+z@P^t0oQ&xj;<K=BpooP^{9OWyX7)T@#8U4%VrKW@?PG5^>c@k8-puv`XC)<oPF$f9
+ztJspgOfb<RjscJ3m2?`9r4%z2{Kzl~{1(oy#T>V?C!6ney!oE2m0ime%4)<x;GJ;%
+z32+t|Pw5@8QveoL=<KPR*WvM1F|)(KLortp;r2jT-Pr}ai=SamNSch_+XJ)-&zMoX
+z6)Z}<xIGZDVrEYOuK+(w`Xep67R(Zb!j9uHazfH%sL>0&fd{1pR2djGv&(q39m9_i
+zWjvF*fJ1ms`vo|?*7vabOr4H!{#n2XPx&{2i@*nX+-$|qL;J#E555iM0IrYchVjDq
+z(^^1sg$lUDkHqQ+GROz<!}=*n<1uC$?_b{om{}WMuUcZRo4|ymE9(Ktfs*aV-;+kO
+zU~R-#J{yWHJIqU(!W-x^%S*^cfVSaPwz_yV0CibIT;gCQP_hcX9++yNd0df7mcpx+
+z`*d($uj5*l_p%H4i`}7kg{c6C12k>P9dlgE>TyMc2k9vAo|%1&XVX#O)A&cgy5nIZ
+zmX4!&R=te}_;sKUPxms^KErH^<%P@4TJyuyU9)uht9AWf*uO%lmfpov<3#`f002ov
+JPDHLkV1kTbP_6&~
+
+literal 0
+HcmV?d00001
+
+diff --git a/android/app/src/main/res/drawable-mdpi/ic_stat_icon.png b/android/app/src/main/res/drawable-mdpi/ic_stat_icon.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..0269e0f1161ec3d78784b7c28149c294290a333f
+GIT binary patch
+literal 723
+zcmV;^0xbQBP)<h;3K|Lk000e1NJLTq000;O000;W1^@s6;CDUv0007-Nkl<Zc$}@)
+zO>13c6b0aC-?TN+#EKtSgCA%S+lmexC=QCH=tL<93W6Vq6#s`4e}un4oEIE8(n+w=
+zk+f84{Q%n_X`~6pG$y&r!Fg{yCO5HSHXQDI&s}G&_g#DK!)2c;NhPWM;@cwqxBL5|
+zm}C-nVFq{LAbzZ>l>`5SbPA6&;z_Jx84Eblgl<n@n-zs%fJd>2^HsIk!ymz#2HKN2
+zNmW&P*RXxA;44fwp%MNN4vhqMJ;8{$t*3FgJ-CkLs#?~0J&iv{_#_80sH%-!1$y8a
+zJg4(>sgciMG0D$(1s5=n(@C!328JV^9RfY_2k{av<Ki}tr*Q`7aSgBH3hu-UZEfrc
+z8u=7n!<SWcHOXX><8Alrc)F4Qgg0@isxBuP=o0nE7T>nr52|XI<RlJP)wv`O<7Ir0
+z-|#qo!6m$ni|tyks^K`xcUY9<-6XSZ{XvpvwqYice3<0L_Wg8A&yMLH^oiSY8u#h)
+zeJ_Sp_3h~QBzNO%vt_Q`AGGIo)IWOAz$=)ms<jrmk?<hNv%1EAjrk<ARdqed1SZA_
+zY#pbUp5u5*m-`7E!w+pe#1~a{CCL-GuAAyJI9FA-#tQVv-^U5e;X7<LQdp|0g@zxD
+z8k*!3rmE`m{%~$t)Jx7=coH8~)oM%9W4ZyminS58;ivIDj^fkZUfl;8cm^l&aU*{Z
+z58)eKqfhB(U?a(@uBj8c3I43Aejm4c{%-Oy+^DMg*07`aq^jn7J(|S*x@ip-s_JIn
+z;;|=apR-u%rC}WtZ8A$2)myp&+p3W*yOH+=)-luGH=9ZBX{5tm0Csr17x8w13wS5V
+z8+ZU4__crZ+aViQ)!X3-ypEf?#x3sU?SHC$|GUwvzW{E7kVgG%y1oDa002ovPDHLk
+FV1lIxVi^Dc
+
+literal 0
+HcmV?d00001
+
+diff --git a/android/app/src/main/res/drawable-xhdpi/ic_stat_icon.png b/android/app/src/main/res/drawable-xhdpi/ic_stat_icon.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..cd19d9a9360579805a80c8ea6961c6f7fbdc12dd
+GIT binary patch
+literal 1854
+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
+
+literal 0
+HcmV?d00001
+
+diff --git a/android/app/src/main/res/drawable-xxhdpi/ic_stat_icon.png b/android/app/src/main/res/drawable-xxhdpi/ic_stat_icon.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..f74005f0c377505d16ce73c2378975977cdd09f2
+GIT binary patch
+literal 3254
+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
+
+literal 0
+HcmV?d00001
+
+diff --git a/android/app/src/main/res/drawable-xxxhdpi/ic_stat_icon.png b/android/app/src/main/res/drawable-xxxhdpi/ic_stat_icon.png
+new file mode 100644
+index 0000000000000000000000000000000000000000..91adb1a7272010dc30263a463d9c0a637a8b47f9
+GIT binary patch
+literal 4845
+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
+TdAsJr00000NkvXXu0mjfF0Dii
+
+literal 0
+HcmV?d00001
+
+diff --git a/android/capacitor.settings.gradle b/android/capacitor.settings.gradle
+index 9a5fa87..6bf445f 100644
+--- a/android/capacitor.settings.gradle
++++ b/android/capacitor.settings.gradle
+@@ -1,3 +1,9 @@
+ // DO NOT EDIT THIS FILE! IT IS GENERATED EACH TIME "capacitor update" IS RUN
+ include ':capacitor-android'
+ project(':capacitor-android').projectDir = new File('../node_modules/@capacitor/android/capacitor')
++
++include ':capacitor-app'
++project(':capacitor-app').projectDir = new File('../node_modules/@capacitor/app/android')
++
++include ':capacitor-local-notifications'
++project(':capacitor-local-notifications').projectDir = new File('../node_modules/@capacitor/local-notifications/android')
+diff --git a/docs/css/styles.css b/docs/css/styles.css
+index 286999f..c2b6aae 100644
+--- a/docs/css/styles.css
++++ b/docs/css/styles.css
+@@ -96,6 +96,12 @@ button{font-family:inherit; color:inherit;}
+ input{font-family:inherit; color:inherit;}
+ ::selection{background:var(--accent); color:#12161A;}
+ .tabular{ font-variant-numeric: tabular-nums; }
++/* Isolates a "number / number"-style numeric expression from the RTL bidi
++   algorithm so it can't get silently reordered when it's followed by an
++   Arabic word (see renderWaterCard() in home.js for the concrete bug this
++   fixes). Reusable anywhere else the same "X / Y <arabic unit>" shape shows
++   up. */
++.ltr-num{ direction:ltr; unicode-bidi:isolate; display:inline-block; }
+ 
+ /* ============ SHELL ============ */
+ #app{ max-width:480px; margin:0 auto; min-height:100vh; position:relative; padding-bottom:120px; }
+@@ -484,7 +490,11 @@ input{font-family:inherit; color:inherit;}
+ .lib-row .lm .d{font-size:12px; color:var(--text-mute); margin-top:3px;}
+ .lib-row .star{color:var(--fat-text); font-size:12px;}
+ .lib-add{
+-  width:32px; height:32px; border-radius:50%; background:var(--surface-2); border:1px solid var(--border);
++  /* This is the single most-tapped control in the app (quick-add food to
++     today), yet it used to be smaller (32px) than the far-less-used
++     edit/delete icons right next to it (var(--tap-min), 40px) — exactly
++     backwards for tap-target sizing. Matched to --tap-min like its siblings. */
++  width:var(--tap-min); height:var(--tap-min); border-radius:50%; background:var(--surface-2); border:1px solid var(--border);
+   color:var(--accent-text); font-size:17px; font-weight:800; display:flex; align-items:center; justify-content:center; flex:0 0 auto;
+ }
+ .lib-actions{display:flex; align-items:center; gap:8px; flex:0 0 auto;}
+@@ -683,7 +693,16 @@ input{font-family:inherit; color:inherit;}
+   box-shadow:var(--shadow-1); opacity:0; pointer-events:none; transition:all .25s cubic-bezier(.2,.8,.2,1);
+   z-index:60; display:flex; align-items:center; gap:8px; max-width:88%;
+ }
+-#toast.show{opacity:1; transform:translate(-50%,0);}
++/* #toast itself is pointer-events:none so it never blocks taps on the UI
++   behind it while it's just informing (e.g. "أضيفت...") — but once it also
++   contains an actionable "تراجع" link (showUndoToast() in core.js), that
++   link has to explicitly opt back into being clickable, the same way
++   #overlay.show already does below. Without this, a real tap/click at the
++   button's on-screen position falls straight through to whatever is
++   underneath (confirmed via elementFromPoint()), so "تراجع" always looked
++   clickable but never actually was — every delete-with-undo (meal, custom
++   food, template) was silent, permanent data loss with no way to recover. */
++#toast.show{opacity:1; transform:translate(-50%,0); pointer-events:auto;}
+ #toast .tick{color:var(--success); font-size:15px; display:flex; flex:0 0 auto;}
+ #toast .tick svg{width:15px; height:15px;}
+ 
+diff --git a/docs/js/app.js b/docs/js/app.js
+index a87dbd8..3b484bd 100644
+--- a/docs/js/app.js
++++ b/docs/js/app.js
+@@ -184,6 +184,11 @@ function bindEvents(){
+     renderWeightCard();
+     renderBodyWeightSheetBody();
+     renderBodyFatChart();
++    // renderAll() calls this on every other render path, but this handler
++    // never did — so "الوزن مقابل السعرات" right below the weight card kept
++    // showing pre-save data until some unrelated action triggered a full
++    // renderAll().
++    renderWeightCalorieTrend();
+     showToast(dateKey===state.today ? 'تم حفظ وزنك 💪' : 'تم تحديث وزن ذاك اليوم 💪');
+   });
+   document.getElementById('bwDateInput').addEventListener('change', (e)=>{
+@@ -424,6 +429,14 @@ function bindEvents(){
+   document.getElementById('btnOpenRecipeBuilder').addEventListener('click', ()=>{
+     recipeSelectedIds = [];
+     document.getElementById('recipeSearch').value = '';
++    // recipeCat/recipeName/recipeType were never reset anywhere (only
++    // recipeName/recipeType got cleared, and only on a successful save) —
++    // so closing the builder without saving, or saving once, left the next
++    // recipe silently starting from whatever the last one had. This is the
++    // "start fresh" moment, same idea as resetNewFoodSheet() for the food form.
++    document.getElementById('recipeName').value = '';
++    document.getElementById('recipeCat').selectedIndex = 0;
++    document.getElementById('recipeType').value = '';
+     renderRecipePickList();
+     renderRecipeTotals();
+     openSheet('sheetRecipeBuilder');
+diff --git a/docs/js/core.js b/docs/js/core.js
+index 04d8ab9..4343332 100644
+--- a/docs/js/core.js
++++ b/docs/js/core.js
+@@ -684,6 +684,12 @@ function importDataFile(file, onDone){
+       rebindFromAppState();
+       computeStreak();
+       renderAll();
++      // Same reasoning as the other saveLocalOnly() call sites — a restored
++      // backup can carry different reminder settings / goals than what's
++      // currently on screen, so the widget and reminder schedule need an
++      // explicit refresh here too.
++      syncWidget();
++      applyReminderSettings();
+       showToast('تم استرجاع النسخة الاحتياطية 🎉');
+       if(onDone) onDone();
+     }catch(e){ showToast('فشل قراءة الملف، تأكد إنه JSON صحيح'); }
+@@ -875,3 +881,4 @@ function bindDateRolloverCheck(){
+ /* ============================================================
+    FOOD SHEET (picker within FAB flow)
+    ============================================================ */
++
+diff --git a/docs/js/food.js b/docs/js/food.js
+index 6d5c51c..761d61a 100644
+--- a/docs/js/food.js
++++ b/docs/js/food.js
+@@ -5,14 +5,20 @@
+ // delete button, so both paths get the same undo toast instead of two
+ // slightly different deletion behaviors.
+ function deleteMealEntry(id){
+-  const idx = state.log.meals.findIndex(m=>m.id===id);
++  // Captures the exact log array being deleted from (the day being viewed
++  // right now), not the mutable `state.log` reference — if the user switches
++  // to a different day between this delete and tapping "تراجع", state.log
++  // gets repointed by switchViewedDay(), and restoring into it would put
++  // the meal back on the WRONG day instead of undoing the original delete.
++  const targetMeals = state.log.meals;
++  const idx = targetMeals.findIndex(m=>m.id===id);
+   if(idx<0) return;
+-  const removed = state.log.meals[idx];
+-  state.log.meals.splice(idx,1);
++  const removed = targetMeals[idx];
++  targetMeals.splice(idx,1);
+   persist();
+   renderAll();
+   showUndoToast(`حذفت ${removed.name}`, ()=>{
+-    state.log.meals.splice(idx,0,removed);
++    targetMeals.splice(idx,0,removed);
+     persist();
+     renderAll();
+   });
+@@ -165,7 +171,13 @@ const FOOD_TYPE_KEYS = new Set(FOOD_TYPE_GROUPS.map(g=>g.key));
+ // Which groups are expanded, kept across re-renders (typing a search
+ // letter re-renders the whole list; this keeps a group you opened from
+ // snapping shut on every keystroke).
+-const libGroupsOpen = {protein:true};
++// Starts fully collapsed: with "بروتين" pre-expanded, its first few rows
++// landed at the exact fixed screen position of the floating (+) button on
++// the very first open of the Food tab — no scrolling needed to hit it —
++// which visually buried that row's own quick-add "+" underneath the FAB
++// and made it untappable. Collapsed groups keep the tab short enough on
++// first paint that nothing sits under the FAB before the user scrolls.
++const libGroupsOpen = {};
+ 
+ function buildLibRow(food){
+   const row = document.createElement('div');
+@@ -250,6 +262,12 @@ function resetNewFoodSheet(){
+   document.getElementById('sheetNewFoodTitle').textContent = 'وجبة جديدة';
+   document.getElementById('btnSaveNewFoodLabel').textContent = 'حفظ وإضافة لليوم';
+   ['nfName','nfCal','nfP','nfC','nfF','nfType'].forEach(id=> document.getElementById(id).value='');
++  // nfCat has no empty option (unlike nfType), so `.value=''` wouldn't
++  // actually change a <select> that's currently on "عشا"/"سناك"/etc from a
++  // previous edit — openEditFood() sets it explicitly, but nothing was
++  // resetting it back, so a brand-new food silently inherited whatever
++  // category the last-EDITED food happened to have.
++  document.getElementById('nfCat').selectedIndex = 0;
+ }
+ 
+ function deleteCustomFood(food){
+@@ -363,8 +381,14 @@ function renderTemplateList(){
+     const cal = t.foods.reduce((s,f)=>s+f.calories,0);
+     const row = document.createElement('div');
+     row.className = 'template-row';
++    // .template-row .tdel already had full CSS (styles.css) but nothing
++    // ever rendered it — deleting a template was swipe-only with zero
++    // visible affordance, unlike every other "delete a saved thing" flow
++    // in the app (logged meals, custom foods), which all show an explicit
++    // icon and treat swipe as a bonus shortcut, not the only way in.
+     row.innerHTML = `<div class="tm"><div class="n">${escapeHtml(t.name)}</div><div class="d">${t.foods.length} وجبات · ${cal} سعرة</div></div>
+-      <div class="tbtn" data-apply="${t.id}" aria-label="تطبيق قالب ${escapeHtml(t.name)}" role="button">تطبيق</div>`;
++      <div class="tbtn" data-apply="${t.id}" aria-label="تطبيق قالب ${escapeHtml(t.name)}" role="button">تطبيق</div>
++      <div class="tdel" data-del-template="${t.id}" aria-label="حذف قالب ${escapeHtml(t.name)}" role="button">${ICON_X}</div>`;
+     attachSwipeToDelete(row, ()=> deleteTemplate(t.id));
+     wrap.appendChild(row);
+   });
+@@ -383,6 +407,9 @@ function renderTemplateList(){
+       showToast(`تم تطبيق قالب ${t.name} 🎉`);
+     });
+   });
++  wrap.querySelectorAll('[data-del-template]').forEach(btn=>{
++    btn.addEventListener('click', ()=> deleteTemplate(btn.getAttribute('data-del-template')));
++  });
+ }
+ function saveTodayAsTemplate(){
+   if(state.log.meals.length===0){ showToast('ما فيه وجبات اليوم للحفظ'); return; }
+@@ -567,3 +594,4 @@ async function finishMealBuilder(){
+   toggleMealBuilder(); // reset for next time
+   closeAllSheets();
+ }
++
+diff --git a/docs/js/home.js b/docs/js/home.js
+index a38081b..d69ec0b 100644
+--- a/docs/js/home.js
++++ b/docs/js/home.js
+@@ -152,7 +152,15 @@ function renderTodaySummary(){
+ function renderWaterCard(){
+   const ml = state.log.waterMl || 0;
+   const goal = state.goals.water || 2500;
+-  document.getElementById('waterValText').textContent = `${ml.toLocaleString('en-US')} / ${goal.toLocaleString('en-US')} مل`;
++  // "current / goal" needs an explicit LTR bidi isolate around the numeric
++  // part — without it, the browser's bidi algorithm sees two numbers
++  // separated by "/" immediately followed by an Arabic word ("مل") and
++  // silently swaps which number reads first, so the DOM correctly says
++  // e.g. "100 / 9,000" while the screen shows "9,000 / 100" (confirmed by
++  // screenshot). Same fix already applied to the BMI gauge's tick labels
++  // (.bmi-ticks{direction:ltr}) for the same reason.
++  document.getElementById('waterValText').innerHTML =
++    `<span class="ltr-num">${ml.toLocaleString('en-US')} / ${goal.toLocaleString('en-US')}</span> مل`;
+   const pct = Math.min((ml/Math.max(goal,1))*100, 100);
+   document.getElementById('waterFill').style.width = pct+'%';
+ }
+@@ -249,3 +257,4 @@ function renderPastDaysStrip(){
+ /* ============================================================
+    RENDER: FOOD VIEW
+    ============================================================ */
++
+diff --git a/docs/js/progress.js b/docs/js/progress.js
+index c11d97e..39fac83 100644
+--- a/docs/js/progress.js
++++ b/docs/js/progress.js
+@@ -701,7 +701,13 @@ function renderSyncStatus(){
+           const cloudState = snap.data();
+           const cloudDate = cloudState.updatedAt ? new Date(cloudState.updatedAt).toLocaleString('ar') : 'غير معروف';
+           if((cloudState.updatedAt||0) > (appState.updatedAt||0)){
++            // Same reasoning as the other cloud-pull sites (app.js init,
++            // core.js subscribeCloud): saveLocalOnly() deliberately skips
++            // persist()'s own syncWidget() call, so it has to be refreshed
++            // explicitly here too, or the widget/reminders silently keep
++            // showing pre-sync data until the app is closed and reopened.
+             appState = cloudState; saveLocalOnly(); rebindFromAppState(); computeStreak(); renderAll();
++            syncWidget(); applyReminderSettings();
+           } else if((appState.updatedAt||0) > (cloudState.updatedAt||0)){
+             await cloudDoc.set(appState);
+           }
+@@ -785,9 +791,14 @@ async function onEnableSyncClick(){
+     closeAllSheets();
+     computeStreak();
+     renderAll();
++    // Same as the other cloud-pull sites — refresh the widget/reminders
++    // explicitly since saveLocalOnly() (used above, not persist()) skips it.
++    syncWidget();
++    applyReminderSettings();
+   }catch(e){
+     console.error(e);
+     showToast('صار خطأ: ' + (e.code || e.message || 'غير معروف') + ' — راجع صلاحيات Firestore (Rules)');
+     if(resEl) resEl.innerHTML = `<div class="sync-badge off" style="width:100%; box-sizing:border-box; color:var(--danger);">${ICON_X_CIRCLE} ${escapeHtml(e.code||e.message||'خطأ غير معروف')}</div>`;
+   }
+ }
++
+diff --git a/docs/sw.js b/docs/sw.js
+index 9193911..d479ccc 100644
+--- a/docs/sw.js
++++ b/docs/sw.js
+@@ -44,8 +44,17 @@ self.addEventListener('fetch', (e) => {
+   e.respondWith(
+     fetch(freshRequest)
+       .then((res) => {
+-        const resClone = res.clone();
+-        caches.open(CACHE_NAME).then((cache) => cache.put(e.request, resClone)).catch(() => {});
++        // fetch() only REJECTS on a network-level failure — an HTTP error
++        // status (404/500/503/a mid-deploy hiccup on GitHub Pages) still
++        // resolves normally. Without this res.ok check, that error response
++        // would get cached over the last good copy of a core file, and then
++        // get served forever on every future offline load until the next
++        // successful online fetch — the opposite of the "falls back to the
++        // last cached copy" behavior this is supposed to give you.
++        if (res.ok) {
++          const resClone = res.clone();
++          caches.open(CACHE_NAME).then((cache) => cache.put(e.request, resClone)).catch(() => {});
++        }
+         return res;
+       })
+       .catch(() => caches.match(e.request).then((cached) => cached || caches.match('./index.html')))
+diff --git a/package-lock.json b/package-lock.json
+index 58ce8bd..1264468 100644
+--- a/package-lock.json
++++ b/package-lock.json
+@@ -10,8 +10,10 @@
+       "license": "ISC",
+       "dependencies": {
+         "@capacitor/android": "^8.5.0",
++        "@capacitor/app": "^8.0.0",
+         "@capacitor/cli": "^8.5.0",
+-        "@capacitor/core": "^8.5.0"
++        "@capacitor/core": "^8.5.0",
++        "@capacitor/local-notifications": "^8.0.0"
+       }
+     },
+     "node_modules/@capacitor/android": {
+@@ -23,6 +25,15 @@
+         "@capacitor/core": "^8.5.0"
+       }
+     },
++    "node_modules/@capacitor/app": {
++      "version": "8.1.1",
++      "resolved": "https://registry.npmjs.org/@capacitor/app/-/app-8.1.1.tgz",
++      "integrity": "sha512-xM2ZTX5jK60tFtmjsmJv+Cdj1Qsb6NcavkqmdEnCPQBeya9oKhamZJxYOnQNj1ZvcJM7sWfG6BEtSLx42pisbA==",
++      "license": "MIT",
++      "peerDependencies": {
++        "@capacitor/core": ">=8.0.0"
++      }
++    },
+     "node_modules/@capacitor/cli": {
+       "version": "8.5.0",
+       "resolved": "https://registry.npmjs.org/@capacitor/cli/-/cli-8.5.0.tgz",
+@@ -65,6 +76,15 @@
+         "tslib": "^2.1.0"
+       }
+     },
++    "node_modules/@capacitor/local-notifications": {
++      "version": "8.3.0",
++      "resolved": "https://registry.npmjs.org/@capacitor/local-notifications/-/local-notifications-8.3.0.tgz",
++      "integrity": "sha512-QvgW2ucBAwtI/arLrUP1XRTJVzJxmdI9BOCl+E9J2HAmYuSWZtDFb3e1fpnciVzwZaq6RDP00baBQgG6eYik/Q==",
++      "license": "MIT",
++      "peerDependencies": {
++        "@capacitor/core": ">=8.0.0"
++      }
++    },
+     "node_modules/@ionic/cli-framework-output": {
+       "version": "2.2.8",
+       "resolved": "https://registry.npmjs.org/@ionic/cli-framework-output/-/cli-framework-output-2.2.8.tgz",
+diff --git a/server/ai-proxy-worker.js b/server/ai-proxy-worker.js
+new file mode 100644
+index 0000000..02fd7f7
+--- /dev/null
++++ b/server/ai-proxy-worker.js
+@@ -0,0 +1,352 @@
++/* ============================================================
++   مِقياس — AI dish-recognition proxy (Cloudflare Worker)
++   ============================================================
++
++   WHY THIS FILE EXISTS
++   مِقياس is a static PWA (docs/) with no backend of its own. It can't call
++   Google's Gemini API directly from the browser/WebView, because that would
++   mean shipping the Gemini API key inside the app's JS — anyone could open
++   dev tools (or unzip the APK) and steal it. This tiny Worker sits in
++   between: the app sends it a photo, the Worker (which is the only place
++   that ever sees the real API key) asks Gemini to identify the dish, and
++   sends back just a short answer. The key never touches the app.
++
++   WHAT THIS DOES
++   1. Receives a POST with { image: base64Jpeg, mimeType, text, candidates: [...],
++      mode, secret }. The app sends EITHER an image (photo scan) OR a typed
++      text description of the meal — never both — plus a `mode`:
++        - mode "library" (default): `candidates` is the user's own food-
++          library names — since Waleed's own note was that ~99% of what he
++          eats is already in his library, we ask Gemini to match against
++          THAT list first, and only fall back to a short generic guess (no
++          macros) if nothing matches — the app then opens a blank manual-
++          entry form for those.
++        - mode "general": ignores the user's library entirely and asks
++          Gemini to estimate full macros (calories/protein/carbs/fat) for
++          whatever it sees/reads from its own general food knowledge — for
++          things that just aren't in the user's library at all (restaurant
++          items, one-off foods, etc). The app then opens the manual-entry
++          form PRE-FILLED with those estimates so the user can double-check
++          numbers before they're logged, rather than trusting an AI guess
++          blindly.
++   2. Calls Gemini's Interactions API with the image or text description +
++      a mode-specific prompt, and returns strict JSON back — shape depends
++      on mode (see buildPrompt() below).
++   3. Returns that JSON to the app, which lets the user add/confirm each
++      item individually (tap each one) instead of only ever getting one
++      dish out of a single request.
++
++   UPDATE (Aug 2026): the first version of this file called the older
++   "generateContent" endpoint (contents/parts/inline_data). That format
++   started 404ing — turns out Google replaced it with a new "Interactions
++   API" (POST .../v1beta/interactions, body shape { model, input, ... },
++   response has an output_text / steps[] shape instead of candidates[]).
++   This version calls the new API. If Google changes the shape again later,
++   the error message returned to the app will say so explicitly — see the
++   note further down.
++
++   ============================================================
++   DEPLOY STEPS (takes ~5 minutes, all free)
++   ============================================================
++   1. Get a Gemini API key: https://aistudio.google.com/apikey (free tier).
++   2. Go to https://dash.cloudflare.com > Workers & Pages > Create >
++      "Create Worker". Give it any name (e.g. "miqyas-ai-proxy").
++   3. Delete the default starter code in the editor and paste this entire
++      file in its place, then click "Deploy".
++   4. Open the Worker's Settings > Variables and Secrets, and add:
++        - GEMINI_API_KEY   (type: Secret)  = the key from step 1
++        - APP_SECRET       (type: Secret)  = any random string you make up
++          (this is a lightweight abuse guard — see note below)
++        - GEMINI_MODEL     (type: Plain text, optional) = e.g. "gemini-3-flash-preview"
++          Only set this if you want to override the DEFAULT_MODEL below. To
++          find the current name yourself: open https://aistudio.google.com,
++          start a new prompt, pick a "Flash" model from the picker, run it
++          once, then click "Get code" — the exact model string Google is
++          using right now is right there in the generated snippet.
++   5. Copy the Worker's URL (shown at the top of its dashboard page, looks
++      like https://miqyas-ai-proxy.YOUR-SUBDOMAIN.workers.dev) and paste it
++      into مِقياس's Settings > الذكاء الاصطناعي > "رابط سيرفر الذكاء
++      الاصطناعي". Paste the same APP_SECRET value into the "كلمة سر
++      التطبيق" field there too.
++
++   ⚠️ A NOTE ON THE MODEL NAME AND API SHAPE
++   Google has changed both the model name AND the request/response format
++   of this API at least once already during this project (see the "UPDATE"
++   note above) — so treat both as things that can go stale, not just the
++   version number. DEFAULT_MODEL below is whatever was confirmed working
++   last (via Google AI Studio's own "Get code" output), not something I can
++   independently verify. If the Worker ever errors with "model not found" /
++   404, or the response shape looks different from what extractInteractionText()
++   expects below, that's not a real bug in مِقياس — it means Google moved
++   the goalposts again. Fix for a stale model name: see the GEMINI_MODEL
++   note two paragraphs up. Fix for a changed response shape: open
++   https://aistudio.google.com, run a prompt, click "Get code", pick the
++   REST/curl option if available (or read the JS/Python snippet), and send
++   me what the request/response looks like now — I'll update
++   extractInteractionText() and the request body below to match.
++
++   ⚠️ A NOTE ON SECURITY
++   The Worker's URL itself is not truly secret — it's called from
++   client-side JS, so it's visible to anyone who inspects مِقياس's network
++   traffic or decompiles the APK. The APP_SECRET check below raises the bar
++   (a casual scraper won't have it) but a determined person could still
++   extract it from the app and hit your Worker directly, burning your
++   Gemini quota. For a personal/hobby app this is a reasonable trade-off;
++   just know it's not bulletproof. Cloudflare's free tier and Gemini's free
++   tier both have their own rate limits as a backstop.
++   ============================================================ */
++
++const DEFAULT_MODEL = 'gemini-3-flash-preview';
++
++export default {
++  async fetch(request, env) {
++    if (request.method === 'OPTIONS') {
++      return new Response(null, { headers: corsHeaders() });
++    }
++    if (request.method !== 'POST') {
++      return json({ error: 'POST only' }, 405);
++    }
++    if (!env.GEMINI_API_KEY) {
++      return json({ error: 'GEMINI_API_KEY غير مضبوط بإعدادات الـ Worker' }, 500);
++    }
++
++    let body;
++    try {
++      body = await request.json();
++      // A body of the literal JSON value `null` (or any other non-object,
++      // e.g. a bare number/string/array) parses successfully, so the
++      // try/catch above never fires for it — but `body.secret` below would
++      // then throw on a null/primitive, escaping this handler entirely and
++      // returning Cloudflare's generic error page (no CORS headers, no
++      // Arabic message) instead of a clean json() response.
++      if (!body || typeof body !== 'object') {
++        return json({ error: 'طلب غير صالح (JSON)' }, 400);
++      }
++    } catch (e) {
++      return json({ error: 'طلب غير صالح (JSON)' }, 400);
++    }
++
++    // Lightweight abuse guard — see the security note above.
++    if (env.APP_SECRET && body.secret !== env.APP_SECRET) {
++      return json({ error: 'غير مصرّح — تأكد من رمز الأمان بإعدادات التطبيق' }, 401);
++    }
++
++    const { image, mimeType, text, candidates, mode } = body || {};
++    const searchMode = mode === 'general' ? 'general' : 'library';
++    const textDescription = typeof text === 'string' ? text.trim().slice(0, 500) : '';
++    const hasImage = !!(image && typeof image === 'string');
++    if (!hasImage && !textDescription) {
++      return json({ error: 'لازم صورة أو وصف نصي' }, 400);
++    }
++
++    const candidateList = Array.isArray(candidates)
++      ? candidates.filter(n => typeof n === 'string' && n.trim()).slice(0, 300)
++      : [];
++
++    // Google's SDK examples sometimes show the model name prefixed with
++    // "models/" (an internal resource-name convention) and sometimes bare —
++    // the REST curl examples use it bare. Strip a leading "models/" defensively
++    // so either form works regardless of where the value came from.
++    const model = (env.GEMINI_MODEL || DEFAULT_MODEL).replace(/^models\//, '');
++    const url = 'https://generativelanguage.googleapis.com/v1beta/interactions';
++
++    const input = [
++      { type: 'text', text: buildPrompt(searchMode, candidateList, hasImage, textDescription) }
++    ];
++    if (hasImage) {
++      input.push({ type: 'image', data: image, mime_type: mimeType || 'image/jpeg' });
++    }
++
++    const geminiBody = {
++      model,
++      input,
++      generation_config: {
++        temperature: 0.2,
++        // gemini-3-flash-preview is a "thinking" model — by default it can
++        // spend real time reasoning before answering, which is overkill for
++        // "which of these ~50 names does this photo match" and is almost
++        // certainly why this feels slow. Pinning thinking_level to the
++        // lowest tier trades a bit of accuracy on ambiguous photos for a
++        // much faster reply on the common case (a clear photo of a known dish).
++        thinking_level: 'minimal',
++        max_output_tokens: 800
++      }
++    };
++
++    let geminiRes;
++    try {
++      geminiRes = await fetch(url, {
++        method: 'POST',
++        headers: { 'Content-Type': 'application/json', 'x-goog-api-key': env.GEMINI_API_KEY },
++        body: JSON.stringify(geminiBody)
++      });
++    } catch (e) {
++      return json({ error: 'تعذّر الوصول لـ Gemini API: ' + e.message }, 502);
++    }
++
++    if (!geminiRes.ok) {
++      const errText = await geminiRes.text().catch(() => '');
++      return json({ error: `Gemini API رجّع خطأ ${geminiRes.status}`, detail: errText.slice(0, 500) }, 502);
++    }
++
++    let data;
++    try {
++      data = await geminiRes.json();
++    } catch (e) {
++      return json({ error: 'رد غير متوقع من Gemini API' }, 502);
++    }
++
++    const rawText = extractInteractionText(data);
++    if (!rawText) {
++      return json({ error: 'تعذّر إيجاد نص الرد داخل استجابة Gemini (شكل الرد تغيّر؟)', raw: JSON.stringify(data).slice(0, 500) }, 502);
++    }
++
++    const parsed = parseLooseJson(rawText);
++    if (!parsed || typeof parsed !== 'object') {
++      return json({ error: 'تعذّر فهم رد الذكاء الاصطناعي كـ JSON', raw: rawText.slice(0, 300) }, 502);
++    }
++
++    // Normally the model returns {"items": [...]}. If it ever ignores that
++    // and returns a single item object directly (older prompt shape, or
++    // just model drift), treat that as a one-item list instead of failing
++    // outright. The shape of an "item" itself differs by mode — see below.
++    const isBareItem = searchMode === 'general'
++      ? (parsed.name !== undefined || parsed.calories !== undefined)
++      : (parsed.match !== undefined || parsed.guess !== undefined);
++    const rawItems = Array.isArray(parsed.items) ? parsed.items : (isBareItem ? [parsed] : []);
++
++    const toNum = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.round(n) : 0; };
++
++    const items = searchMode === 'general'
++      ? rawItems.slice(0, 12).map(it => ({
++          name: it && typeof it.name === 'string' ? it.name.trim() : '',
++          calories: it ? toNum(it.calories) : 0,
++          protein: it ? toNum(it.protein) : 0,
++          carbs: it ? toNum(it.carbs) : 0,
++          fat: it ? toNum(it.fat) : 0,
++          confidence: it && ['high', 'medium', 'low'].includes(it.confidence) ? it.confidence : 'low'
++        }))
++      : rawItems.slice(0, 12).map(it => ({
++          match: it && typeof it.match === 'string' && it.match.trim() ? it.match.trim() : null,
++          guess: it && typeof it.guess === 'string' ? it.guess.trim() : '',
++          confidence: it && ['high', 'medium', 'low'].includes(it.confidence) ? it.confidence : 'low'
++        }));
++
++    return json({ items, mode: searchMode });
++  }
++};
++
++// The Interactions API's response has output_text as a convenience field
++// added by Google's own SDKs, per their docs — it may or may not be present
++// on a raw REST response, so fall back to walking steps[] → content[] for
++// the actual model_output text if output_text is missing.
++function extractInteractionText(data) {
++  if (!data) return '';
++  if (typeof data.output_text === 'string' && data.output_text.trim()) {
++    return data.output_text;
++  }
++  if (Array.isArray(data.steps)) {
++    let combined = '';
++    for (const step of data.steps) {
++      const content = step && step.content;
++      if (!Array.isArray(content)) continue;
++      for (const part of content) {
++        if (part && part.type === 'text' && typeof part.text === 'string') {
++          combined += part.text;
++        }
++      }
++    }
++    if (combined.trim()) return combined;
++  }
++  return '';
++}
++
++// The model is asked for pure JSON but may still wrap it in ```json fences
++// or add stray whitespace/text around it — this recovers the JSON either way.
++function parseLooseJson(text) {
++  const direct = tryParse(text);
++  if (direct) return direct;
++
++  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)```/i);
++  if (fenced) {
++    const fromFence = tryParse(fenced[1]);
++    if (fromFence) return fromFence;
++  }
++
++  const firstBrace = text.indexOf('{');
++  const lastBrace = text.lastIndexOf('}');
++  if (firstBrace !== -1 && lastBrace > firstBrace) {
++    const slice = tryParse(text.slice(firstBrace, lastBrace + 1));
++    if (slice) return slice;
++  }
++
++  return null;
++}
++
++function tryParse(s) {
++  try {
++    const v = JSON.parse(s);
++    return (v && typeof v === 'object') ? v : null;
++  } catch (e) {
++    return null;
++  }
++}
++
++function buildPrompt(mode, candidateList, hasImage, textDescription) {
++  const inputInstruction = hasImage
++    ? 'حلّل الصورة المرفقة للطبق/الوجبة.'
++    : `المستخدم وصف وجبته بالنص التالي (ما فيه صورة مرفقة، اعتمد على النص وحده):\n"${textDescription}"`;
++
++  const multiItemNote = 'مهم: قد تحتوي الوجبة أكثر من صنف طعام منفصل (مثلاً أرز + لحم + سلطة كأصناف منفصلة، أو أكثر من طبق واحد). حدد كل صنف طعام منفصل واضح تقدر تميزه كعنصر مستقل — لا تدمجهم بعنصر وحيد إلا إذا كانوا فعلاً طبق واحد مركّب معروف بهذا الاسم.';
++
++  if (mode === 'general') {
++    return `أنت مساعد تغذية لتطبيق تتبع أكل عربي اسمه "مِقياس".
++${inputInstruction}
++
++${multiItemNote}
++
++لكل عنصر تحدده، قدّر أفضل تقدير ممكن للقيم الغذائية بناءً على معرفتك العامة بالأطعمة — بغض النظر عن أي مكتبة أطعمة خاصة بالمستخدم، هذا بحث عام:
++- "name": اسم الصنف بالعربي (مختصر وواضح)
++- "calories": تقدير السعرات الحرارية (رقم فقط)
++- "protein": تقدير البروتين بالغرام (رقم فقط)
++- "carbs": تقدير الكاربوهيدرات بالغرام (رقم فقط)
++- "fat": تقدير الدهون بالغرام (رقم فقط)
++- "confidence": "high" أو "medium" أو "low" حسب مدى ثقتك بالتقدير
++
++رجّع فقط JSON صالح بهذا الشكل بالضبط، بدون أي نص أو شرح إضافي قبله أو بعده (إذا فيه صنف واحد بس، رجّع مصفوفة فيها عنصر وحيد):
++{"items": [{"name": "...", "calories": 0, "protein": 0, "carbs": 0, "fat": 0, "confidence": "high"}]}`;
++  }
++
++  const listBlock = candidateList.length
++    ? `قائمة أسماء أطباق سبق للمستخدم تسجيلها بتطبيقه (طابق كل صنف معها أولاً قبل أي شي ثاني):\n${candidateList.map(n => `- ${n}`).join('\n')}`
++    : 'ما فيه قائمة أطباق معروفة متاحة حالياً.';
++
++  return `أنت مساعد يتعرف على أصناف الطعام، لتطبيق تتبع تغذية عربي اسمه "مِقياس".
++${inputInstruction}
++${listBlock}
++
++${multiItemNote}
++
++لكل عنصر تحدده، طبّق هذي القواعد:
++1. إذا كان يطابق (أو قريب جداً من) أحد الأسماء بالقائمة أعلاه، رجّع نفس الاسم بالضبط كما هو مكتوب بالقائمة بحقل "match".
++2. إذا ما فيه تطابق واضح بالقائمة، خلّي "match" يساوي null، وارجع بحقل "guess" وصف قصير (كلمتين إلى ثلاث كلمات) بالعربي لاسم الصنف المحتمل.
++3. حدد "confidence" كـ "high" أو "medium" أو "low" حسب مدى ثقتك بالتحديد.
++
++رجّع فقط JSON صالح بهذا الشكل بالضبط، بدون أي نص أو شرح إضافي قبله أو بعده (إذا فيه صنف واحد بس، رجّع مصفوفة فيها عنصر وحيد):
++{"items": [{"match": "اسم من القائمة أو null", "guess": "وصف قصير بالعربي", "confidence": "high"}]}`;
++}
++
++function corsHeaders() {
++  return {
++    'Access-Control-Allow-Origin': '*',
++    'Access-Control-Allow-Methods': 'POST, OPTIONS',
++    'Access-Control-Allow-Headers': 'Content-Type'
++  };
++}
++
++function json(obj, status) {
++  return new Response(JSON.stringify(obj), {
++    status: status || 200,
++    headers: { 'Content-Type': 'application/json', ...corsHeaders() }
++  });
++}
+-- 
+2.43.0
+

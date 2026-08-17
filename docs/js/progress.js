@@ -701,7 +701,13 @@ function renderSyncStatus(){
           const cloudState = snap.data();
           const cloudDate = cloudState.updatedAt ? new Date(cloudState.updatedAt).toLocaleString('ar') : 'غير معروف';
           if((cloudState.updatedAt||0) > (appState.updatedAt||0)){
+            // Same reasoning as the other cloud-pull sites (app.js init,
+            // core.js subscribeCloud): saveLocalOnly() deliberately skips
+            // persist()'s own syncWidget() call, so it has to be refreshed
+            // explicitly here too, or the widget/reminders silently keep
+            // showing pre-sync data until the app is closed and reopened.
             appState = cloudState; saveLocalOnly(); rebindFromAppState(); computeStreak(); renderAll();
+            syncWidget(); applyReminderSettings();
           } else if((appState.updatedAt||0) > (cloudState.updatedAt||0)){
             await cloudDoc.set(appState);
           }
@@ -785,9 +791,14 @@ async function onEnableSyncClick(){
     closeAllSheets();
     computeStreak();
     renderAll();
+    // Same as the other cloud-pull sites — refresh the widget/reminders
+    // explicitly since saveLocalOnly() (used above, not persist()) skips it.
+    syncWidget();
+    applyReminderSettings();
   }catch(e){
     console.error(e);
     showToast('صار خطأ: ' + (e.code || e.message || 'غير معروف') + ' — راجع صلاحيات Firestore (Rules)');
     if(resEl) resEl.innerHTML = `<div class="sync-badge off" style="width:100%; box-sizing:border-box; color:var(--danger);">${ICON_X_CIRCLE} ${escapeHtml(e.code||e.message||'خطأ غير معروف')}</div>`;
   }
 }
+

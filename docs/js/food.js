@@ -5,14 +5,20 @@
 // delete button, so both paths get the same undo toast instead of two
 // slightly different deletion behaviors.
 function deleteMealEntry(id){
-  const idx = state.log.meals.findIndex(m=>m.id===id);
+  // Captures the exact log array being deleted from (the day being viewed
+  // right now), not the mutable `state.log` reference — if the user switches
+  // to a different day between this delete and tapping "تراجع", state.log
+  // gets repointed by switchViewedDay(), and restoring into it would put
+  // the meal back on the WRONG day instead of undoing the original delete.
+  const targetMeals = state.log.meals;
+  const idx = targetMeals.findIndex(m=>m.id===id);
   if(idx<0) return;
-  const removed = state.log.meals[idx];
-  state.log.meals.splice(idx,1);
+  const removed = targetMeals[idx];
+  targetMeals.splice(idx,1);
   persist();
   renderAll();
   showUndoToast(`حذفت ${removed.name}`, ()=>{
-    state.log.meals.splice(idx,0,removed);
+    targetMeals.splice(idx,0,removed);
     persist();
     renderAll();
   });
@@ -165,7 +171,13 @@ const FOOD_TYPE_KEYS = new Set(FOOD_TYPE_GROUPS.map(g=>g.key));
 // Which groups are expanded, kept across re-renders (typing a search
 // letter re-renders the whole list; this keeps a group you opened from
 // snapping shut on every keystroke).
-const libGroupsOpen = {protein:true};
+// Starts fully collapsed: with "بروتين" pre-expanded, its first few rows
+// landed at the exact fixed screen position of the floating (+) button on
+// the very first open of the Food tab — no scrolling needed to hit it —
+// which visually buried that row's own quick-add "+" underneath the FAB
+// and made it untappable. Collapsed groups keep the tab short enough on
+// first paint that nothing sits under the FAB before the user scrolls.
+const libGroupsOpen = {};
 
 function buildLibRow(food){
   const row = document.createElement('div');
@@ -250,6 +262,12 @@ function resetNewFoodSheet(){
   document.getElementById('sheetNewFoodTitle').textContent = 'وجبة جديدة';
   document.getElementById('btnSaveNewFoodLabel').textContent = 'حفظ وإضافة لليوم';
   ['nfName','nfCal','nfP','nfC','nfF','nfType'].forEach(id=> document.getElementById(id).value='');
+  // nfCat has no empty option (unlike nfType), so `.value=''` wouldn't
+  // actually change a <select> that's currently on "عشا"/"سناك"/etc from a
+  // previous edit — openEditFood() sets it explicitly, but nothing was
+  // resetting it back, so a brand-new food silently inherited whatever
+  // category the last-EDITED food happened to have.
+  document.getElementById('nfCat').selectedIndex = 0;
 }
 
 function deleteCustomFood(food){
@@ -363,8 +381,14 @@ function renderTemplateList(){
     const cal = t.foods.reduce((s,f)=>s+f.calories,0);
     const row = document.createElement('div');
     row.className = 'template-row';
+    // .template-row .tdel already had full CSS (styles.css) but nothing
+    // ever rendered it — deleting a template was swipe-only with zero
+    // visible affordance, unlike every other "delete a saved thing" flow
+    // in the app (logged meals, custom foods), which all show an explicit
+    // icon and treat swipe as a bonus shortcut, not the only way in.
     row.innerHTML = `<div class="tm"><div class="n">${escapeHtml(t.name)}</div><div class="d">${t.foods.length} وجبات · ${cal} سعرة</div></div>
-      <div class="tbtn" data-apply="${t.id}" aria-label="تطبيق قالب ${escapeHtml(t.name)}" role="button">تطبيق</div>`;
+      <div class="tbtn" data-apply="${t.id}" aria-label="تطبيق قالب ${escapeHtml(t.name)}" role="button">تطبيق</div>
+      <div class="tdel" data-del-template="${t.id}" aria-label="حذف قالب ${escapeHtml(t.name)}" role="button">${ICON_X}</div>`;
     attachSwipeToDelete(row, ()=> deleteTemplate(t.id));
     wrap.appendChild(row);
   });
@@ -382,6 +406,9 @@ function renderTemplateList(){
       closeAllSheets();
       showToast(`تم تطبيق قالب ${t.name} 🎉`);
     });
+  });
+  wrap.querySelectorAll('[data-del-template]').forEach(btn=>{
+    btn.addEventListener('click', ()=> deleteTemplate(btn.getAttribute('data-del-template')));
   });
 }
 function saveTodayAsTemplate(){
@@ -567,3 +594,4 @@ async function finishMealBuilder(){
   toggleMealBuilder(); // reset for next time
   closeAllSheets();
 }
+

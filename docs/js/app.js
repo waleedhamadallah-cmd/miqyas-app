@@ -184,6 +184,11 @@ function bindEvents(){
     renderWeightCard();
     renderBodyWeightSheetBody();
     renderBodyFatChart();
+    // renderAll() calls this on every other render path, but this handler
+    // never did — so "الوزن مقابل السعرات" right below the weight card kept
+    // showing pre-save data until some unrelated action triggered a full
+    // renderAll().
+    renderWeightCalorieTrend();
     showToast(dateKey===state.today ? 'تم حفظ وزنك 💪' : 'تم تحديث وزن ذاك اليوم 💪');
   });
   document.getElementById('bwDateInput').addEventListener('change', (e)=>{
@@ -424,6 +429,14 @@ function bindEvents(){
   document.getElementById('btnOpenRecipeBuilder').addEventListener('click', ()=>{
     recipeSelectedIds = [];
     document.getElementById('recipeSearch').value = '';
+    // recipeCat/recipeName/recipeType were never reset anywhere (only
+    // recipeName/recipeType got cleared, and only on a successful save) —
+    // so closing the builder without saving, or saving once, left the next
+    // recipe silently starting from whatever the last one had. This is the
+    // "start fresh" moment, same idea as resetNewFoodSheet() for the food form.
+    document.getElementById('recipeName').value = '';
+    document.getElementById('recipeCat').selectedIndex = 0;
+    document.getElementById('recipeType').value = '';
     renderRecipePickList();
     renderRecipeTotals();
     openSheet('sheetRecipeBuilder');

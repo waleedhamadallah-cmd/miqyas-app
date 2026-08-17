@@ -684,6 +684,12 @@ function importDataFile(file, onDone){
       rebindFromAppState();
       computeStreak();
       renderAll();
+      // Same reasoning as the other saveLocalOnly() call sites — a restored
+      // backup can carry different reminder settings / goals than what's
+      // currently on screen, so the widget and reminder schedule need an
+      // explicit refresh here too.
+      syncWidget();
+      applyReminderSettings();
       showToast('تم استرجاع النسخة الاحتياطية 🎉');
       if(onDone) onDone();
     }catch(e){ showToast('فشل قراءة الملف، تأكد إنه JSON صحيح'); }
@@ -875,3 +881,4 @@ function bindDateRolloverCheck(){
 /* ============================================================
    FOOD SHEET (picker within FAB flow)
    ============================================================ */
+
