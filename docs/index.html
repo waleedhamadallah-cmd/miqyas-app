@@ -232,6 +232,15 @@
         <option value="سناك">سناك</option>
       </select>
     </div>
+    <div class="form-field"><label>النوع (يظهرها في بادئ الوجبة السريعة)</label>
+      <select id="nfType">
+        <option value="">غير محدد</option>
+        <option value="protein">بروتين</option>
+        <option value="carb">كارب</option>
+        <option value="salad">سلطة</option>
+        <option value="snack">حلويات وسناكات</option>
+      </select>
+    </div>
     <div class="form-grid">
       <div class="form-field"><label>سعرات</label><input type="number" id="nfCal" placeholder="0" inputmode="numeric"></div>
       <div class="form-field"><label>بروتين (غ)</label><input type="number" id="nfP" placeholder="0" inputmode="numeric"></div>
@@ -527,7 +536,7 @@
   <div class="sheet-handle"></div>
   <div class="sheet-head"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="6" y="4" width="12" height="17" rx="2"></rect><path d="M9 4V3a1 1 0 0 1 1-1h4a1 1 0 0 1 1 1v1"></path><line x1="9" y1="10.5" x2="15" y2="10.5"></line><line x1="9" y1="14.5" x2="15" y2="14.5"></line></svg>قوالب الوجبات</h3><div class="sheet-close" data-close aria-label="إغلاق" role="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></div></div>
   <div class="sheet-body">
-    <button class="btn-primary" id="btnSaveTodayAsTemplate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="4" y1="20" x2="20" y2="20"></line></svg>احفظ وجبات اليوم كقالب</button>
+    <button class="btn-primary" id="btnSaveTodayAsTemplate"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="4" y1="20" x2="20" y2="20"></line></svg><span id="btnSaveTodayAsTemplateLabel">احفظ وجبات اليوم كقالب</span></button>
     <div class="section-title">قوالبك</div>
     <div id="templateList"></div>
   </div>
@@ -544,6 +553,15 @@
     <div class="form-field"><label>اسم الوصفة</label><input type="text" id="recipeName" placeholder="مثال: صحن الدجاج والرز"></div>
     <div class="form-field"><label>الفئة</label>
       <select id="recipeCat"><option value="فطور">فطور</option><option value="غدا">غدا</option><option value="عشا">عشا</option><option value="سناك">سناك</option></select>
+    </div>
+    <div class="form-field"><label>النوع (يظهرها في بادئ الوجبة السريعة)</label>
+      <select id="recipeType">
+        <option value="">غير محدد</option>
+        <option value="protein">بروتين</option>
+        <option value="carb">كارب</option>
+        <option value="salad">سلطة</option>
+        <option value="snack">حلويات وسناكات</option>
+      </select>
     </div>
     <button class="btn-primary" id="btnSaveRecipe">حفظ الوصفة بالمكتبة</button>
   </div>
