@@ -445,6 +445,15 @@ input{font-family:inherit; color:inherit;}
 }
 .ai-scan-item-row{margin-bottom:10px;}
 .ai-scan-item-row:last-child{margin-bottom:0;}
+/* .food-chip .fname is built for the compact horizontal-chip case: a fixed
+   133px cap plus nowrap+ellipsis. The AI scan results list stretches the
+   chip to the full row width instead (see the inline width:100% above)
+   specifically to show longer detected food names — so besides lifting the
+   width cap, this also has to let the name wrap onto a second line, or a
+   long AI-guessed name (e.g. "صدر دجاج مشوي مع رز بسمتي وسلطة خضراء")
+   still gets cut short by the inherited nowrap/ellipsis despite all the
+   extra room. */
+.ai-scan-item-chip .fname{max-width:none; white-space:normal; overflow:visible; text-overflow:clip; line-height:1.35;}
 .ai-scan-item-chip.added{
   opacity:.55; pointer-events:none;
 }
@@ -871,6 +880,9 @@ html[data-theme="light"] .entry-del, html[data-theme="light"] .tdel{ background:
 /* ============ RECIPE BUILDER ============ */
 .recipe-pick-row{display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--border-soft);}
 .recipe-pick-row input[type="checkbox"]{width:18px; height:18px; accent-color:var(--accent); flex:0 0 auto;}
+.recipe-pick-row .lm{flex:1; min-width:0;}
+.recipe-pick-row .lm .n{font-size:14px; font-weight:700;}
+.recipe-pick-row .lm .d{font-size:12px; color:var(--text-mute); margin-top:3px;}
 .recipe-totals{background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-lg); padding:14px 16px; margin:14px 0; box-shadow:var(--shadow-2);}
 .recipe-totals .rt-row{display:flex; justify-content:space-between; font-size:13px; padding:4px 0; color:var(--text-dim);}
 .recipe-totals .rt-row b{color:var(--text);}
