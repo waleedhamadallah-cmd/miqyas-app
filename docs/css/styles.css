@@ -423,6 +423,7 @@ input{font-family:inherit; color:inherit;}
   padding:12px 16px; font-size:14px; outline:none; min-width:0;
 }
 .ai-scan-text-row input:focus{border-color:var(--accent);}
+.ai-scan-text-row input:disabled{opacity:.5;}
 .ai-scan-text-row .btn-primary{flex:0 0 auto; width:auto; padding:0 20px; white-space:nowrap;}
 .ai-scan-divider{display:flex; align-items:center; gap:10px; margin:12px 0; color:var(--text-mute); font-size:12px;}
 .ai-scan-divider .line{flex:1; height:1px; background:var(--border-soft);}
@@ -671,6 +672,7 @@ input{font-family:inherit; color:inherit;}
   transition:transform .12s ease, border-color .12s ease;
 }
 .btn-secondary:active{transform:scale(.97);}
+.btn-secondary:disabled{opacity:.4; cursor:default;}
 
 .field-toggle{display:flex; gap:10px; margin:14px 0;}
 .field-btn{ flex:1; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:14px 10px; text-align:center; cursor:pointer; }

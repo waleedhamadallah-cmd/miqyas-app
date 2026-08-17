@@ -1,0 +1,423 @@
+From e62076d202bf9ad1d8ddceb09e0ad1a1eccb4e99 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Mon, 17 Aug 2026 17:31:56 +0000
+Subject: [PATCH] Fix AI dish-scan race condition and multi-item loss; harden
+ server validation
+MIME-Version: 1.0
+Content-Type: text/plain; charset=UTF-8
+Content-Transfer-Encoding: 8bit
+
+- docs/js/ai.js, docs/js/app.js: an in-flight AI request (photo or text
+  submit) is no longer left to race a second one — double-tapping "تحليل",
+  pressing Enter while a request is pending, or picking a new photo mid-
+  analysis used to fire overlapping API calls with whichever response
+  resolved last silently overwriting the other (discarding it and its
+  cost with zero trace). Now the previous request is aborted via
+  AbortController (plus a sequence-number backstop) and the trigger
+  controls (analyze/camera/gallery/text input) are disabled while a
+  request is in flight.
+- docs/js/ai.js, docs/js/app.js: fixed a high-severity UX bug where
+  tapping one item from a multi-item AI scan (to review/save it in the
+  manual-entry form) silently destroyed the rest of that scan's results —
+  reopening the AI sheet always did a full reset, forcing a complete
+  re-scan (another paid API call) to deal with item 2 of a 3-item plate.
+  Unhandled items are now preserved and restored on next open.
+- docs/js/ai.js: exact-string library-name matching against the AI's
+  reply is fragile for Arabic text (stray diacritics/whitespace/NFC vs
+  NFKC); added a normalized-comparison fallback so a near-miss doesn't
+  wrongly fall through to "no match found" when the food actually exists.
+- docs/js/ai.js: a raw English "Failed to fetch" from a real network
+  failure was leaking into an otherwise fully-Arabic UI; now shown as a
+  proper Arabic message.
+- docs/index.html, docs/js/app.js: the library/general mode toggle was
+  keyboard-inoperable (plain divs, click-only) — added role="button",
+  tabindex, aria-pressed, and Enter/Space handling; added min="0" to the
+  manual macro-entry fields.
+- docs/css/styles.css: added :disabled styling for .btn-secondary and the
+  AI sheet's text input, needed for the new in-flight-disable behavior.
+- server/ai-proxy-worker.js: clamped AI-derived macro numbers to a
+  generous sane range (previously unbounded — a hallucinated/malformed
+  reply could write a negative or absurd number straight into the food
+  library with no check anywhere in the pipeline); bumped
+  max_output_tokens from 800 to 2048 since a full multi-item reply (up to
+  12 items, several numeric fields + name each) risked truncation right
+  on the photos this feature is meant to handle best.
+
+Investigated via one code-review pass and one live Playwright scenario
+suite (12 scenarios incl. double-submit, HTTP errors, malformed JSON,
+offline) against the AI dish-scan flow; findings verified before fixing,
+and the full existing regression suite (undo, weight card, streak,
+template delete, water bidi, select resets, AI text/general mode) re-run
+clean afterward.
+
+Co-Authored-By: Claude Sonnet 5 <noreply@anthropic.com>
+---
+ docs/css/styles.css       |   2 +
+ docs/index.html           |  12 ++--
+ docs/js/ai.js             | 138 +++++++++++++++++++++++++++++++++++---
+ docs/js/app.js            |  14 +++-
+ server/ai-proxy-worker.js |  27 ++++++--
+ 5 files changed, 172 insertions(+), 21 deletions(-)
+
+diff --git a/docs/css/styles.css b/docs/css/styles.css
+index c2b6aae..b843ece 100644
+--- a/docs/css/styles.css
++++ b/docs/css/styles.css
+@@ -423,6 +423,7 @@ input{font-family:inherit; color:inherit;}
+   padding:12px 16px; font-size:14px; outline:none; min-width:0;
+ }
+ .ai-scan-text-row input:focus{border-color:var(--accent);}
++.ai-scan-text-row input:disabled{opacity:.5;}
+ .ai-scan-text-row .btn-primary{flex:0 0 auto; width:auto; padding:0 20px; white-space:nowrap;}
+ .ai-scan-divider{display:flex; align-items:center; gap:10px; margin:12px 0; color:var(--text-mute); font-size:12px;}
+ .ai-scan-divider .line{flex:1; height:1px; background:var(--border-soft);}
+@@ -671,6 +672,7 @@ input{font-family:inherit; color:inherit;}
+   transition:transform .12s ease, border-color .12s ease;
+ }
+ .btn-secondary:active{transform:scale(.97);}
++.btn-secondary:disabled{opacity:.4; cursor:default;}
+ 
+ .field-toggle{display:flex; gap:10px; margin:14px 0;}
+ .field-btn{ flex:1; background:var(--surface); border:1px solid var(--border); border-radius:var(--r-lg); padding:14px 10px; text-align:center; cursor:pointer; }
+diff --git a/docs/index.html b/docs/index.html
+index 0500e89..fa0c07b 100644
+--- a/docs/index.html
++++ b/docs/index.html
+@@ -242,10 +242,10 @@
+       </select>
+     </div>
+     <div class="form-grid">
+-      <div class="form-field"><label>سعرات</label><input type="number" id="nfCal" placeholder="0" inputmode="numeric"></div>
+-      <div class="form-field"><label>بروتين (غ)</label><input type="number" id="nfP" placeholder="0" inputmode="numeric"></div>
+-      <div class="form-field"><label>كارب (غ)</label><input type="number" id="nfC" placeholder="0" inputmode="numeric"></div>
+-      <div class="form-field"><label>دهون (غ)</label><input type="number" id="nfF" placeholder="0" inputmode="numeric"></div>
++      <div class="form-field"><label>سعرات</label><input type="number" id="nfCal" placeholder="0" inputmode="numeric" min="0"></div>
++      <div class="form-field"><label>بروتين (غ)</label><input type="number" id="nfP" placeholder="0" inputmode="numeric" min="0"></div>
++      <div class="form-field"><label>كارب (غ)</label><input type="number" id="nfC" placeholder="0" inputmode="numeric" min="0"></div>
++      <div class="form-field"><label>دهون (غ)</label><input type="number" id="nfF" placeholder="0" inputmode="numeric" min="0"></div>
+     </div>
+     <button class="btn-primary" id="btnSaveNewFood"><span id="btnSaveNewFoodLabel">حفظ وإضافة لليوم</span></button>
+   </div>
+@@ -281,8 +281,8 @@
+     </div>
+     <div id="aiScanConfigured">
+       <div class="theme-toggle" id="aiScanModeToggle">
+-        <div class="theme-opt" id="aiModeLibraryBtn">بحث بمكتبتي</div>
+-        <div class="theme-opt" id="aiModeGeneralBtn">بحث عام</div>
++        <div class="theme-opt" id="aiModeLibraryBtn" role="button" tabindex="0" aria-pressed="true">بحث بمكتبتي</div>
++        <div class="theme-opt" id="aiModeGeneralBtn" role="button" tabindex="0" aria-pressed="false">بحث عام</div>
+       </div>
+       <div class="empty-hint" id="aiScanModeExplainer" style="padding:6px 0 0; text-align:center;"></div>
+       <div class="empty-hint" id="aiScanHint" style="padding-top:8px;">اكتب وصف وجبتك، أو صوّرها:</div>
+diff --git a/docs/js/ai.js b/docs/js/ai.js
+index 50b55f8..0791ddb 100644
+--- a/docs/js/ai.js
++++ b/docs/js/ai.js
+@@ -19,12 +19,51 @@ function aiScanConfigured(){
+   return !!(appState && appState.aiProxyUrl);
+ }
+ 
++// Tracks an in-flight request so a second submit (double-tap, Enter key +
++// button click, or picking a new photo while text analysis is still
++// pending) cancels the stale one instead of both racing to overwrite
++// #aiScanResult — previously whichever response happened to resolve LAST
++// silently won, discarding the other (and its API cost) with zero trace.
++let aiScanAbortController = null;
++// Belt-and-suspenders alongside the AbortController above: if a browser
++// ever resolves an aborted fetch's .json() before honoring the abort,
++// this sequence check still stops a stale response from rendering.
++let aiScanRequestSeq = 0;
++
++function abortInFlightAiScan(){
++  if(aiScanAbortController){ aiScanAbortController.abort(); aiScanAbortController = null; }
++}
++
++function setAiScanControlsDisabled(disabled){
++  ['aiScanTextSubmitBtn','aiScanCameraBtn','aiScanGalleryBtn'].forEach(id=>{
++    const el = document.getElementById(id);
++    if(el) el.disabled = disabled;
++  });
++  const textInput = document.getElementById('aiScanTextInput');
++  if(textInput) textInput.disabled = disabled;
++}
++
++// A scan result set the user hasn't fully worked through yet (still has
++// items left after tapping one that navigates away to the manual-entry
++// form). Restored on the next AI-sheet open instead of being wiped, so
++// scanning a multi-item plate doesn't force a full (paid) re-scan just to
++// deal with item 2 after saving item 1. Cleared once empty or once the
++// user explicitly taps "تم".
++let aiScanPending = null;
++
++function removeFromAiScanPending(item){
++  if(!aiScanPending) return;
++  const idx = aiScanPending.items.indexOf(item);
++  if(idx>-1) aiScanPending.items.splice(idx,1);
++  if(!aiScanPending.items.length) aiScanPending = null;
++}
++
+ function renderAiScanModeToggle(){
+   const mode = (appState && appState.aiScanMode) || 'library';
+   const libBtn = document.getElementById('aiModeLibraryBtn');
+   const genBtn = document.getElementById('aiModeGeneralBtn');
+-  if(libBtn) libBtn.classList.toggle('active', mode==='library');
+-  if(genBtn) genBtn.classList.toggle('active', mode==='general');
++  if(libBtn){ libBtn.classList.toggle('active', mode==='library'); libBtn.setAttribute('aria-pressed', mode==='library'); }
++  if(genBtn){ genBtn.classList.toggle('active', mode==='general'); genBtn.setAttribute('aria-pressed', mode==='general'); }
+ 
+   const explainer = document.getElementById('aiScanModeExplainer');
+   if(explainer){
+@@ -41,6 +80,10 @@ function setAiScanMode(mode){
+ }
+ 
+ function resetAiScanSheet(){
++  abortInFlightAiScan();
++  aiScanPending = null;
++  setAiScanControlsDisabled(false);
++
+   const preview = document.getElementById('aiScanPreview');
+   const result = document.getElementById('aiScanResult');
+   const loading = document.getElementById('aiScanLoading');
+@@ -62,6 +105,37 @@ function resetAiScanSheet(){
+   if(notConfigured) notConfigured.style.display = ok ? 'none' : 'block';
+ }
+ 
++// Called instead of resetAiScanSheet() when re-opening the AI sheet while
++// aiScanPending still has unhandled items from the previous scan (see the
++// comment on aiScanPending above) — re-renders those items instead of
++// wiping them.
++function restoreAiScanPendingSheet(){
++  abortInFlightAiScan();
++  setAiScanControlsDisabled(false);
++
++  const preview = document.getElementById('aiScanPreview');
++  const loading = document.getElementById('aiScanLoading');
++  const hint = document.getElementById('aiScanHint');
++  const configuredWrap = document.getElementById('aiScanConfigured');
++  const notConfigured = document.getElementById('aiScanNotConfigured');
++  const textInput = document.getElementById('aiScanTextInput');
++
++  if(preview){ preview.style.display='none'; preview.src=''; }
++  if(loading) loading.style.display = 'none';
++  if(hint) hint.style.display = 'none';
++  if(textInput) textInput.value = '';
++
++  appState.aiScanMode = aiScanPending.mode;
++  persist();
++  renderAiScanModeToggle();
++
++  const ok = aiScanConfigured();
++  if(configuredWrap) configuredWrap.style.display = ok ? 'block' : 'none';
++  if(notConfigured) notConfigured.style.display = ok ? 'none' : 'block';
++
++  renderAiScanResult({ items: aiScanPending.items, mode: aiScanPending.mode });
++}
++
+ function fileToResizedBase64(file, maxDim, quality){
+   return new Promise((resolve, reject)=>{
+     if(!file.type || file.type.indexOf('image/')!==0){
+@@ -97,6 +171,15 @@ async function callAiProxy(payload){
+   const loading = document.getElementById('aiScanLoading');
+   const hint = document.getElementById('aiScanHint');
+ 
++  // Cancel whatever request is still in flight (double-tap, Enter key
++  // racing the button, or a new photo picked mid-analysis) so only THIS
++  // request's response ever touches the DOM — see aiScanAbortController.
++  abortInFlightAiScan();
++  const controller = new AbortController();
++  aiScanAbortController = controller;
++  const mySeq = ++aiScanRequestSeq;
++  setAiScanControlsDisabled(true);
++
+   result.innerHTML = '';
+   if(hint) hint.style.display = 'none';
+   loading.style.display = 'flex';
+@@ -111,7 +194,8 @@ async function callAiProxy(payload){
+         candidates,
+         mode: appState.aiScanMode || 'library',
+         secret: appState.aiProxySecret || ''
+-      })
++      }),
++      signal: controller.signal
+     });
+ 
+     let data;
+@@ -123,11 +207,23 @@ async function callAiProxy(payload){
+     }
+     if(!data) throw new Error('رد غير متوقع من السيرفر');
+ 
++    if(mySeq !== aiScanRequestSeq) return; // superseded by a newer request
+     renderAiScanResult(data);
+   }catch(e){
+-    result.innerHTML = `<div class="ai-scan-error">تعذّر التحليل: ${escapeHtml(e.message||'خطأ غير معروف')}</div>`;
++    if(e && e.name==='AbortError') return; // superseded; the newer request owns the UI now
++    if(mySeq !== aiScanRequestSeq) return;
++    // A native fetch network failure (offline/DNS/CORS) throws a TypeError
++    // whose .message is raw English ("Failed to fetch") — every other
++    // error path here already throws a scripted Arabic message, so only
++    // this case needs a translated fallback instead of trusting e.message.
++    const msg = (e instanceof TypeError) ? 'تعذّر الاتصال بالسيرفر — تحقق من الإنترنت' : (e.message||'خطأ غير معروف');
++    result.innerHTML = `<div class="ai-scan-error">تعذّر التحليل: ${escapeHtml(msg)}</div>`;
+   }finally{
+-    loading.style.display = 'none';
++    if(mySeq === aiScanRequestSeq){
++      loading.style.display = 'none';
++      setAiScanControlsDisabled(false);
++      aiScanAbortController = null;
++    }
+   }
+ }
+ 
+@@ -174,6 +270,10 @@ function renderAiScanResult(data){
+   const mode = data.mode==='general' ? 'general' : 'library';
+   const items = Array.isArray(data.items) ? data.items : [];
+ 
++  // Remember this result set so tapping into the manual-entry form for one
++  // item (below) doesn't lose the rest — see aiScanPending's definition.
++  aiScanPending = items.length ? { mode, items: items.slice() } : null;
++
+   if(!items.length){
+     result.innerHTML = `<div class="ai-scan-noguess">ما قدرت أميّز أي صنف واضح.</div>
+       <button class="btn-secondary" id="aiScanManualBtn" style="margin-top:10px;">سجّل يدوياً</button>`;
+@@ -206,13 +306,14 @@ function renderAiScanResult(data){
+           <div class="fcal tabular">${item.calories||0} سعرة</div>
+         </div>`;
+       row.querySelector('.ai-scan-item-chip').addEventListener('click', ()=>{
++        removeFromAiScanPending(item);
+         openAiScanManualFallback({
+           name, calories:item.calories||0, protein:item.protein||0,
+           carbs:item.carbs||0, fat:item.fat||0
+         });
+       });
+     } else {
+-      const food = item.match ? (state.library.foods||[]).find(f=>f.name===item.match) : null;
++      const food = item.match ? findLibraryFoodByName(item.match) : null;
+       if(food){
+         row.innerHTML = `
+           <div class="food-chip ai-scan-item-chip" style="width:100%; max-width:none;">
+@@ -233,7 +334,10 @@ function renderAiScanResult(data){
+             ${item.guess ? `ما لقيت تطابق بمكتبتك — تخميني إنه "${escapeHtml(item.guess)}". جرّب "بحث عام" فوق عشان أقدّر لك قيمه الغذائية مباشرة.` : 'ما لقيت تطابق واضح لهذا الصنف بمكتبتك'}
+           </div>
+           <button class="btn-secondary ai-scan-manual-item-btn" style="margin-top:8px;">أضفه يدوياً</button>`;
+-        row.querySelector('.ai-scan-manual-item-btn').addEventListener('click', ()=> openAiScanManualFallback(item.guess));
++        row.querySelector('.ai-scan-manual-item-btn').addEventListener('click', ()=>{
++          removeFromAiScanPending(item);
++          openAiScanManualFallback(item.guess);
++        });
+       }
+     }
+     listEl.appendChild(row);
+@@ -243,10 +347,28 @@ function renderAiScanResult(data){
+   doneBtn.className = 'btn-primary';
+   doneBtn.style.marginTop = '14px';
+   doneBtn.textContent = 'تم';
+-  doneBtn.addEventListener('click', ()=> closeAllSheets());
++  doneBtn.addEventListener('click', ()=>{ aiScanPending = null; closeAllSheets(); });
+   result.appendChild(doneBtn);
+ }
+ 
++// Exact food-name matching against a fresh Gemini reply is fragile for
++// Arabic text (stray diacritics, doubled spaces, NFC/NFKC form
++// differences) even though the prompt asks for an exact copy of the
++// library name — fall back to a normalized comparison before giving up
++// and treating a real match as "no match found".
++function normalizeArabicName(s){
++  return (s||'').normalize('NFKC').replace(/[\u064B-\u065F\u0670]/g,'').replace(/\s+/g,' ').trim();
++}
++function findLibraryFoodByName(name){
++  const foods = state.library.foods||[];
++  let food = foods.find(f=>f.name===name);
++  if(!food){
++    const norm = normalizeArabicName(name);
++    food = foods.find(f=>normalizeArabicName(f.name)===norm);
++  }
++  return food;
++}
++
+ // `prefill` is either a plain string (a name-only guess from library mode,
+ // existing behavior) or an object {name, calories, protein, carbs, fat}
+ // with a full AI estimate from general mode.
+diff --git a/docs/js/app.js b/docs/js/app.js
+index 3b484bd..c87a640 100644
+--- a/docs/js/app.js
++++ b/docs/js/app.js
+@@ -139,7 +139,14 @@ function bindEvents(){
+     openBodyWeightSheet();
+   });
+   document.getElementById('qaAiScan').addEventListener('click', ()=>{
+-    resetAiScanSheet();
++    // A previous scan with items the user hasn't finished dealing with yet
++    // (e.g. saved item 1 of a 3-item plate, then tapped the AI icon again
++    // for item 2) gets restored instead of wiped — see aiScanPending.
++    if(typeof aiScanPending !== 'undefined' && aiScanPending && aiScanPending.items.length){
++      restoreAiScanPendingSheet();
++    } else {
++      resetAiScanSheet();
++    }
+     openSheet('sheetAiScan');
+   });
+   document.getElementById('aiScanCameraBtn').addEventListener('click', ()=> document.getElementById('aiScanCameraInput').click());
+@@ -154,6 +161,11 @@ function bindEvents(){
+   });
+   document.getElementById('aiModeLibraryBtn').addEventListener('click', ()=> setAiScanMode('library'));
+   document.getElementById('aiModeGeneralBtn').addEventListener('click', ()=> setAiScanMode('general'));
++  document.querySelectorAll('#aiScanModeToggle .theme-opt').forEach(btn=>{
++    btn.addEventListener('keydown', (e)=>{
++      if(e.key==='Enter' || e.key===' '){ e.preventDefault(); btn.click(); }
++    });
++  });
+   document.getElementById('aiScanTextSubmitBtn').addEventListener('click', ()=>{
+     handleAiScanText(document.getElementById('aiScanTextInput').value);
+   });
+diff --git a/server/ai-proxy-worker.js b/server/ai-proxy-worker.js
+index 02fd7f7..b23cd8e 100644
+--- a/server/ai-proxy-worker.js
++++ b/server/ai-proxy-worker.js
+@@ -169,7 +169,13 @@ export default {
+         // lowest tier trades a bit of accuracy on ambiguous photos for a
+         // much faster reply on the common case (a clear photo of a known dish).
+         thinking_level: 'minimal',
+-        max_output_tokens: 800
++        // Was 800 — too tight for a full multi-item reply (the multi-item
++        // prompt below explicitly asks for up to ~12 separate items, each
++        // needing 4 numeric fields + a name + confidence in general mode),
++        // risking the JSON being cut off mid-object on exactly the photos
++        // this feature is meant to handle best. 2048 gives real headroom
++        // while staying far below what would meaningfully slow the reply.
++        max_output_tokens: 2048
+       }
+     };
+ 
+@@ -215,15 +221,24 @@ export default {
+       : (parsed.match !== undefined || parsed.guess !== undefined);
+     const rawItems = Array.isArray(parsed.items) ? parsed.items : (isBareItem ? [parsed] : []);
+ 
+-    const toNum = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.round(n) : 0; };
++    // Clamped to a generous-but-sane per-item ceiling — a hallucinated or
++    // malformed reply (e.g. a stray extra digit) would otherwise flow
++    // straight through into the pre-filled "new food" form and, if the
++    // user doesn't notice before saving, get written permanently into
++    // their food library with no check anywhere else in the pipeline.
++    const toNum = (v, max) => {
++      const n = Number(v);
++      if (!Number.isFinite(n)) return 0;
++      return Math.min(Math.max(Math.round(n), 0), max);
++    };
+ 
+     const items = searchMode === 'general'
+       ? rawItems.slice(0, 12).map(it => ({
+           name: it && typeof it.name === 'string' ? it.name.trim() : '',
+-          calories: it ? toNum(it.calories) : 0,
+-          protein: it ? toNum(it.protein) : 0,
+-          carbs: it ? toNum(it.carbs) : 0,
+-          fat: it ? toNum(it.fat) : 0,
++          calories: it ? toNum(it.calories, 5000) : 0,
++          protein: it ? toNum(it.protein, 500) : 0,
++          carbs: it ? toNum(it.carbs, 500) : 0,
++          fat: it ? toNum(it.fat, 500) : 0,
+           confidence: it && ['high', 'medium', 'low'].includes(it.confidence) ? it.confidence : 'low'
+         }))
+       : rawItems.slice(0, 12).map(it => ({
+-- 
+2.43.0
+

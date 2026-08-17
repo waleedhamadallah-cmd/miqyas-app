@@ -19,12 +19,51 @@ function aiScanConfigured(){
   return !!(appState && appState.aiProxyUrl);
 }
 
+// Tracks an in-flight request so a second submit (double-tap, Enter key +
+// button click, or picking a new photo while text analysis is still
+// pending) cancels the stale one instead of both racing to overwrite
+// #aiScanResult — previously whichever response happened to resolve LAST
+// silently won, discarding the other (and its API cost) with zero trace.
+let aiScanAbortController = null;
+// Belt-and-suspenders alongside the AbortController above: if a browser
+// ever resolves an aborted fetch's .json() before honoring the abort,
+// this sequence check still stops a stale response from rendering.
+let aiScanRequestSeq = 0;
+
+function abortInFlightAiScan(){
+  if(aiScanAbortController){ aiScanAbortController.abort(); aiScanAbortController = null; }
+}
+
+function setAiScanControlsDisabled(disabled){
+  ['aiScanTextSubmitBtn','aiScanCameraBtn','aiScanGalleryBtn'].forEach(id=>{
+    const el = document.getElementById(id);
+    if(el) el.disabled = disabled;
+  });
+  const textInput = document.getElementById('aiScanTextInput');
+  if(textInput) textInput.disabled = disabled;
+}
+
+// A scan result set the user hasn't fully worked through yet (still has
+// items left after tapping one that navigates away to the manual-entry
+// form). Restored on the next AI-sheet open instead of being wiped, so
+// scanning a multi-item plate doesn't force a full (paid) re-scan just to
+// deal with item 2 after saving item 1. Cleared once empty or once the
+// user explicitly taps "تم".
+let aiScanPending = null;
+
+function removeFromAiScanPending(item){
+  if(!aiScanPending) return;
+  const idx = aiScanPending.items.indexOf(item);
+  if(idx>-1) aiScanPending.items.splice(idx,1);
+  if(!aiScanPending.items.length) aiScanPending = null;
+}
+
 function renderAiScanModeToggle(){
   const mode = (appState && appState.aiScanMode) || 'library';
   const libBtn = document.getElementById('aiModeLibraryBtn');
   const genBtn = document.getElementById('aiModeGeneralBtn');
-  if(libBtn) libBtn.classList.toggle('active', mode==='library');
-  if(genBtn) genBtn.classList.toggle('active', mode==='general');
+  if(libBtn){ libBtn.classList.toggle('active', mode==='library'); libBtn.setAttribute('aria-pressed', mode==='library'); }
+  if(genBtn){ genBtn.classList.toggle('active', mode==='general'); genBtn.setAttribute('aria-pressed', mode==='general'); }
 
   const explainer = document.getElementById('aiScanModeExplainer');
   if(explainer){
@@ -41,6 +80,10 @@ function setAiScanMode(mode){
 }
 
 function resetAiScanSheet(){
+  abortInFlightAiScan();
+  aiScanPending = null;
+  setAiScanControlsDisabled(false);
+
   const preview = document.getElementById('aiScanPreview');
   const result = document.getElementById('aiScanResult');
   const loading = document.getElementById('aiScanLoading');
@@ -60,6 +103,37 @@ function resetAiScanSheet(){
   const ok = aiScanConfigured();
   if(configuredWrap) configuredWrap.style.display = ok ? 'block' : 'none';
   if(notConfigured) notConfigured.style.display = ok ? 'none' : 'block';
+}
+
+// Called instead of resetAiScanSheet() when re-opening the AI sheet while
+// aiScanPending still has unhandled items from the previous scan (see the
+// comment on aiScanPending above) — re-renders those items instead of
+// wiping them.
+function restoreAiScanPendingSheet(){
+  abortInFlightAiScan();
+  setAiScanControlsDisabled(false);
+
+  const preview = document.getElementById('aiScanPreview');
+  const loading = document.getElementById('aiScanLoading');
+  const hint = document.getElementById('aiScanHint');
+  const configuredWrap = document.getElementById('aiScanConfigured');
+  const notConfigured = document.getElementById('aiScanNotConfigured');
+  const textInput = document.getElementById('aiScanTextInput');
+
+  if(preview){ preview.style.display='none'; preview.src=''; }
+  if(loading) loading.style.display = 'none';
+  if(hint) hint.style.display = 'none';
+  if(textInput) textInput.value = '';
+
+  appState.aiScanMode = aiScanPending.mode;
+  persist();
+  renderAiScanModeToggle();
+
+  const ok = aiScanConfigured();
+  if(configuredWrap) configuredWrap.style.display = ok ? 'block' : 'none';
+  if(notConfigured) notConfigured.style.display = ok ? 'none' : 'block';
+
+  renderAiScanResult({ items: aiScanPending.items, mode: aiScanPending.mode });
 }
 
 function fileToResizedBase64(file, maxDim, quality){
@@ -97,6 +171,15 @@ async function callAiProxy(payload){
   const loading = document.getElementById('aiScanLoading');
   const hint = document.getElementById('aiScanHint');
 
+  // Cancel whatever request is still in flight (double-tap, Enter key
+  // racing the button, or a new photo picked mid-analysis) so only THIS
+  // request's response ever touches the DOM — see aiScanAbortController.
+  abortInFlightAiScan();
+  const controller = new AbortController();
+  aiScanAbortController = controller;
+  const mySeq = ++aiScanRequestSeq;
+  setAiScanControlsDisabled(true);
+
   result.innerHTML = '';
   if(hint) hint.style.display = 'none';
   loading.style.display = 'flex';
@@ -111,7 +194,8 @@ async function callAiProxy(payload){
         candidates,
         mode: appState.aiScanMode || 'library',
         secret: appState.aiProxySecret || ''
-      })
+      }),
+      signal: controller.signal
     });
 
     let data;
@@ -123,11 +207,23 @@ async function callAiProxy(payload){
     }
     if(!data) throw new Error('رد غير متوقع من السيرفر');
 
+    if(mySeq !== aiScanRequestSeq) return; // superseded by a newer request
     renderAiScanResult(data);
   }catch(e){
-    result.innerHTML = `<div class="ai-scan-error">تعذّر التحليل: ${escapeHtml(e.message||'خطأ غير معروف')}</div>`;
+    if(e && e.name==='AbortError') return; // superseded; the newer request owns the UI now
+    if(mySeq !== aiScanRequestSeq) return;
+    // A native fetch network failure (offline/DNS/CORS) throws a TypeError
+    // whose .message is raw English ("Failed to fetch") — every other
+    // error path here already throws a scripted Arabic message, so only
+    // this case needs a translated fallback instead of trusting e.message.
+    const msg = (e instanceof TypeError) ? 'تعذّر الاتصال بالسيرفر — تحقق من الإنترنت' : (e.message||'خطأ غير معروف');
+    result.innerHTML = `<div class="ai-scan-error">تعذّر التحليل: ${escapeHtml(msg)}</div>`;
   }finally{
-    loading.style.display = 'none';
+    if(mySeq === aiScanRequestSeq){
+      loading.style.display = 'none';
+      setAiScanControlsDisabled(false);
+      aiScanAbortController = null;
+    }
   }
 }
 
@@ -174,6 +270,10 @@ function renderAiScanResult(data){
   const mode = data.mode==='general' ? 'general' : 'library';
   const items = Array.isArray(data.items) ? data.items : [];
 
+  // Remember this result set so tapping into the manual-entry form for one
+  // item (below) doesn't lose the rest — see aiScanPending's definition.
+  aiScanPending = items.length ? { mode, items: items.slice() } : null;
+
   if(!items.length){
     result.innerHTML = `<div class="ai-scan-noguess">ما قدرت أميّز أي صنف واضح.</div>
       <button class="btn-secondary" id="aiScanManualBtn" style="margin-top:10px;">سجّل يدوياً</button>`;
@@ -206,13 +306,14 @@ function renderAiScanResult(data){
           <div class="fcal tabular">${item.calories||0} سعرة</div>
         </div>`;
       row.querySelector('.ai-scan-item-chip').addEventListener('click', ()=>{
+        removeFromAiScanPending(item);
         openAiScanManualFallback({
           name, calories:item.calories||0, protein:item.protein||0,
           carbs:item.carbs||0, fat:item.fat||0
         });
       });
     } else {
-      const food = item.match ? (state.library.foods||[]).find(f=>f.name===item.match) : null;
+      const food = item.match ? findLibraryFoodByName(item.match) : null;
       if(food){
         row.innerHTML = `
           <div class="food-chip ai-scan-item-chip" style="width:100%; max-width:none;">
@@ -233,7 +334,10 @@ function renderAiScanResult(data){
             ${item.guess ? `ما لقيت تطابق بمكتبتك — تخميني إنه "${escapeHtml(item.guess)}". جرّب "بحث عام" فوق عشان أقدّر لك قيمه الغذائية مباشرة.` : 'ما لقيت تطابق واضح لهذا الصنف بمكتبتك'}
           </div>
           <button class="btn-secondary ai-scan-manual-item-btn" style="margin-top:8px;">أضفه يدوياً</button>`;
-        row.querySelector('.ai-scan-manual-item-btn').addEventListener('click', ()=> openAiScanManualFallback(item.guess));
+        row.querySelector('.ai-scan-manual-item-btn').addEventListener('click', ()=>{
+          removeFromAiScanPending(item);
+          openAiScanManualFallback(item.guess);
+        });
       }
     }
     listEl.appendChild(row);
@@ -243,8 +347,26 @@ function renderAiScanResult(data){
   doneBtn.className = 'btn-primary';
   doneBtn.style.marginTop = '14px';
   doneBtn.textContent = 'تم';
-  doneBtn.addEventListener('click', ()=> closeAllSheets());
+  doneBtn.addEventListener('click', ()=>{ aiScanPending = null; closeAllSheets(); });
   result.appendChild(doneBtn);
+}
+
+// Exact food-name matching against a fresh Gemini reply is fragile for
+// Arabic text (stray diacritics, doubled spaces, NFC/NFKC form
+// differences) even though the prompt asks for an exact copy of the
+// library name — fall back to a normalized comparison before giving up
+// and treating a real match as "no match found".
+function normalizeArabicName(s){
+  return (s||'').normalize('NFKC').replace(/[\u064B-\u065F\u0670]/g,'').replace(/\s+/g,' ').trim();
+}
+function findLibraryFoodByName(name){
+  const foods = state.library.foods||[];
+  let food = foods.find(f=>f.name===name);
+  if(!food){
+    const norm = normalizeArabicName(name);
+    food = foods.find(f=>normalizeArabicName(f.name)===norm);
+  }
+  return food;
 }
 
 // `prefill` is either a plain string (a name-only guess from library mode,

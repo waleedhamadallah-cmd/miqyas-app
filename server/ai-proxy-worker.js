@@ -169,7 +169,13 @@ export default {
         // lowest tier trades a bit of accuracy on ambiguous photos for a
         // much faster reply on the common case (a clear photo of a known dish).
         thinking_level: 'minimal',
-        max_output_tokens: 800
+        // Was 800 — too tight for a full multi-item reply (the multi-item
+        // prompt below explicitly asks for up to ~12 separate items, each
+        // needing 4 numeric fields + a name + confidence in general mode),
+        // risking the JSON being cut off mid-object on exactly the photos
+        // this feature is meant to handle best. 2048 gives real headroom
+        // while staying far below what would meaningfully slow the reply.
+        max_output_tokens: 2048
       }
     };
 
@@ -215,15 +221,24 @@ export default {
       : (parsed.match !== undefined || parsed.guess !== undefined);
     const rawItems = Array.isArray(parsed.items) ? parsed.items : (isBareItem ? [parsed] : []);
 
-    const toNum = (v) => { const n = Number(v); return Number.isFinite(n) ? Math.round(n) : 0; };
+    // Clamped to a generous-but-sane per-item ceiling — a hallucinated or
+    // malformed reply (e.g. a stray extra digit) would otherwise flow
+    // straight through into the pre-filled "new food" form and, if the
+    // user doesn't notice before saving, get written permanently into
+    // their food library with no check anywhere else in the pipeline.
+    const toNum = (v, max) => {
+      const n = Number(v);
+      if (!Number.isFinite(n)) return 0;
+      return Math.min(Math.max(Math.round(n), 0), max);
+    };
 
     const items = searchMode === 'general'
       ? rawItems.slice(0, 12).map(it => ({
           name: it && typeof it.name === 'string' ? it.name.trim() : '',
-          calories: it ? toNum(it.calories) : 0,
-          protein: it ? toNum(it.protein) : 0,
-          carbs: it ? toNum(it.carbs) : 0,
-          fat: it ? toNum(it.fat) : 0,
+          calories: it ? toNum(it.calories, 5000) : 0,
+          protein: it ? toNum(it.protein, 500) : 0,
+          carbs: it ? toNum(it.carbs, 500) : 0,
+          fat: it ? toNum(it.fat, 500) : 0,
           confidence: it && ['high', 'medium', 'low'].includes(it.confidence) ? it.confidence : 'low'
         }))
       : rawItems.slice(0, 12).map(it => ({

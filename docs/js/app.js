@@ -139,7 +139,14 @@ function bindEvents(){
     openBodyWeightSheet();
   });
   document.getElementById('qaAiScan').addEventListener('click', ()=>{
-    resetAiScanSheet();
+    // A previous scan with items the user hasn't finished dealing with yet
+    // (e.g. saved item 1 of a 3-item plate, then tapped the AI icon again
+    // for item 2) gets restored instead of wiped — see aiScanPending.
+    if(typeof aiScanPending !== 'undefined' && aiScanPending && aiScanPending.items.length){
+      restoreAiScanPendingSheet();
+    } else {
+      resetAiScanSheet();
+    }
     openSheet('sheetAiScan');
   });
   document.getElementById('aiScanCameraBtn').addEventListener('click', ()=> document.getElementById('aiScanCameraInput').click());
@@ -154,6 +161,11 @@ function bindEvents(){
   });
   document.getElementById('aiModeLibraryBtn').addEventListener('click', ()=> setAiScanMode('library'));
   document.getElementById('aiModeGeneralBtn').addEventListener('click', ()=> setAiScanMode('general'));
+  document.querySelectorAll('#aiScanModeToggle .theme-opt').forEach(btn=>{
+    btn.addEventListener('keydown', (e)=>{
+      if(e.key==='Enter' || e.key===' '){ e.preventDefault(); btn.click(); }
+    });
+  });
   document.getElementById('aiScanTextSubmitBtn').addEventListener('click', ()=>{
     handleAiScanText(document.getElementById('aiScanTextInput').value);
   });
