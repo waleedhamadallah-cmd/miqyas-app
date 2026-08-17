@@ -257,6 +257,12 @@ function subscribeCloud(){
       saveLocalOnly();
       rebindFromAppState();
       renderAll();
+      // Same reasoning as the initial-pull path in app.js: saveLocalOnly()
+      // deliberately skips persist()'s syncWidget() call (so we don't
+      // immediately push this just-pulled data back to the cloud), so the
+      // widget/reminders have to be refreshed explicitly here too.
+      syncWidget();
+      applyReminderSettings();
       showToast('تم التحديث من جهاز ثاني 🔄');
     }
   }, err=> console.error('cloud listen error', err));
