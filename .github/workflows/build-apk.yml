@@ -29,8 +29,8 @@ jobs:
       - name: Setup Android SDK
         uses: android-actions/setup-android@v3
 
-      - name: Sync Capacitor web assets
-        run: npx cap copy android
+      - name: Sync Capacitor (web assets + native plugin wiring)
+        run: npx cap sync android
 
       - name: Grant execute permission for gradlew
         run: chmod +x android/gradlew
