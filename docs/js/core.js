@@ -14,6 +14,38 @@ let cloudDoc = null;
 
 let cloudUnsub = null;
 
+// Last cloud-sync failure (if any), so the Settings sync panel can show an
+// honest "your data isn't actually syncing right now" state instead of a
+// permanent "متصل" badge that keeps claiming everything's fine while
+// cloudDoc.set()/onSnapshot() have been silently failing (wrong Firebase
+// rules, device offline, revoked project, etc). Ephemeral/session-only —
+// deliberately not part of appState, since it describes THIS device's
+// current connection, not saved data.
+let lastCloudSyncError = null;
+let lastCloudSyncErrorToastAt = 0;
+
+function reportCloudSyncError(e){
+  console.error('cloud sync failed', e);
+  lastCloudSyncError = {message: (e && (e.code || e.message)) || 'خطأ غير معروف', at: Date.now()};
+  // persist()/onSnapshot can fire on almost every tap or every reconnect
+  // attempt — a real outage would otherwise spam a toast repeatedly. One
+  // notice every few minutes is enough to alert the user without being
+  // annoying; the Settings sync panel (renderSyncStatus) shows the
+  // persistent warning badge in between.
+  const now = Date.now();
+  if(now - lastCloudSyncErrorToastAt > 180000){
+    lastCloudSyncErrorToastAt = now;
+    showToast('تعذرت مزامنة بياناتك مع السحابة، بياناتك محفوظة على جهازك بس حالياً ⚠️');
+  }
+  if(typeof renderSyncStatus==='function' && document.getElementById('syncStatusBox')) renderSyncStatus();
+}
+
+function clearCloudSyncError(){
+  if(!lastCloudSyncError) return;
+  lastCloudSyncError = null;
+  if(typeof renderSyncStatus==='function' && document.getElementById('syncStatusBox')) renderSyncStatus();
+}
+
 function loadLocalState(){
   try{
     const raw = localStorage.getItem(LOCAL_KEY);
@@ -30,7 +62,7 @@ function persist(){
   appState.updatedAt = Date.now();
   saveLocalOnly();
   if(cloudDoc){
-    cloudDoc.set(appState).catch(e=> console.error('cloud push failed', e));
+    cloudDoc.set(appState).then(clearCloudSyncError).catch(e=> reportCloudSyncError(e));
   }
   syncWidget();
 }
@@ -168,14 +200,27 @@ function cacheSteps(dateKey, steps){
   if(!appState) return;
   if(!appState.stepsCache) appState.stepsCache = {};
   const roundedSteps = Math.max(0, Math.round(steps||0));
-  const prev = appState.stepsCache[dateKey];
   appState.stepsCache[dateKey] = {steps: roundedSteps, fetchedAt: Date.now()};
   const goal = (appState.goals && appState.goals.steps) || 8000;
   const isToday = dateKey === todayKey(new Date());
-  const justCrossedGoal = roundedSteps >= goal && (!prev || prev.steps < goal);
-  if(isToday && justCrossedGoal && appState.stepsGoalNotifiedDate !== dateKey){
-    appState.stepsGoalNotifiedDate = dateKey;
-    if(typeof notifyStepsGoalReached==='function') notifyStepsGoalReached(roundedSteps, goal);
+  // Gated purely on stepsGoalNotifiedDate (not an old-value-vs-new-value
+  // "just crossed" edge check) so a sync that finds the goal already met —
+  // e.g. Health Connect access (or notification permission) only gets
+  // granted mid-afternoon, well after the goal was actually crossed — still
+  // gets a chance to notify. stepsGoalNotifiedDate is deliberately NOT set
+  // here until notifyStepsGoalReached() confirms it actually scheduled the
+  // notification (permission granted, no error) — otherwise a sync that
+  // happens before notification permission is granted would burn the flag
+  // and permanently lose today's notification even after the user grants
+  // permission minutes later. The next sync (app resume, pull-to-refresh)
+  // simply retries as long as the flag is still unset for today.
+  if(isToday && roundedSteps >= goal && appState.stepsGoalNotifiedDate !== dateKey && typeof notifyStepsGoalReached==='function'){
+    notifyStepsGoalReached(roundedSteps, goal).then(sent=>{
+      if(sent){
+        appState.stepsGoalNotifiedDate = dateKey;
+        persist();
+      }
+    });
   }
   persist();
 }
@@ -420,6 +465,7 @@ function subscribeCloud(){
   if(cloudUnsub){ cloudUnsub(); cloudUnsub = null; }
   if(!cloudDoc) return;
   cloudUnsub = cloudDoc.onSnapshot(snap=>{
+    clearCloudSyncError();
     if(!snap.exists) return;
     const cloudState = snap.data();
     if((cloudState.updatedAt||0) > (appState.updatedAt||0)){
@@ -435,7 +481,7 @@ function subscribeCloud(){
       applyReminderSettings();
       showToast('تم التحديث من جهاز ثاني 🔄');
     }
-  }, err=> console.error('cloud listen error', err));
+  }, err=> reportCloudSyncError(err));
 }
 
 /* ============================================================
@@ -897,6 +943,12 @@ function importDataFile(file, onDone){
     try{
       const parsed = JSON.parse(reader.result);
       if(!parsed.library || !parsed.logs){ showToast('الملف مو نسخة احتياطية صحيحة'); return; }
+      // Unlike every delete action in the app (which gives a 5s undo toast),
+      // this instantly replaces 100% of appState with no way back — the old
+      // data is simply gone the moment saveLocalOnly()/persist() run below.
+      // A blocking confirm here is the minimum needed so a wrong-file tap
+      // can't silently wipe someone's real data.
+      if(!window.confirm('استرجاع هذي النسخة الاحتياطية بيستبدل كل بياناتك الحالية بالكامل (الأكل، الوزن، الإعدادات...) ولا يمكن التراجع. متأكد؟')) return;
       appState = parsed;
       appState.updatedAt = Date.now();
       saveLocalOnly();
@@ -1091,16 +1143,26 @@ function checkDateRollover(){
   if(typeof setGreeting==='function') setGreeting();
   computeStreak();
   renderAll();
+  // Without this, a rollover only ever updated in-memory state — nothing
+  // wrote the fresh empty day back to localStorage/cloud, and the
+  // home-screen widget kept showing yesterday's numbers (or yesterday's
+  // stale "goal reached" ring color) until some unrelated action in the
+  // app happened to call persist() on its own.
+  persist();
 }
 
 // Runs on every return-to-foreground, not just a date rollover — steps are
 // "as of last sync" data (Zepp/the watch push to Health Connect on their
 // own schedule, mِقياس doesn't stream it), so re-checking on resume is the
 // cheapest way to keep the Home card from ever looking too stale without
-// polling in the background.
+// polling in the background. Reminder text/schedules are refreshed here
+// too (meal reminder body reflects whether today's meals are logged yet —
+// see scheduleMealReminder() — which only stays accurate if this runs on
+// every foreground, not just when Settings is opened).
 function onAppForeground(){
   checkDateRollover();
   if(appState && appState.healthConnectGranted && typeof refreshSteps==='function') refreshSteps();
+  if(typeof applyReminderSettings==='function') applyReminderSettings();
 }
 
 function bindDateRolloverCheck(){

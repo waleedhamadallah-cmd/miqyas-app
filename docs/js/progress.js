@@ -734,8 +734,16 @@ function renderSyncStatus(){
   const cfg = getSyncConfig();
   const box = document.getElementById('syncStatusBox');
   if(cfg && cloudDoc){
+    // lastCloudSyncError (core.js) reflects a real, current sync failure —
+    // wrong Firebase rules, offline, revoked project, etc. Showing the plain
+    // "متصل" badge in that state would tell the user their data is safely
+    // syncing across devices when it actually isn't, which is exactly the
+    // kind of thing that should never be silent (see reportCloudSyncError()).
+    const statusBadge = lastCloudSyncError
+      ? `<div class="sync-badge off">⚠️ تعذرت آخر مزامنة: ${escapeHtml(lastCloudSyncError.message)} — بياناتك محفوظة على جهازك وبتتزامن تلقائياً بمجرد رجوع الاتصال</div>`
+      : `<div class="sync-badge"><span class="sync-dot"></span>متصل — بياناتك تتزامن تلقائياً</div>`;
     box.innerHTML = `
-      <div class="sync-badge"><span class="sync-dot"></span>متصل — بياناتك تتزامن تلقائياً</div>
+      ${statusBadge}
       <div class="entry-row" style="margin-bottom:12px;">
         <div class="entry-main"><div class="t1">رمز المزامنة</div><div class="t2 tabular" style="direction:ltr; text-align:right;">${escapeHtml(cfg.syncCode)}</div></div>
       </div>

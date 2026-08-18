@@ -1,0 +1,226 @@
+From 4550f5e3f9eb058590fd485542e82d59fe02ef01 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 18 Aug 2026 04:28:36 +0000
+Subject: [PATCH] Sync body weight to Health Connect
+
+---
+ .../com/miqyas/app/HealthConnectPlugin.kt     | 96 +++++++++++++++++++
+ docs/js/app.js                                |  6 +-
+ docs/js/core.js                               | 35 +++++++
+ 3 files changed, 136 insertions(+), 1 deletion(-)
+
+diff --git a/android/app/src/main/java/com/miqyas/app/HealthConnectPlugin.kt b/android/app/src/main/java/com/miqyas/app/HealthConnectPlugin.kt
+index 123fd5c..f0ea5b8 100644
+--- a/android/app/src/main/java/com/miqyas/app/HealthConnectPlugin.kt
++++ b/android/app/src/main/java/com/miqyas/app/HealthConnectPlugin.kt
+@@ -7,6 +7,7 @@ import androidx.health.connect.client.permission.HealthPermission
+ import androidx.health.connect.client.records.HydrationRecord
+ import androidx.health.connect.client.records.NutritionRecord
+ import androidx.health.connect.client.records.StepsRecord
++import androidx.health.connect.client.records.WeightRecord
+ import androidx.health.connect.client.records.metadata.Device
+ import androidx.health.connect.client.records.metadata.Metadata
+ import androidx.health.connect.client.request.AggregateGroupByPeriodRequest
+@@ -14,6 +15,7 @@ import androidx.health.connect.client.request.AggregateRequest
+ import androidx.health.connect.client.time.TimeRangeFilter
+ import androidx.health.connect.client.units.grams
+ import androidx.health.connect.client.units.kilocalories
++import androidx.health.connect.client.units.kilograms
+ import androidx.health.connect.client.units.milliliters
+ import com.getcapacitor.JSArray
+ import com.getcapacitor.JSObject
+@@ -60,6 +62,7 @@ class HealthConnectPlugin : Plugin() {
+     private val healthPermissions = setOf(
+         HealthPermission.getWritePermission(NutritionRecord::class),
+         HealthPermission.getWritePermission(HydrationRecord::class),
++        HealthPermission.getWritePermission(WeightRecord::class),
+         HealthPermission.getReadPermission(StepsRecord::class)
+     )
+ 
+@@ -254,6 +257,99 @@ class HealthConnectPlugin : Plugin() {
+         }
+     }
+ 
++    // Body weight — called from docs/js/progress.js's syncHealthConnectWeight(),
++    // itself invoked from the Progress-tab weight sheet's save handler and
++    // from onboarding's first-weight step, same as nutrition/hydration are
++    // called from the exact spots the user actually logs something.
++    //
++    // Unlike nutrition/hydration (always "just now"), a weight entry can be
++    // for a past date (the weight sheet lets you edit an earlier day) — an
++    // optional "dateKey" ("yyyy-MM-dd") lets the JS side say which day this
++    // measurement is actually for. Today's own entry still uses the real
++    // current instant (so same-day edits keep updating "now"); a past date
++    // is recorded at local noon that day — an arbitrary but reasonable
++    // placeholder time, since مِقياس only ever captures a date for body
++    // weight, never a time of day.
++    @PluginMethod
++    fun writeWeight(call: PluginCall) {
++        val client = getClientOrNull()
++        if (client == null) {
++            call.reject("Health Connect غير متوفر")
++            return
++        }
++        val weightKg = call.getDouble("weightKg") ?: 0.0
++        if (weightKg <= 0.0) {
++            call.reject("weightKg must be positive")
++            return
++        }
++        val dateKey = call.getString("dateKey")
++
++        CoroutineScope(Dispatchers.IO).launch {
++            try {
++                val zone = ZoneId.systemDefault()
++                val today = LocalDate.now(zone)
++                val time = if (dateKey.isNullOrEmpty()) {
++                    Instant.now()
++                } else {
++                    try {
++                        val date = LocalDate.parse(dateKey, DateTimeFormatter.ISO_LOCAL_DATE)
++                        if (date == today) Instant.now() else date.atTime(12, 0).atZone(zone).toInstant()
++                    } catch (e: Exception) {
++                        Instant.now()
++                    }
++                }
++                val record = WeightRecord(
++                    weight = weightKg.kilograms,
++                    time = time,
++                    zoneOffset = zone.rules.getOffset(time),
++                    metadata = Metadata.activelyRecorded(device = Device(type = Device.TYPE_PHONE))
++                )
++                val insertResponse = client.insertRecords(listOf(record))
++                val ret = JSObject()
++                ret.put("ok", true)
++                ret.put("recordId", insertResponse.recordIdsList.firstOrNull())
++                call.resolve(ret)
++            } catch (e: Exception) {
++                call.reject("writeWeight failed: ${e.message}")
++            }
++        }
++    }
++
++    // Delete-side counterpart to writeWeight, mirroring deleteNutrition
++    // above — a weight entry logged for a given day can be overwritten
++    // (re-saving that same day with a new number), which needs the old
++    // Health Connect record removed first or it'd leave a stale duplicate
++    // behind forever. Same best-effort semantics as deleteNutrition.
++    @PluginMethod
++    fun deleteWeight(call: PluginCall) {
++        val client = getClientOrNull()
++        if (client == null) {
++            call.reject("Health Connect غير متوفر")
++            return
++        }
++        val recordId = call.getString("recordId")
++        if (recordId.isNullOrEmpty()) {
++            val ret = JSObject()
++            ret.put("ok", true)
++            call.resolve(ret)
++            return
++        }
++        CoroutineScope(Dispatchers.IO).launch {
++            try {
++                client.deleteRecords(
++                    recordType = WeightRecord::class,
++                    recordIdsList = listOf(recordId),
++                    clientRecordIdsList = emptyList()
++                )
++            } catch (e: Exception) {
++                // Swallowed on purpose — see deleteNutrition's doc comment above.
++            }
++            val ret = JSObject()
++            ret.put("ok", true)
++            call.resolve(ret)
++        }
++    }
++
+     // Today's total, local-midnight to now. Uses aggregate() rather than
+     // reading+summing raw StepsRecord entries — per Health Connect's own
+     // guidance this is both the recommended API for a single-range total
+diff --git a/docs/js/app.js b/docs/js/app.js
+index 1973fd3..5f4ddd3 100644
+--- a/docs/js/app.js
++++ b/docs/js/app.js
+@@ -190,6 +190,7 @@ function bindEvents(){
+     const val = parseFloat(document.getElementById('bwInput').value);
+     if(!val || val<=0){ showToast('اكتب وزن صحيح أول'); return; }
+     appState.bodyWeights[dateKey] = Math.round(val*10)/10;
++    syncHealthConnectWeight(dateKey, appState.bodyWeights[dateKey]);
+     const bfVal = parseFloat(document.getElementById('bfInput').value);
+     if(bfVal && bfVal>0){
+       if(!appState.bodyFat) appState.bodyFat = {};
+@@ -720,7 +721,10 @@ function bindOnboardingEvents(){
+     state.goals = {...state.goals, ...goals};
+     appState.goals = state.goals;
+     appState.onboarded = true;
+-    if(weightKg) appState.bodyWeights[state.today] = weightKg;
++    if(weightKg){
++      appState.bodyWeights[state.today] = weightKg;
++      syncHealthConnectWeight(state.today, weightKg);
++    }
+     // Height was already being collected here for the calorie calc above —
+     // it just wasn't kept afterwards. Persisting it now is what lets the
+     // Progress tab's weight card show a BMI gauge without asking again.
+diff --git a/docs/js/core.js b/docs/js/core.js
+index 59581c4..4210422 100644
+--- a/docs/js/core.js
++++ b/docs/js/core.js
+@@ -190,6 +190,36 @@ function syncHealthConnectDeleteNutrition(recordId){
+   }catch(e){ /* no-op outside the native app / without permission */ }
+ }
+ 
++// Body weight — mirrors syncHealthConnectNutrition()'s delete-old/write-new
++// pattern above, since a weight entry for a given day can be overwritten
++// (re-saving that day with a corrected number) and Health Connect has no
++// "update in place" API either. appState.bodyWeightHcRecordIds tracks the
++// per-date record ID the same way entry.hcRecordId tracks it per-meal —
++// bodyWeights itself is just {dateKey: number}, with no object to stash an
++// ID on directly.
++function syncHealthConnectWeight(dateKey, weightKg){
++  try{
++    if(!appState || !appState.healthConnectGranted || !weightKg) return;
++    const plugin = healthConnectPlugin();
++    if(!plugin || !plugin.writeWeight) return;
++    if(!appState.bodyWeightHcRecordIds) appState.bodyWeightHcRecordIds = {};
++    const oldRecordId = appState.bodyWeightHcRecordIds[dateKey];
++    const writeFresh = ()=>{
++      plugin.writeWeight({weightKg, dateKey}).then(res=>{
++        if(res && res.recordId){
++          appState.bodyWeightHcRecordIds[dateKey] = res.recordId;
++          persist();
++        }
++      }).catch(()=>{});
++    };
++    if(oldRecordId && plugin.deleteWeight){
++      plugin.deleteWeight({recordId: oldRecordId}).catch(()=>{}).then(writeFresh);
++    } else {
++      writeFresh();
++    }
++  }catch(e){ /* no-op outside the native app / without permission */ }
++}
++
+ function syncHealthConnectHydration(ml){
+   try{
+     if(!appState || !appState.healthConnectGranted) return;
+@@ -368,6 +398,10 @@ function defaultAppState(){
+     // fired for — see cacheSteps() in this file — so re-fetching an
+     // already-met day doesn't re-notify every refresh.
+     stepsGoalNotifiedDate:null,
++    // {dateKey: Health Connect record ID} for synced body-weight entries —
++    // see syncHealthConnectWeight() in this file — so a re-saved day can
++    // delete its old record instead of leaving a stale duplicate behind.
++    bodyWeightHcRecordIds:{},
+     aiProxyUrl:'', aiProxySecret:'',
+     // 'library' matches only against the user's own saved foods (fast,
+     // trusted, no macros shown for a non-match); 'general' asks the AI to
+@@ -408,6 +442,7 @@ function rebindFromAppState(){
+   if(appState.healthConnectGranted===undefined) appState.healthConnectGranted = false;
+   if(!appState.stepsCache) appState.stepsCache = {};
+   if(appState.stepsGoalNotifiedDate===undefined) appState.stepsGoalNotifiedDate = null;
++  if(!appState.bodyWeightHcRecordIds) appState.bodyWeightHcRecordIds = {};
+   if(appState.aiProxyUrl===undefined) appState.aiProxyUrl = '';
+   if(appState.aiProxySecret===undefined) appState.aiProxySecret = '';
+   if(appState.aiScanMode!=='library' && appState.aiScanMode!=='general') appState.aiScanMode = 'library';
+-- 
+2.43.0
+

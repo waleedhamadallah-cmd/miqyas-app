@@ -131,15 +131,22 @@ async function scheduleWaterReminders(startStr, endStr, intervalHours){
 
 // One-off, near-immediate notification (no repeating `on:` schedule like
 // the meal/water reminders above) — called from cacheSteps() in core.js
-// the moment today's synced step count first crosses the daily goal.
-// Silently does nothing without notification permission already granted
-// (never prompts for it on its own — that only ever happens from the
-// Reminders section in Settings, same as the meal/water reminders).
+// whenever today's synced step count is found at/above the daily goal and
+// hasn't been notified yet today. Silently does nothing without
+// notification permission already granted (never prompts for it on its
+// own — that only ever happens from the Reminders section in Settings,
+// same as the meal/water reminders).
+//
+// Returns true only if the notification actually got scheduled — cacheSteps()
+// uses that to decide whether it's safe to mark today as "already notified".
+// If this returns false (no plugin, no permission yet, or a schedule()
+// error), cacheSteps() deliberately leaves today's flag unset so the next
+// sync gets another chance instead of losing the notification for the day.
 async function notifyStepsGoalReached(steps, goal){
   const plugin = localNotificationsPlugin();
-  if(!plugin) return;
+  if(!plugin) return false;
   try{
-    if(!(await hasReminderPermission())) return;
+    if(!(await hasReminderPermission())) return false;
     await plugin.schedule({
       notifications: [{
         id: REMINDER_ID_STEPS_GOAL,
@@ -149,7 +156,8 @@ async function notifyStepsGoalReached(steps, goal){
         smallIcon: 'ic_stat_icon'
       }]
     });
-  }catch(e){ console.error('notifyStepsGoalReached failed', e); }
+    return true;
+  }catch(e){ console.error('notifyStepsGoalReached failed', e); return false; }
 }
 
 // Single entry point: reads appState.reminders and (re)applies everything —

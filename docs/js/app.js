@@ -313,14 +313,25 @@ function bindEvents(){
 
     openSheet('sheetSettings');
   });
+  // The <input min="0"> attributes on these fields are only a soft UI hint
+  // (spinner arrows / on-submit form validation) — nothing here ever calls
+  // checkValidity(), so a value like "-500" typed directly still comes
+  // through .value as-is. This helper is what actually blocks a negative
+  // (or non-numeric) goal from being saved: falls back to the same default
+  // 0/NaN already fell back to before, and additionally treats any
+  // negative number the same way.
+  const readGoalInt = (id, fallback)=>{
+    const n = parseInt(document.getElementById(id).value, 10);
+    return (Number.isFinite(n) && n > 0) ? n : fallback;
+  };
   document.getElementById('btnSaveGoals').addEventListener('click', ()=>{
     state.goals = {
-      calories: parseInt(document.getElementById('goalCal').value,10) || defaultGoals().calories,
-      protein: parseInt(document.getElementById('goalP').value,10) || defaultGoals().protein,
-      carbs: parseInt(document.getElementById('goalC').value,10) || defaultGoals().carbs,
-      fat: parseInt(document.getElementById('goalF').value,10) || defaultGoals().fat,
-      water: parseInt(document.getElementById('goalWater').value,10) || defaultGoals().water,
-      steps: parseInt(document.getElementById('goalSteps').value,10) || defaultGoals().steps,
+      calories: readGoalInt('goalCal', defaultGoals().calories),
+      protein: readGoalInt('goalP', defaultGoals().protein),
+      carbs: readGoalInt('goalC', defaultGoals().carbs),
+      fat: readGoalInt('goalF', defaultGoals().fat),
+      water: readGoalInt('goalWater', defaultGoals().water),
+      steps: readGoalInt('goalSteps', defaultGoals().steps),
       // No longer user-editable (fields removed from Settings) — keep
       // whatever was already set so old data/goals reports don't break.
       fiber: state.goals.fiber,

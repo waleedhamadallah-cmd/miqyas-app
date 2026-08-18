@@ -1,0 +1,170 @@
+From e58e9544c766bebd3a11a0bb9889d14a5521280c Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 18 Aug 2026 04:26:19 +0000
+Subject: [PATCH] Sync Health Connect nutrition record on meal edit/delete, not
+ just add
+
+---
+ .../com/miqyas/app/HealthConnectPlugin.kt     | 50 ++++++++++++++++++-
+ docs/js/core.js                               | 25 ++++++++++
+ docs/js/food.js                               | 19 +++++++
+ 3 files changed, 93 insertions(+), 1 deletion(-)
+
+diff --git a/android/app/src/main/java/com/miqyas/app/HealthConnectPlugin.kt b/android/app/src/main/java/com/miqyas/app/HealthConnectPlugin.kt
+index e914536..123fd5c 100644
+--- a/android/app/src/main/java/com/miqyas/app/HealthConnectPlugin.kt
++++ b/android/app/src/main/java/com/miqyas/app/HealthConnectPlugin.kt
+@@ -160,9 +160,16 @@ class HealthConnectPlugin : Plugin() {
+                     endZoneOffset = zone.getOffset(end),
+                     metadata = Metadata.activelyRecorded(device = Device(type = Device.TYPE_PHONE))
+                 )
+-                client.insertRecords(listOf(record))
++                val insertResponse = client.insertRecords(listOf(record))
+                 val ret = JSObject()
+                 ret.put("ok", true)
++                // Returned so the JS side (syncHealthConnectNutrition() in
++                // docs/js/core.js) can stash this specific record's ID on the
++                // meal entry — needed to find and remove/replace the exact
++                // right record later if that meal gets edited or deleted
++                // (see deleteNutrition below), instead of Health Connect
++                // silently accumulating an orphaned record per edit/delete.
++                ret.put("recordId", insertResponse.recordIdsList.firstOrNull())
+                 call.resolve(ret)
+             } catch (e: Exception) {
+                 call.reject("writeNutrition failed: ${e.message}")
+@@ -170,6 +177,47 @@ class HealthConnectPlugin : Plugin() {
+         }
+     }
+ 
++    // Removes a single previously-written NutritionRecord by its Health
++    // Connect record ID (see writeNutrition's returned "recordId" above).
++    // Called from docs/js/core.js's syncHealthConnectDeleteNutrition()
++    // whenever a synced meal is edited (delete-old + write-new) or deleted
++    // outright, so Health Connect (and anything reading from it, e.g.
++    // Samsung Health) stays in sync with مِقياس's own log instead of
++    // permanently keeping a record for a meal the user no longer has.
++    // Best-effort like every other call here: a recordId that's already
++    // gone (double-delete, older data from before this existed) is not
++    // treated as an error — there's nothing meaningful to surface to the
++    // user for a background sync's stale/missing record.
++    @PluginMethod
++    fun deleteNutrition(call: PluginCall) {
++        val client = getClientOrNull()
++        if (client == null) {
++            call.reject("Health Connect غير متوفر")
++            return
++        }
++        val recordId = call.getString("recordId")
++        if (recordId.isNullOrEmpty()) {
++            val ret = JSObject()
++            ret.put("ok", true)
++            call.resolve(ret)
++            return
++        }
++        CoroutineScope(Dispatchers.IO).launch {
++            try {
++                client.deleteRecords(
++                    recordType = NutritionRecord::class,
++                    recordIdsList = listOf(recordId),
++                    clientRecordIdsList = emptyList()
++                )
++            } catch (e: Exception) {
++                // Swallowed on purpose — see method doc comment above.
++            }
++            val ret = JSObject()
++            ret.put("ok", true)
++            call.resolve(ret)
++        }
++    }
++
+     @PluginMethod
+     fun writeHydration(call: PluginCall) {
+         val client = getClientOrNull()
+diff --git a/docs/js/core.js b/docs/js/core.js
+index 13851bb..59581c4 100644
+--- a/docs/js/core.js
++++ b/docs/js/core.js
+@@ -161,10 +161,35 @@ function syncHealthConnectNutrition(entry){
+       protein: Math.round(entry.protein||0),
+       carbs: Math.round(entry.carbs||0),
+       fat: Math.round(entry.fat||0)
++    }).then(res=>{
++      // Stash Health Connect's own ID for this exact record on the meal
++      // entry (entry is the live object sitting inside appState.logs[...].
++      // meals, not a copy) so a later edit/delete can find and
++      // remove/replace this specific record — see
++      // syncHealthConnectDeleteNutrition() below, and its call sites in
++      // food.js (deleteMealEntry/saveEditMealQty). Without this, editing or
++      // deleting a logged meal only ever updated مِقياس's own log — the
++      // original Health Connect record (and anything reading from it, e.g.
++      // Samsung Health) silently kept showing the old/stale numbers forever.
++      if(res && res.recordId){ entry.hcRecordId = res.recordId; persist(); }
+     }).catch(()=>{});
+   }catch(e){ /* no-op outside the native app / without permission */ }
+ }
+ 
++// Removes a single previously-synced Health Connect nutrition record by ID
++// — the delete-side counterpart to syncHealthConnectNutrition() above.
++// Fire-and-forget/best-effort like every other Health Connect call in this
++// file: silently does nothing without a recordId, without permission, or
++// outside the native app.
++function syncHealthConnectDeleteNutrition(recordId){
++  try{
++    if(!appState || !appState.healthConnectGranted || !recordId) return;
++    const plugin = healthConnectPlugin();
++    if(!plugin || !plugin.deleteNutrition) return;
++    plugin.deleteNutrition({recordId}).catch(()=>{});
++  }catch(e){ /* no-op outside the native app / without permission */ }
++}
++
+ function syncHealthConnectHydration(ml){
+   try{
+     if(!appState || !appState.healthConnectGranted) return;
+diff --git a/docs/js/food.js b/docs/js/food.js
+index 761d61a..46ab32d 100644
+--- a/docs/js/food.js
++++ b/docs/js/food.js
+@@ -17,10 +17,19 @@ function deleteMealEntry(id){
+   targetMeals.splice(idx,1);
+   persist();
+   renderAll();
++  // Removes the matching Health Connect record too (if this meal was ever
++  // synced there) — without this, deleting a meal in مِقياس left a
++  // permanently-stale record behind in Health Connect/Samsung Health that
++  // no longer matched anything in the user's actual log.
++  syncHealthConnectDeleteNutrition(removed.hcRecordId);
+   showUndoToast(`حذفت ${removed.name}`, ()=>{
+     targetMeals.splice(idx,0,removed);
+     persist();
+     renderAll();
++    // Re-syncs as a fresh record on undo — simpler and just as correct as
++    // trying to resurrect the exact deleted record, and syncHealthConnectNutrition()
++    // will overwrite removed.hcRecordId with the new record's own ID.
++    syncHealthConnectNutrition(removed);
+   });
+ }
+ 
+@@ -125,10 +134,20 @@ function saveEditMealQty(){
+   entry.fat = Math.round(base.baseFat*editMealQty);
+   entry.fiber = Math.round(base.baseFiber*editMealQty);
+   entry.sodium = Math.round(base.baseSodium*editMealQty);
++  // Health Connect has no "update a record in place" API — the correct way
++  // to reflect an edit is deleting the old record and writing a fresh one
++  // with the new macros (syncHealthConnectNutrition() below overwrites
++  // entry.hcRecordId with the new record's ID once it resolves). Entries
++  // logged before this feature existed simply have no hcRecordId yet, so
++  // the delete call below is a no-op for them and this just becomes a
++  // normal first-time sync.
++  const oldRecordId = entry.hcRecordId;
+   persist();
+   renderAll();
+   closeAllSheets();
+   showToast('تم تحديث الوجبة ✏️');
++  syncHealthConnectDeleteNutrition(oldRecordId);
++  syncHealthConnectNutrition(entry);
+ }
+ 
+ // Tie-break order once favorite/usageCount are equal (the common case for
+-- 
+2.43.0
+

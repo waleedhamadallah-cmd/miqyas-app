@@ -104,7 +104,11 @@ function renderInsightCard(){
   const thisAvg = thisDays ? thisProtein/thisDays : 0;
   const prevAvg = prevDays ? prevProtein/prevDays : 0;
   let compareHtml;
-  if(prevDays===0 || thisDays===0){
+  // prevAvg===0 is its own guard, separate from prevDays===0: a user who
+  // logged meals last month with zero protein recorded on all of them
+  // (prevDays>0 but prevProtein===0) would otherwise divide by zero below
+  // and show "Infinity%"/"NaN%" instead of a real comparison.
+  if(prevDays===0 || thisDays===0 || prevAvg===0){
     compareHtml = `<div class="insight-row"><div class="insight-icon" style="background:var(--carb-soft); color:var(--carb-text);">${ICON_BAR_CHART}</div>
       <div class="insight-tx"><div class="it1">لسا مب كافي بيانات للمقارنة</div><div class="it2">سجل أكثر عشان تشوف مقارنة شهرية</div></div></div>`;
   } else {

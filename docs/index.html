@@ -368,12 +368,12 @@
           <span class="acc-side"><span class="link" id="btnOpenSmartGoals"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="3" width="14" height="18" rx="2"></rect><line x1="8" y1="7" x2="16" y2="7"></line><line x1="8" y1="12" x2="8" y2="12.01"></line><line x1="12" y1="12" x2="12" y2="12.01"></line><line x1="16" y1="12" x2="16" y2="12.01"></line><line x1="8" y1="16" x2="8" y2="16.01"></line><line x1="12" y1="16" x2="12" y2="16.01"></line></svg>احسبها لي</span><span class="acc-chevron">⌄</span></span>
         </div>
         <div class="acc-body">
-          <div class="form-field"><label>السعرات</label><input type="number" id="goalCal" inputmode="numeric"></div>
+          <div class="form-field"><label>السعرات</label><input type="number" id="goalCal" inputmode="numeric" min="0"></div>
           <div class="form-grid">
-            <div class="form-field"><label>بروتين (غ)</label><input type="number" id="goalP" inputmode="numeric"></div>
-            <div class="form-field"><label>كارب (غ)</label><input type="number" id="goalC" inputmode="numeric"></div>
-            <div class="form-field"><label>دهون (غ)</label><input type="number" id="goalF" inputmode="numeric"></div>
-            <div class="form-field"><label>ماء (مل)</label><input type="number" id="goalWater" inputmode="numeric"></div>
+            <div class="form-field"><label>بروتين (غ)</label><input type="number" id="goalP" inputmode="numeric" min="0"></div>
+            <div class="form-field"><label>كارب (غ)</label><input type="number" id="goalC" inputmode="numeric" min="0"></div>
+            <div class="form-field"><label>دهون (غ)</label><input type="number" id="goalF" inputmode="numeric" min="0"></div>
+            <div class="form-field"><label>ماء (مل)</label><input type="number" id="goalWater" inputmode="numeric" min="0"></div>
             <div class="form-field"><label>خطوات</label><input type="number" id="goalSteps" inputmode="numeric" min="0"></div>
           </div>
           <button class="btn-primary" id="btnSaveGoals">حفظ الأهداف</button>
