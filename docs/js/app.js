@@ -276,6 +276,19 @@ function bindEvents(){
     closeAllSheets();
   });
 
+  /* ---------- Apply template with a chosen portion scale ---------- */
+  document.getElementById('applyTemplateQtyChips').addEventListener('click', (e)=>{
+    const chip = e.target.closest('.filter-chip');
+    if(!chip) return;
+    document.getElementById('applyTemplateQtyCustom').value = '';
+    setApplyTemplateQty(parseFloat(chip.getAttribute('data-qty')));
+  });
+  document.getElementById('applyTemplateQtyCustom').addEventListener('input', (e)=>{
+    const val = parseFloat(e.target.value);
+    if(val>0) setApplyTemplateQty(val);
+  });
+  document.getElementById('btnConfirmApplyTemplate').addEventListener('click', ()=> confirmApplyTemplate());
+
   // Scoped to the static Settings accordion only — the food library's
   // accordion headers are rendered dynamically and already bind their own
   // click listener per-element inside renderFoodLibList() (food.js). Binding

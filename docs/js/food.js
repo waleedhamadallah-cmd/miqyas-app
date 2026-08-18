@@ -412,24 +412,89 @@ function renderTemplateList(){
     wrap.appendChild(row);
   });
   wrap.querySelectorAll('[data-apply]').forEach(btn=>{
-    btn.addEventListener('click', ()=>{
-      const t = templates.find(x=>x.id===btn.getAttribute('data-apply'));
-      if(!t) return;
-      t.foods.forEach(f=>{
-        const entry = makeMealEntry(f.name, f.category, f.foodId, f.calories, f.protein, f.carbs, f.fat, f.fiber, f.sodium);
-        state.log.meals.push(entry);
-        syncHealthConnectNutrition(entry);
-      });
-      persist();
-      renderAll();
-      closeAllSheets();
-      showToast(`تم تطبيق قالب ${t.name} 🎉`);
-    });
+    btn.addEventListener('click', ()=> openApplyTemplateSheet(btn.getAttribute('data-apply')));
   });
   wrap.querySelectorAll('[data-del-template]').forEach(btn=>{
     btn.addEventListener('click', ()=> deleteTemplate(btn.getAttribute('data-del-template')));
   });
 }
+
+/* ============================================================
+   APPLY TEMPLATE — a template is saved at a fixed 1x portion, but real
+   days aren't always the same size as the day it was saved from (half the
+   meal because you weren't as hungry, 1.5x after a workout, etc). Before
+   this, "تطبيق" always re-logged the exact saved amounts with no way to
+   scale — reuses the same qty-chip pattern as editing an already-logged
+   meal's quantity (see sheetEditMeal/saveEditMealQty above) for a
+   consistent feel.
+   ============================================================ */
+let applyTemplateId = null;
+let applyTemplateQty = 1;
+
+function openApplyTemplateSheet(templateId){
+  const templates = appState.mealTemplates || [];
+  const t = templates.find(x=>x.id===templateId);
+  if(!t) return;
+  applyTemplateId = templateId;
+  applyTemplateQty = 1;
+  document.getElementById('applyTemplateName').textContent = t.name;
+  document.getElementById('applyTemplateQtyCustom').value = '';
+  renderApplyTemplateQtyChips();
+  renderApplyTemplatePreview();
+  openSheet('sheetApplyTemplate');
+}
+
+function renderApplyTemplateQtyChips(){
+  document.querySelectorAll('#applyTemplateQtyChips .filter-chip').forEach(chip=>{
+    chip.classList.toggle('active', parseFloat(chip.getAttribute('data-qty'))===applyTemplateQty);
+  });
+}
+
+function setApplyTemplateQty(qty){
+  applyTemplateQty = qty;
+  renderApplyTemplateQtyChips();
+  renderApplyTemplatePreview();
+}
+
+function renderApplyTemplatePreview(){
+  const templates = appState.mealTemplates || [];
+  const t = templates.find(x=>x.id===applyTemplateId);
+  const preview = document.getElementById('applyTemplatePreview');
+  if(!t || !preview) return;
+  const totals = t.foods.reduce((acc,f)=>({
+    calories:acc.calories+f.calories, protein:acc.protein+f.protein,
+    carbs:acc.carbs+f.carbs, fat:acc.fat+f.fat
+  }), {calories:0,protein:0,carbs:0,fat:0});
+  preview.innerHTML = `
+    <div class="rt-row"><span>سعرات</span><b>${Math.round(totals.calories*applyTemplateQty)}</b></div>
+    <div class="rt-row"><span>بروتين</span><b>${Math.round(totals.protein*applyTemplateQty)} غ</b></div>
+    <div class="rt-row"><span>كارب</span><b>${Math.round(totals.carbs*applyTemplateQty)} غ</b></div>
+    <div class="rt-row"><span>دهون</span><b>${Math.round(totals.fat*applyTemplateQty)} غ</b></div>`;
+}
+
+function confirmApplyTemplate(){
+  const templates = appState.mealTemplates || [];
+  const t = templates.find(x=>x.id===applyTemplateId);
+  if(!t) return;
+  const qty = applyTemplateQty;
+  // Each logged entry gets the SCALED amount as its own 1x base (matching
+  // how a manually-added meal always starts at qty:1 — see makeMealEntry())
+  // rather than saving qty:2 against the template's original numbers; this
+  // way editing one of these entries afterward behaves exactly like any
+  // other logged meal.
+  t.foods.forEach(f=>{
+    const entry = makeMealEntry(f.name, f.category, f.foodId,
+      Math.round(f.calories*qty), Math.round(f.protein*qty), Math.round(f.carbs*qty), Math.round(f.fat*qty),
+      Math.round((f.fiber||0)*qty), Math.round((f.sodium||0)*qty));
+    state.log.meals.push(entry);
+    syncHealthConnectNutrition(entry);
+  });
+  persist();
+  renderAll();
+  closeAllSheets();
+  showToast(qty===1 ? `تم تطبيق قالب ${t.name} 🎉` : `تم تطبيق قالب ${t.name} ×${trimQtyDisplay(qty)} 🎉`);
+}
+
 function saveTodayAsTemplate(){
   if(state.log.meals.length===0){ showToast('ما فيه وجبات اليوم للحفظ'); return; }
   const name = prompt('اسم القالب:', 'وجباتي المعتادة');

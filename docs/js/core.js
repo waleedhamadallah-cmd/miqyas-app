@@ -1086,7 +1086,7 @@ function attachSwipeToDelete(rowEl, onConfirmDelete){
 
 const overlay = document.getElementById('overlay');
 
-const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetEditMeal','sheetAiScan','sheetSettings','sheetBodyWeight','sheetOnboarding','sheetRecipeBuilder','sheetMealTemplates','sheetShareCard','sheetReport','sheetStepsDetail'];
+const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetEditMeal','sheetApplyTemplate','sheetAiScan','sheetSettings','sheetBodyWeight','sheetOnboarding','sheetRecipeBuilder','sheetMealTemplates','sheetShareCard','sheetReport','sheetStepsDetail'];
 
 function openSheet(id){
   closeAllSheets();
