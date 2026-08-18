@@ -1,0 +1,49 @@
+From e2cc4500d9233b9e2a2321e53f25c1a8cc3da1d0 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 18 Aug 2026 08:34:55 +0000
+Subject: [PATCH] Force RTL layout direction in steps widget instead of
+ locale-based, since the launcher host process resolves locale to LTR and was
+ mirroring every row
+
+---
+ .../app/src/main/res/layout/widget_steps.xml  | 20 +++++++++++--------
+ 1 file changed, 12 insertions(+), 8 deletions(-)
+
+diff --git a/android/app/src/main/res/layout/widget_steps.xml b/android/app/src/main/res/layout/widget_steps.xml
+index e43e81e..d5eea75 100644
+--- a/android/app/src/main/res/layout/widget_steps.xml
++++ b/android/app/src/main/res/layout/widget_steps.xml
+@@ -13,18 +13,22 @@
+      StepsWidgetProvider (RemoteViews has no native arc/ring view), then
+      layered under the text via the FrameLayout below.
+ 
+-     Uses layoutDirection="locale" + start/end gravity throughout (matching
+-     the existing widget_calorie_water.xml convention) so the whole thing
+-     mirrors correctly for the app's Arabic/RTL locale instead of needing a
+-     separate RTL layout. Element order below follows the validated mockup's
+-     source order (first child = right side in RTL, matching the reference
+-     image): header badge before the sync/refresh group, stats column
+-     before the ring, pill value before its label. -->
++     Uses a hardcoded layoutDirection="rtl" (NOT "locale" — confirmed on
++     device that App Widgets are inflated by the launcher/host process,
++     whose own system locale can be non-Arabic even though this app is
++     Arabic-only, which silently resolved "locale" to LTR and mirrored the
++     whole widget: badge/time swapped sides, every icon+label/value pair
++     swapped sides) + start/end gravity throughout, so the whole thing
++     reads correctly RTL regardless of the launcher's own locale. Element
++     order below follows the validated mockup's source order (first child =
++     right side under forced RTL, matching the reference image): header
++     badge before the sync/refresh group, stats column before the ring,
++     pill value before its label. -->
+ <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+     android:id="@+id/widgetStepsRoot"
+     android:layout_width="match_parent"
+     android:layout_height="match_parent"
+-    android:layoutDirection="locale"
++    android:layoutDirection="rtl"
+     android:orientation="vertical"
+     android:background="@drawable/widget_bg"
+     android:padding="14dp">
+-- 
+2.43.0
+
