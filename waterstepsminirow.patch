@@ -1,0 +1,250 @@
+From c92f9b47f64f75aab56a8e3541e4ad945eb1586e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 18 Aug 2026 09:37:05 +0000
+Subject: [PATCH] Shrink water card into a compact tile beside steps, moving
+ quick-add controls into a new water detail sheet
+
+---
+ docs/css/styles.css | 35 ++++++++++++++----
+ docs/index.html     | 86 ++++++++++++++++++++++++++++++---------------
+ docs/js/app.js      | 10 ++++++
+ docs/js/core.js     |  2 +-
+ docs/js/home.js     | 14 ++++++++
+ 5 files changed, 110 insertions(+), 37 deletions(-)
+
+diff --git a/docs/css/styles.css b/docs/css/styles.css
+index 615985f..34a8dd9 100644
+--- a/docs/css/styles.css
++++ b/docs/css/styles.css
+@@ -225,17 +225,38 @@ input{font-family:inherit; color:inherit;}
+ .empty-illo{ width:52px; height:52px; color:var(--text-mute); opacity:.5; }
+ .empty-state-text{ font-size:12.5px; color:var(--text-mute); font-weight:600; max-width:260px; line-height:1.7; }
+ 
+-/* ============ "نشاطك اليوم": steps + streak + week-progress ============
+-   One card shell shared by all three rows (was three separate cards) —
+-   same information, fewer boxes stacked on the page. Each row after the
+-   first gets border-top as its divider (matching .week-progress's existing
+-   convention below), so a hidden steps-row (no plugin/no permission yet)
+-   just collapses away instead of leaving a gap. */
++/* ============ WATER + STEPS: compact side-by-side tiles ============
++   Two small tiles sharing one row instead of a full-width water card
++   stacked above a full-width steps card — water lost its always-visible
++   bar/buttons (now one tap away in #sheetWaterDetail, see
++   openWaterDetail() in docs/js/home.js) so it could shrink to match the
++   steps tile's compact ring+count footprint. Both tiles reuse the exact
++   same .steps-mini-row layout (ring + title/value), just narrower — the
++   sync-freshness caption and open-hint chevron that fit fine in the old
++   full-width steps row are hidden here for space; the full detail (incl.
++   sync time) is still one tap away in each sheet. */
++.mini-stats-row{ display:flex; gap:12px; margin-top:12px; }
++.mini-card{
++  flex:1; min-width:0; background:var(--surface); border:1px solid var(--border-soft);
++  border-radius:var(--r-lg); box-shadow:var(--shadow-2); overflow:hidden;
++}
++.mini-card .steps-mini-row{ padding:12px 14px; gap:8px; }
++.mini-card .steps-mini-caption,
++.mini-card .steps-open-hint{ display:none; }
++.mini-card .steps-mini-title{ font-size:10.5px; }
++.mini-card .steps-mini-val{ font-size:13px; }
++/* Two-class selector (not just .water-ring-progress) so this reliably
++   beats .steps-ring-progress's own stroke color regardless of the two
++   rules' source order — both classes sit on the same <circle>. */
++.steps-ring-progress.water-ring-progress{ stroke:var(--shoulder); }
++
++/* ============ "نشاطك اليوم": streak + week-progress ============
++   One card shell shared by both rows (was two separate cards) — same
++   information, fewer boxes stacked on the page. */
+ .stats-combo{
+   margin-top:12px; background:var(--surface); border:1px solid var(--border-soft);
+   border-radius:var(--r-lg); box-shadow:var(--shadow-2); overflow:hidden;
+ }
+-.activity-row.steps-row{ padding:0; }
+ .streak-card{
+   padding:14px 18px; display:flex; align-items:center; gap:14px; border-top:1px solid var(--border-soft);
+ }
+diff --git a/docs/index.html b/docs/index.html
+index 32b1012..60df1bd 100644
+--- a/docs/index.html
++++ b/docs/index.html
+@@ -90,40 +90,36 @@
+       </div>
+     </div>
+ 
+-    <div class="water-card">
+-      <div class="water-head">
+-        <div class="wh-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5c4 5 7 8.7 7 12.5a7 7 0 0 1-14 0c0-3.8 3-7.5 7-12.5z"></path></svg>الماء</div>
+-        <div class="wh-val tabular" id="waterValText">0 / 2500 مل</div>
+-      </div>
+-      <div class="water-track"><div class="water-fill" id="waterFill" style="width:0%"></div></div>
+-      <div class="water-btns">
+-        <div class="water-btn" data-water="250" role="button" tabindex="0" aria-label="أضف 250 مل ماء">+250 مل</div>
+-        <div class="water-btn" data-water="500" role="button" tabindex="0" aria-label="أضف 500 مل ماء">+500 مل</div>
+-        <div class="water-btn" data-water="-250" role="button" tabindex="0" aria-label="أنقص 250 مل ماء">-250 مل</div>
+-      </div>
+-      <div class="water-custom-row">
+-        <input type="number" id="waterCustomInput" placeholder="كمية بالمل" inputmode="numeric">
+-        <div class="water-custom-btn" id="btnAddCustomWater" role="button" tabindex="0">إضافة</div>
++    <!-- Water + steps: two compact tiles side by side instead of two
++         separate full-width cards (was a tall standalone water-card with
++         its buttons/input always on-screen) — same idea as the steps mini
++         row already used (ring + count, tap for the full picture), just
++         applied to water too now. The interactive controls (progress bar,
++         quick-add chips, custom-amount input) moved into #sheetWaterDetail,
++         opened by tapping this tile — see openWaterDetail()/renderWaterCard()
++         in docs/js/home.js. Steps tile keeps its existing three states
++         (hidden/connect-prompt/data) unchanged, just narrower now. -->
++    <div class="mini-stats-row">
++      <div class="mini-card" id="waterMiniCard" role="button" tabindex="0" aria-label="افتح تفاصيل الماء">
++        <div class="steps-mini-row">
++          <div class="steps-ring-wrap sm">
++            <svg class="steps-ring-svg" viewBox="0 0 100 100">
++              <circle class="steps-ring-track" cx="50" cy="50" r="42" fill="none" stroke-width="10"/>
++              <circle id="waterMiniRingProgress" class="steps-ring-progress water-ring-progress" cx="50" cy="50" r="42" fill="none" stroke-width="10" stroke-linecap="round" transform="rotate(-90 50 50)"/>
++            </svg>
++          </div>
++          <div class="steps-mini-info">
++            <div class="steps-mini-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5c4 5 7 8.7 7 12.5a7 7 0 0 1-14 0c0-3.8 3-7.5 7-12.5z"></path></svg>الماء</div>
++            <div class="steps-mini-val tabular" id="waterMiniValText">0 / 2,500</div>
++          </div>
++        </div>
+       </div>
+-    </div>
+ 
+-    <!-- "نشاطك اليوم": steps + streak + week-progress share one card shell
+-         instead of three separate ones — same information, just grouped
+-         (shorter page, tidier stack of boxes). Steps row: read-only,
+-         synced from Health Connect (written there by a wearable's
+-         companion app, e.g. Zepp) — never shown at all outside the native
+-         Android app (no step sensor exists on plain web/PWA), and shown as
+-         a lightweight inline "connect" prompt instead of the real row
+-         until the user grants access. Compact single-line ring here on
+-         purpose — distance/calories/goal detail live one tap away in
+-         #sheetStepsDetail, not duplicated on Home. See renderStepsCard() /
+-         renderStepsDetail() in docs/js/home.js. -->
+-    <div class="stats-combo">
+-      <div class="activity-row steps-row" id="stepsCard" style="display:none;">
++      <div class="mini-card" id="stepsCard" style="display:none;">
+         <div id="stepsCardConnect" style="display:none;">
+           <div class="steps-connect-row" id="stepsConnectPrompt">
+             <span class="steps-connect-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="13" cy="5" r="2"></circle><path d="M13 8v3l-3.5 2.5"></path><path d="M9 12l-3 7"></path><path d="M9 12l4 2 3 6"></path><path d="M13 11l3.5-1.5"></path></svg></span>
+-            <span class="steps-connect-tx">اربط Health Connect عشان نعرض خطواتك هنا (من تطبيق ساعتك، مثل Zepp)</span>
++            <span class="steps-connect-tx">اربط Health Connect عشان نعرض خطواتك (من تطبيق ساعتك)</span>
+           </div>
+         </div>
+         <div id="stepsCardData" class="steps-mini-row" style="display:none;" role="button" tabindex="0" aria-label="افتح تفاصيل الخطوات">
+@@ -141,7 +137,12 @@
+           <div class="steps-open-hint">‹</div>
+         </div>
+       </div>
++    </div>
+ 
++    <!-- "نشاطك اليوم": streak + week-progress share one card shell instead
++         of two separate ones — same information, just grouped (shorter
++         page, tidier stack of boxes). -->
++    <div class="stats-combo">
+       <div class="activity-row streak-card">
+         <div class="streak-flame" id="streakFlame"><svg viewBox="0 0 24 24"><path d="M12 2c1.2 3.4-3 4.6-3 8.6a3 3 0 0 0 6 0c0-1-.6-1.8-.6-1.8.8 2.2-.6 3-.6 3 .8-2.2-1.4-3.6-1.4-5.4 0 1.4-2 2.2-2 4.4a3.6 3.6 0 0 0 7.2 0c0-4.2-2.9-6.2-5.6-8.8z"></path></svg></div>
+         <div class="streak-info">
+@@ -711,6 +712,33 @@
+   </div>
+ </div>
+ 
++<!-- Water detail sheet — the interactive controls (bar, quick-add chips,
++     custom-amount input) that used to sit directly on Home in a full-width
++     card, now opened by tapping the compact water tile instead. Reuses the
++     .water-card markup/CSS verbatim, just relocated. -->
++<div class="sheet" id="sheetWaterDetail" style="max-height:92vh;">
++  <div class="sheet-handle"></div>
++  <div class="sheet-head"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5c4 5 7 8.7 7 12.5a7 7 0 0 1-14 0c0-3.8 3-7.5 7-12.5z"></path></svg>الماء</h3><div class="sheet-close" data-close aria-label="إغلاق" role="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></div></div>
++  <div class="sheet-body">
++    <div class="water-card">
++      <div class="water-head">
++        <div class="wh-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2.5c4 5 7 8.7 7 12.5a7 7 0 0 1-14 0c0-3.8 3-7.5 7-12.5z"></path></svg>اليوم</div>
++        <div class="wh-val tabular" id="waterValText">0 / 2500 مل</div>
++      </div>
++      <div class="water-track"><div class="water-fill" id="waterFill" style="width:0%"></div></div>
++      <div class="water-btns">
++        <div class="water-btn" data-water="250" role="button" tabindex="0" aria-label="أضف 250 مل ماء">+250 مل</div>
++        <div class="water-btn" data-water="500" role="button" tabindex="0" aria-label="أضف 500 مل ماء">+500 مل</div>
++        <div class="water-btn" data-water="-250" role="button" tabindex="0" aria-label="أنقص 250 مل ماء">-250 مل</div>
++      </div>
++      <div class="water-custom-row">
++        <input type="number" id="waterCustomInput" placeholder="كمية بالمل" inputmode="numeric">
++        <div class="water-custom-btn" id="btnAddCustomWater" role="button" tabindex="0">إضافة</div>
++      </div>
++    </div>
++  </div>
++</div>
++
+ <div id="toast" role="status" aria-live="polite"><span class="tick"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 13 9 18 20 6"></polyline></svg></span><span id="toastMsg"></span></div>
+ 
+ 
+diff --git a/docs/js/app.js b/docs/js/app.js
+index c872909..c692b26 100644
+--- a/docs/js/app.js
++++ b/docs/js/app.js
+@@ -434,6 +434,16 @@ function bindEvents(){
+     if(e.key==='Enter' || e.key===' '){ e.preventDefault(); e.target.click(); }
+   });
+ 
++  // Tapping the compact Home water tile opens the full bar/quick-add sheet
++  // — same role="button" + Enter/Space pattern as the steps tile beside it.
++  const waterMiniCardEl = document.getElementById('waterMiniCard');
++  if(waterMiniCardEl){
++    waterMiniCardEl.addEventListener('click', ()=> openWaterDetail());
++    waterMiniCardEl.addEventListener('keydown', (e)=>{
++      if(e.key==='Enter' || e.key===' '){ e.preventDefault(); openWaterDetail(); }
++    });
++  }
++
+   /* ---------- Smart goal calculator (opens onboarding flow) ---------- */
+   document.getElementById('btnOpenSmartGoals').addEventListener('click', ()=> startOnboarding(true));
+ 
+diff --git a/docs/js/core.js b/docs/js/core.js
+index 62d49c4..ad5ffdc 100644
+--- a/docs/js/core.js
++++ b/docs/js/core.js
+@@ -1086,7 +1086,7 @@ function attachSwipeToDelete(rowEl, onConfirmDelete){
+ 
+ const overlay = document.getElementById('overlay');
+ 
+-const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetEditMeal','sheetApplyTemplate','sheetAiScan','sheetBarcodeScan','sheetSettings','sheetBodyWeight','sheetOnboarding','sheetRecipeBuilder','sheetMealTemplates','sheetShareCard','sheetReport','sheetStepsDetail'];
++const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetEditMeal','sheetApplyTemplate','sheetAiScan','sheetBarcodeScan','sheetSettings','sheetBodyWeight','sheetOnboarding','sheetRecipeBuilder','sheetMealTemplates','sheetShareCard','sheetReport','sheetStepsDetail','sheetWaterDetail'];
+ 
+ function openSheet(id){
+   closeAllSheets();
+diff --git a/docs/js/home.js b/docs/js/home.js
+index 50d3cd9..113a346 100644
+--- a/docs/js/home.js
++++ b/docs/js/home.js
+@@ -167,6 +167,16 @@ function renderWaterCard(){
+     `<span class="ltr-num">${ml.toLocaleString('en-US')} / ${goal.toLocaleString('en-US')}</span> مل`;
+   const pct = Math.min((ml/Math.max(goal,1))*100, 100);
+   document.getElementById('waterFill').style.width = pct+'%';
++
++  // Compact Home tile (sits beside the steps tile) — same numbers, painted
++  // as a ring instead of a bar to match the steps mini row it's now next
++  // to. The actual bar + quick-add chips + custom input live one tap away
++  // in #sheetWaterDetail, opened via openWaterDetail() below.
++  const miniValEl = document.getElementById('waterMiniValText');
++  if(miniValEl){
++    miniValEl.innerHTML = `<span class="ltr-num">${ml.toLocaleString('en-US')} / ${goal.toLocaleString('en-US')}</span>`;
++    paintStepsRing('waterMiniRingProgress', 42, Math.min(ml/Math.max(goal,1), 1));
++  }
+ }
+ function addWater(deltaMl){
+   state.log.waterMl = Math.max(0, (state.log.waterMl||0) + deltaMl);
+@@ -175,6 +185,10 @@ function addWater(deltaMl){
+   renderWaterCard();
+   vibrate(12);
+ }
++function openWaterDetail(){
++  renderWaterCard();
++  openSheet('sheetWaterDetail');
++}
+ 
+ /* ============================================================
+    STEPS — read-only, synced from Health Connect (written there by a
+-- 
+2.43.0
+

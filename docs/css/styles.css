@@ -225,17 +225,38 @@ input{font-family:inherit; color:inherit;}
 .empty-illo{ width:52px; height:52px; color:var(--text-mute); opacity:.5; }
 .empty-state-text{ font-size:12.5px; color:var(--text-mute); font-weight:600; max-width:260px; line-height:1.7; }
 
-/* ============ "نشاطك اليوم": steps + streak + week-progress ============
-   One card shell shared by all three rows (was three separate cards) —
-   same information, fewer boxes stacked on the page. Each row after the
-   first gets border-top as its divider (matching .week-progress's existing
-   convention below), so a hidden steps-row (no plugin/no permission yet)
-   just collapses away instead of leaving a gap. */
+/* ============ WATER + STEPS: compact side-by-side tiles ============
+   Two small tiles sharing one row instead of a full-width water card
+   stacked above a full-width steps card — water lost its always-visible
+   bar/buttons (now one tap away in #sheetWaterDetail, see
+   openWaterDetail() in docs/js/home.js) so it could shrink to match the
+   steps tile's compact ring+count footprint. Both tiles reuse the exact
+   same .steps-mini-row layout (ring + title/value), just narrower — the
+   sync-freshness caption and open-hint chevron that fit fine in the old
+   full-width steps row are hidden here for space; the full detail (incl.
+   sync time) is still one tap away in each sheet. */
+.mini-stats-row{ display:flex; gap:12px; margin-top:12px; }
+.mini-card{
+  flex:1; min-width:0; background:var(--surface); border:1px solid var(--border-soft);
+  border-radius:var(--r-lg); box-shadow:var(--shadow-2); overflow:hidden;
+}
+.mini-card .steps-mini-row{ padding:12px 14px; gap:8px; }
+.mini-card .steps-mini-caption,
+.mini-card .steps-open-hint{ display:none; }
+.mini-card .steps-mini-title{ font-size:10.5px; }
+.mini-card .steps-mini-val{ font-size:13px; }
+/* Two-class selector (not just .water-ring-progress) so this reliably
+   beats .steps-ring-progress's own stroke color regardless of the two
+   rules' source order — both classes sit on the same <circle>. */
+.steps-ring-progress.water-ring-progress{ stroke:var(--shoulder); }
+
+/* ============ "نشاطك اليوم": streak + week-progress ============
+   One card shell shared by both rows (was two separate cards) — same
+   information, fewer boxes stacked on the page. */
 .stats-combo{
   margin-top:12px; background:var(--surface); border:1px solid var(--border-soft);
   border-radius:var(--r-lg); box-shadow:var(--shadow-2); overflow:hidden;
 }
-.activity-row.steps-row{ padding:0; }
 .streak-card{
   padding:14px 18px; display:flex; align-items:center; gap:14px; border-top:1px solid var(--border-soft);
 }

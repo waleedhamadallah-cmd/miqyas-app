@@ -167,6 +167,16 @@ function renderWaterCard(){
     `<span class="ltr-num">${ml.toLocaleString('en-US')} / ${goal.toLocaleString('en-US')}</span> مل`;
   const pct = Math.min((ml/Math.max(goal,1))*100, 100);
   document.getElementById('waterFill').style.width = pct+'%';
+
+  // Compact Home tile (sits beside the steps tile) — same numbers, painted
+  // as a ring instead of a bar to match the steps mini row it's now next
+  // to. The actual bar + quick-add chips + custom input live one tap away
+  // in #sheetWaterDetail, opened via openWaterDetail() below.
+  const miniValEl = document.getElementById('waterMiniValText');
+  if(miniValEl){
+    miniValEl.innerHTML = `<span class="ltr-num">${ml.toLocaleString('en-US')} / ${goal.toLocaleString('en-US')}</span>`;
+    paintStepsRing('waterMiniRingProgress', 42, Math.min(ml/Math.max(goal,1), 1));
+  }
 }
 function addWater(deltaMl){
   state.log.waterMl = Math.max(0, (state.log.waterMl||0) + deltaMl);
@@ -174,6 +184,10 @@ function addWater(deltaMl){
   syncHealthConnectHydration(deltaMl);
   renderWaterCard();
   vibrate(12);
+}
+function openWaterDetail(){
+  renderWaterCard();
+  openSheet('sheetWaterDetail');
 }
 
 /* ============================================================

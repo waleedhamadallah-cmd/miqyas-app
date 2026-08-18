@@ -434,6 +434,16 @@ function bindEvents(){
     if(e.key==='Enter' || e.key===' '){ e.preventDefault(); e.target.click(); }
   });
 
+  // Tapping the compact Home water tile opens the full bar/quick-add sheet
+  // — same role="button" + Enter/Space pattern as the steps tile beside it.
+  const waterMiniCardEl = document.getElementById('waterMiniCard');
+  if(waterMiniCardEl){
+    waterMiniCardEl.addEventListener('click', ()=> openWaterDetail());
+    waterMiniCardEl.addEventListener('keydown', (e)=>{
+      if(e.key==='Enter' || e.key===' '){ e.preventDefault(); openWaterDetail(); }
+    });
+  }
+
   /* ---------- Smart goal calculator (opens onboarding flow) ---------- */
   document.getElementById('btnOpenSmartGoals').addEventListener('click', ()=> startOnboarding(true));
 
