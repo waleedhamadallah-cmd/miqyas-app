@@ -315,19 +315,7 @@ function renderAiScanResult(data){
     } else {
       const food = item.match ? findLibraryFoodByName(item.match) : null;
       if(food){
-        row.innerHTML = `
-          <div class="food-chip ai-scan-item-chip" style="width:100%; max-width:none;">
-            <div class="plus">+</div>
-            <div class="fname">${escapeHtml(food.name)}</div>
-            <div class="fcal tabular">${food.calories} سعرة</div>
-          </div>`;
-        const chip = row.querySelector('.ai-scan-item-chip');
-        chip.addEventListener('click', async ()=>{
-          if(chip.classList.contains('added')) return;
-          chip.classList.add('added');
-          chip.querySelector('.plus').textContent = '✓';
-          await quickAddFood(food, null);
-        });
+        renderAiScanMatchedItem(row, food);
       }else{
         row.innerHTML = `
           <div class="ai-scan-noguess" style="margin-top:0;">
@@ -349,6 +337,66 @@ function renderAiScanResult(data){
   doneBtn.textContent = 'تم';
   doneBtn.addEventListener('click', ()=>{ aiScanPending = null; closeAllSheets(); });
   result.appendChild(doneBtn);
+}
+
+// A library-mode chip used to log the food's saved 1x amount the instant
+// it was tapped — the item's printed name was the ONLY review step, with
+// no way to catch a wrong AI match or scale the portion before it was
+// already committed to the log. This turns a tap into a two-step
+// confirm: first tap swaps the chip for the same ½×/1×/1.5×/2× portion
+// picker used everywhere else in the app a quantity is chosen (see
+// sheetApplyTemplate/sheetEditMeal), and the food is only actually logged
+// once the user taps its own confirm button — matching general mode's
+// "review before it's real" philosophy instead of auto-committing.
+function renderAiScanMatchedItem(row, food){
+  row.innerHTML = `
+    <div class="food-chip ai-scan-item-chip" style="width:100%; max-width:none;">
+      <div class="plus">+</div>
+      <div class="fname">${escapeHtml(food.name)}</div>
+      <div class="fcal tabular">${food.calories} سعرة</div>
+    </div>`;
+  const chip = row.querySelector('.ai-scan-item-chip');
+  chip.addEventListener('click', ()=>{
+    let qty = 1;
+    row.innerHTML = `
+      <div class="ai-scan-qty-confirm" style="width:100%; box-sizing:border-box;">
+        <div class="fname" style="margin-bottom:8px; font-size:13px; font-weight:700;">${escapeHtml(food.name)}</div>
+        <div class="chipbar" style="margin-bottom:10px;">
+          <div class="filter-chip" data-qty="0.5">½×</div>
+          <div class="filter-chip active" data-qty="1">1×</div>
+          <div class="filter-chip" data-qty="1.5">1.5×</div>
+          <div class="filter-chip" data-qty="2">2×</div>
+        </div>
+        <button class="btn-primary ai-scan-qty-confirm-btn" style="margin-top:0;">أضف · <span class="ai-scan-qty-confirm-cal">${food.calories}</span> سعرة</button>
+      </div>`;
+    const qtyWrap = row.querySelector('.chipbar');
+    const calSpan = row.querySelector('.ai-scan-qty-confirm-cal');
+    qtyWrap.addEventListener('click', (e)=>{
+      const c = e.target.closest('.filter-chip');
+      if(!c) return;
+      qty = parseFloat(c.getAttribute('data-qty'));
+      qtyWrap.querySelectorAll('.filter-chip').forEach(x=> x.classList.toggle('active', x===c));
+      calSpan.textContent = Math.round(food.calories*qty);
+    });
+    row.querySelector('.ai-scan-qty-confirm-btn').addEventListener('click', async ()=>{
+      food.usageCount = (food.usageCount||0)+1;
+      const entry = makeMealEntry(food.name, food.category, food.id,
+        Math.round(food.calories*qty), Math.round(food.protein*qty), Math.round(food.carbs*qty), Math.round(food.fat*qty),
+        Math.round((food.fiber||0)*qty), Math.round((food.sodium||0)*qty));
+      state.log.meals.push(entry);
+      persist();
+      syncHealthConnectNutrition(entry);
+      vibrate(10);
+      showToast(`أضيفت ${food.name}`);
+      renderAll();
+      row.innerHTML = `
+        <div class="food-chip ai-scan-item-chip added" style="width:100%; max-width:none;">
+          <div class="plus">✓</div>
+          <div class="fname">${escapeHtml(food.name)}</div>
+          <div class="fcal tabular">${entry.calories} سعرة</div>
+        </div>`;
+    });
+  });
 }
 
 // Exact food-name matching against a fresh Gemini reply is fragile for
