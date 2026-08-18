@@ -1,0 +1,317 @@
+From a8b807e2b973dd20c05e463c2dbcb467450563c6 Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 18 Aug 2026 03:27:38 +0000
+Subject: [PATCH] Add dynamic colors + food-calories row to the steps widget
+
+- Steps ring now uses the app's own --steps purple gradient while below
+  goal, switching to the app's 'good' teal/blue gradient (matching
+  #ringGrad) once today's goal is reached -- a bitmap-drawn
+  LinearGradient shader instead of a flat stroke, for more visual depth.
+- New full-width footer pill shows remaining/over food calories, reusing
+  the same dateKey/calCurrent/calGoal fields the calorie/water widget
+  already syncs (no new plugin fields needed). Flips to the app's own
+  'over goal' red gradient (matching #ringGradOver) once logged calories
+  pass the daily goal -- same threshold/colors as the home hero ring's
+  own over-goal state.
+- Widget grown from 140dp to 190dp tall to fit the new row.
+---
+ .../com/miqyas/app/StepsWidgetProvider.java   | 97 ++++++++++++++-----
+ .../src/main/res/drawable/ic_widget_meal.xml  | 25 +++++
+ .../res/drawable/widget_stat_pill_bg_warn.xml | 13 +++
+ .../app/src/main/res/layout/widget_steps.xml  | 52 ++++++++++
+ .../src/main/res/xml/steps_widget_info.xml    |  4 +-
+ 5 files changed, 164 insertions(+), 27 deletions(-)
+ create mode 100644 android/app/src/main/res/drawable/ic_widget_meal.xml
+ create mode 100644 android/app/src/main/res/drawable/widget_stat_pill_bg_warn.xml
+
+diff --git a/android/app/src/main/java/com/miqyas/app/StepsWidgetProvider.java b/android/app/src/main/java/com/miqyas/app/StepsWidgetProvider.java
+index bd5e532..0098d2a 100644
+--- a/android/app/src/main/java/com/miqyas/app/StepsWidgetProvider.java
++++ b/android/app/src/main/java/com/miqyas/app/StepsWidgetProvider.java
+@@ -9,8 +9,10 @@ import android.content.SharedPreferences;
+ import android.graphics.Bitmap;
+ import android.graphics.Canvas;
+ import android.graphics.Color;
++import android.graphics.LinearGradient;
+ import android.graphics.Paint;
+ import android.graphics.RectF;
++import android.graphics.Shader;
+ import android.os.Build;
+ import android.widget.RemoteViews;
+ 
+@@ -20,27 +22,52 @@ import java.util.Locale;
+ 
+ /**
+  * Home-screen widget showing today's steps (as a ring, matching the app's
+- * own steps-detail ring) plus distance and calories burned, inspired by the
+- * reference widget screenshot the user shared. Read-only by design, same as
+- * CalorieWaterWidgetProvider — tapping the body opens the app; tapping the
+- * small refresh icon just re-renders whatever is already cached in
+- * SharedPreferences (no live Health Connect read from the widget process —
+- * that only ever happens inside the app, which is what keeps the cached
+- * values here trustworthy in the first place).
++ * own steps-detail ring color — see --steps in docs/css/styles.css), plus
++ * distance, calories burned, and — since the calorie/water widget's own
++ * fields are reused here too — remaining/over food calories, all inspired
++ * by the reference widget screenshot the user shared.
+  *
+- * Data comes from SharedPreferences written by MiqyasWidgetPlugin, which the
+- * web app calls after every steps sync (see refreshSteps()/cacheSteps() in
+- * docs/js/home.js + core.js). If the stored date isn't today (e.g. the app
+- * hasn't been reopened/synced since before midnight), the widget shows an
+- * unsynced empty state instead of yesterday's stale numbers — same
+- * treatment CalorieWaterWidgetProvider gives its own stale data.
++ * Read-only by design, same as CalorieWaterWidgetProvider — tapping the
++ * body opens the app; tapping the small refresh icon just re-renders
++ * whatever is already cached in SharedPreferences (no live Health Connect
++ * read from the widget process — that only ever happens inside the app,
++ * which is what keeps the cached values here trustworthy in the first
++ * place).
++ *
++ * Two colors respond to the user's own progress, mirroring how the app
++ * itself signals the same two states elsewhere:
++ *  - The steps ring switches from the app's steps-purple to the app's own
++ *    "good" teal/blue gradient (#ringGrad in docs/index.html) once today's
++ *    goal is reached — same idea as the streak flame getting warmer with a
++ *    longer streak, just applied to "did I hit today's goal".
++ *  - The calories-eaten pill switches to the app's own "over goal" red
++ *    gradient (#ringGradOver) once logged calories pass the daily goal —
++ *    literally the same threshold and colors as the home hero ring's
++ *    `over` state (see renderRing() in docs/js/home.js).
++ *
++ * Data comes from SharedPreferences written by MiqyasWidgetPlugin, which
++ * the web app calls after every steps sync AND after every persist() (see
++ * refreshSteps()/cacheSteps() in docs/js/home.js + core.js, and syncWidget()
++ * in core.js). If a given day's data isn't today's (e.g. the app hasn't
++ * been reopened/synced since before midnight), the affected part of the
++ * widget shows its own unsynced/empty state instead of a stale number from
++ * yesterday — same treatment CalorieWaterWidgetProvider gives its data.
++ * Steps/distance/calories-burned and calories-eaten are tracked against two
++ * independent "is this today's data" checks (stepsDateKey vs dateKey)
++ * since they come from two different sync pipelines (Health Connect vs
++ * meal logging) that don't necessarily update at the same moment.
+  */
+ public class StepsWidgetProvider extends AppWidgetProvider {
+ 
+     private static final int RING_SIZE_DP = 100;
+     private static final int RING_STROKE_DP = 9;
+     private static final int RING_TRACK_COLOR = Color.parseColor("#2A3138");
+-    private static final int RING_PROGRESS_COLOR = Color.parseColor("#2FD3A6");
++
++    // In-progress ring: the app's own --steps purple, as a light-to-solid
++    // gradient for a bit more depth than a flat stroke.
++    private static final int[] RING_COLORS_PROGRESS = {Color.parseColor("#C2AFFF"), Color.parseColor("#9B7BFF")};
++    // Goal-reached ring: the app's own #ringGrad ("good") gradient.
++    private static final int[] RING_COLORS_ACHIEVED = {Color.parseColor("#5EE6C9"), Color.parseColor("#2F6FE0")};
+ 
+     @Override
+     public void onUpdate(Context context, AppWidgetManager appWidgetManager, int[] appWidgetIds) {
+@@ -51,25 +78,40 @@ public class StepsWidgetProvider extends AppWidgetProvider {
+ 
+     static void updateWidget(Context context, AppWidgetManager appWidgetManager, int appWidgetId) {
+         SharedPreferences prefs = context.getSharedPreferences(MiqyasWidgetPlugin.PREFS_NAME, Context.MODE_PRIVATE);
+-        String storedDate = prefs.getString("stepsDateKey", "");
+         String todayKey = new SimpleDateFormat("yyyy-MM-dd", Locale.US).format(new Date());
+-        boolean isToday = storedDate.equals(todayKey);
+ 
++        boolean stepsIsToday = prefs.getString("stepsDateKey", "").equals(todayKey);
+         int goal = prefs.getInt("stepsGoal", 8000);
+-        int steps = isToday ? prefs.getInt("stepsCurrent", 0) : 0;
+-        float distanceKm = isToday ? prefs.getFloat("stepsDistanceKm", 0f) : 0f;
+-        int calories = isToday ? prefs.getInt("stepsCalories", 0) : 0;
+-        long syncedAt = isToday ? prefs.getLong("stepsSyncedAt", 0L) : 0L;
++        int steps = stepsIsToday ? prefs.getInt("stepsCurrent", 0) : 0;
++        float distanceKm = stepsIsToday ? prefs.getFloat("stepsDistanceKm", 0f) : 0f;
++        int caloriesBurned = stepsIsToday ? prefs.getInt("stepsCalories", 0) : 0;
++        long syncedAt = stepsIsToday ? prefs.getLong("stepsSyncedAt", 0L) : 0L;
++        boolean achieved = goal > 0 && steps >= goal;
++
++        boolean calIsToday = prefs.getString("dateKey", "").equals(todayKey);
++        int calGoal = prefs.getInt("calGoal", 2000);
++        int calCurrent = calIsToday ? prefs.getInt("calCurrent", 0) : 0;
++        int calRemaining = calGoal - calCurrent;
++        boolean calOver = calIsToday && calRemaining < 0;
+ 
+         float pct = goal > 0 ? Math.min(steps / (float) goal, 1f) : 0f;
+ 
+         RemoteViews views = new RemoteViews(context.getPackageName(), R.layout.widget_steps);
+ 
+-        views.setImageViewBitmap(R.id.widgetStepsRingImg, createRingBitmap(context, pct));
++        views.setImageViewBitmap(R.id.widgetStepsRingImg, createRingBitmap(context, pct, achieved));
+         views.setTextViewText(R.id.widgetStepsValue, String.format(Locale.US, "%,d", steps));
+         views.setTextViewText(R.id.widgetStepsGoalText, "من " + String.format(Locale.US, "%,d", goal));
+         views.setTextViewText(R.id.widgetStepsDistance, String.format(Locale.US, "%.2f كم", distanceKm));
+-        views.setTextViewText(R.id.widgetStepsCalories, String.format(Locale.US, "%,d", calories));
++        views.setTextViewText(R.id.widgetStepsCalories, String.format(Locale.US, "%,d", caloriesBurned));
++
++        // calRemaining can be negative once over goal — the label switches
++        // (matching the app's own hero ring wording) and the value shows a
++        // plain positive magnitude either way, since the label already says
++        // which direction it is.
++        views.setTextViewText(R.id.widgetStepsCalEatenLabel, calOver ? "سعرة زيادة عن الهدف" : "سعرة متبقية");
++        views.setTextViewText(R.id.widgetStepsCalEatenValue, String.format(Locale.US, "%,d", Math.abs(calRemaining)));
++        views.setInt(R.id.widgetStepsCalEatenPill, "setBackgroundResource",
++                calOver ? R.drawable.widget_stat_pill_bg_warn : R.drawable.widget_stat_pill_bg);
+ 
+         if (syncedAt > 0) {
+             String time = new SimpleDateFormat("HH:mm", Locale.US).format(new Date(syncedAt));
+@@ -96,8 +138,11 @@ public class StepsWidgetProvider extends AppWidgetProvider {
+     // RemoteViews has no native arc/ring view, so the progress ring is drawn
+     // by hand into a Bitmap here (same stroke-round-cap look as the app's
+     // own SVG rings — see paintStepsRing() in docs/js/home.js) and dropped
+-    // into an ImageView via setImageViewBitmap() above.
+-    private static Bitmap createRingBitmap(Context context, float pct) {
++    // into an ImageView via setImageViewBitmap() above. The stroke uses a
++    // diagonal LinearGradient (matching the app's own #ringGrad/#ringGradOver
++    // SVG gradients, which are also top-left-to-bottom-right) instead of a
++    // flat color, purely for a bit more visual depth.
++    private static Bitmap createRingBitmap(Context context, float pct, boolean achieved) {
+         float density = context.getResources().getDisplayMetrics().density;
+         int sizePx = Math.round(RING_SIZE_DP * density);
+         float strokePx = RING_STROKE_DP * density;
+@@ -112,12 +157,14 @@ public class StepsWidgetProvider extends AppWidgetProvider {
+ 
+         RectF rect = new RectF(strokePx / 2f, strokePx / 2f, sizePx - strokePx / 2f, sizePx - strokePx / 2f);
+ 
++        paint.setShader(null);
+         paint.setColor(RING_TRACK_COLOR);
+         canvas.drawArc(rect, 0, 360, false, paint);
+ 
+         float sweep = 360f * Math.max(0f, Math.min(1f, pct));
+         if (sweep > 0f) {
+-            paint.setColor(RING_PROGRESS_COLOR);
++            int[] colors = achieved ? RING_COLORS_ACHIEVED : RING_COLORS_PROGRESS;
++            paint.setShader(new LinearGradient(0, 0, sizePx, sizePx, colors[0], colors[1], Shader.TileMode.CLAMP));
+             canvas.drawArc(rect, -90, sweep, false, paint);
+         }
+ 
+diff --git a/android/app/src/main/res/drawable/ic_widget_meal.xml b/android/app/src/main/res/drawable/ic_widget_meal.xml
+new file mode 100644
+index 0000000..67860ca
+--- /dev/null
++++ b/android/app/src/main/res/drawable/ic_widget_meal.xml
+@@ -0,0 +1,25 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- Same "bullseye" glyph as the app's ICON_MEAL constant (docs/js/core.js)
++     — used for the widget's "calories eaten" row so it visually matches how
++     the app marks meals/food elsewhere, distinct from the flame (calories
++     burned) and pin (distance) icons above it. -->
++<vector xmlns:android="http://schemas.android.com/apk/res/android"
++    android:width="24dp"
++    android:height="24dp"
++    android:viewportWidth="24"
++    android:viewportHeight="24">
++    <path
++        android:fillColor="#00000000"
++        android:strokeColor="#FFFFFF"
++        android:strokeWidth="2"
++        android:strokeLineCap="round"
++        android:strokeLineJoin="round"
++        android:pathData="M12,4a8,8 0,1 0,0.001 0z"/>
++    <path
++        android:fillColor="#00000000"
++        android:strokeColor="#FFFFFF"
++        android:strokeWidth="2"
++        android:strokeLineCap="round"
++        android:strokeLineJoin="round"
++        android:pathData="M12,9a3,3 0,1 0,0.001 0z"/>
++</vector>
+diff --git a/android/app/src/main/res/drawable/widget_stat_pill_bg_warn.xml b/android/app/src/main/res/drawable/widget_stat_pill_bg_warn.xml
+new file mode 100644
+index 0000000..2ceff55
+--- /dev/null
++++ b/android/app/src/main/res/drawable/widget_stat_pill_bg_warn.xml
+@@ -0,0 +1,13 @@
++<?xml version="1.0" encoding="utf-8"?>
++<!-- "Over calorie goal" version of widget_stat_pill_bg.xml — same red
++     gradient as the app's own #ringGradOver (see docs/index.html), swapped
++     in via setInt(...,"setBackgroundResource",...) in StepsWidgetProvider
++     when today's logged calories exceed the daily goal. -->
++<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
++    <gradient
++        android:type="linear"
++        android:angle="0"
++        android:startColor="#FF7A80"
++        android:endColor="#E5555B"/>
++    <corners android:radius="16dp"/>
++</shape>
+diff --git a/android/app/src/main/res/layout/widget_steps.xml b/android/app/src/main/res/layout/widget_steps.xml
+index 5b92fee..7c5573f 100644
+--- a/android/app/src/main/res/layout/widget_steps.xml
++++ b/android/app/src/main/res/layout/widget_steps.xml
+@@ -197,4 +197,56 @@
+ 
+     </LinearLayout>
+ 
++    <!-- Footer: today's remaining/over food calories (from the app's own
++         dietary tracking — dateKey/calCurrent/calGoal, the same fields the
++         calorie/water widget already uses), full-width since it's the
++         app's headline number. Background + label flip to the "over goal"
++         red look — see widget_stat_pill_bg_warn.xml — the same way the
++         app's own hero ring does (see renderRing()'s `over` toggle in
++         docs/js/home.js). -->
++    <LinearLayout
++        android:id="@+id/widgetStepsCalEatenPill"
++        android:layout_width="match_parent"
++        android:layout_height="wrap_content"
++        android:layout_marginTop="8dp"
++        android:orientation="horizontal"
++        android:gravity="center_vertical"
++        android:background="@drawable/widget_stat_pill_bg"
++        android:padding="8dp">
++
++        <ImageView
++            android:layout_width="28dp"
++            android:layout_height="28dp"
++            android:padding="6dp"
++            android:background="@drawable/widget_icon_badge_bg"
++            android:src="@drawable/ic_widget_meal"/>
++
++        <LinearLayout
++            android:layout_width="0dp"
++            android:layout_height="wrap_content"
++            android:layout_weight="1"
++            android:layout_marginStart="8dp"
++            android:orientation="vertical">
++
++            <TextView
++                android:id="@+id/widgetStepsCalEatenLabel"
++                android:layout_width="wrap_content"
++                android:layout_height="wrap_content"
++                android:text="سعرة متبقية"
++                android:textColor="#08201A"
++                android:textSize="10sp"/>
++
++            <TextView
++                android:id="@+id/widgetStepsCalEatenValue"
++                android:layout_width="wrap_content"
++                android:layout_height="wrap_content"
++                android:text="0"
++                android:textColor="#08201A"
++                android:textSize="15sp"
++                android:textStyle="bold"/>
++
++        </LinearLayout>
++
++    </LinearLayout>
++
+ </LinearLayout>
+diff --git a/android/app/src/main/res/xml/steps_widget_info.xml b/android/app/src/main/res/xml/steps_widget_info.xml
+index ccb0774..6febc4a 100644
+--- a/android/app/src/main/res/xml/steps_widget_info.xml
++++ b/android/app/src/main/res/xml/steps_widget_info.xml
+@@ -1,9 +1,9 @@
+ <?xml version="1.0" encoding="utf-8"?>
+ <appwidget-provider xmlns:android="http://schemas.android.com/apk/res/android"
+     android:minWidth="280dp"
+-    android:minHeight="140dp"
++    android:minHeight="190dp"
+     android:targetCellWidth="4"
+-    android:targetCellHeight="2"
++    android:targetCellHeight="3"
+     android:updatePeriodMillis="1800000"
+     android:initialLayout="@layout/widget_steps"
+     android:previewImage="@mipmap/ic_launcher"
+-- 
+2.43.0
+

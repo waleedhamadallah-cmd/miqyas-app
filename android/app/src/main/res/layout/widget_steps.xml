@@ -197,4 +197,56 @@
 
     </LinearLayout>
 
+    <!-- Footer: today's remaining/over food calories (from the app's own
+         dietary tracking — dateKey/calCurrent/calGoal, the same fields the
+         calorie/water widget already uses), full-width since it's the
+         app's headline number. Background + label flip to the "over goal"
+         red look — see widget_stat_pill_bg_warn.xml — the same way the
+         app's own hero ring does (see renderRing()'s `over` toggle in
+         docs/js/home.js). -->
+    <LinearLayout
+        android:id="@+id/widgetStepsCalEatenPill"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:orientation="horizontal"
+        android:gravity="center_vertical"
+        android:background="@drawable/widget_stat_pill_bg"
+        android:padding="8dp">
+
+        <ImageView
+            android:layout_width="28dp"
+            android:layout_height="28dp"
+            android:padding="6dp"
+            android:background="@drawable/widget_icon_badge_bg"
+            android:src="@drawable/ic_widget_meal"/>
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginStart="8dp"
+            android:orientation="vertical">
+
+            <TextView
+                android:id="@+id/widgetStepsCalEatenLabel"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="سعرة متبقية"
+                android:textColor="#08201A"
+                android:textSize="10sp"/>
+
+            <TextView
+                android:id="@+id/widgetStepsCalEatenValue"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:text="0"
+                android:textColor="#08201A"
+                android:textSize="15sp"
+                android:textStyle="bold"/>
+
+        </LinearLayout>
+
+    </LinearLayout>
+
 </LinearLayout>
