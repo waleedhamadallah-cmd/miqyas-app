@@ -141,12 +141,12 @@ function renderTodaySummary(){
   }
   meals.forEach(m=>{
     const row = document.createElement('div');
-    row.className = 'entry-row';
+    row.className = 'entry-tile';
     const qtyTag = (m.qty!==undefined && m.qty!==1) ? ` · ×${trimQtyDisplay(m.qty)}` : '';
     row.innerHTML = `
-      <div class="entry-main"><div class="t1">${escapeHtml(m.name)}</div><div class="t2">ب${Math.round(m.protein)} ك${Math.round(m.carbs)} د${Math.round(m.fat)}${qtyTag}</div></div>
-      <div class="entry-side tabular">${m.calories}</div>
-      <div class="entry-edit-hint">${ICON_PENCIL}</div>`;
+      <div class="et-name">${escapeHtml(m.name)}</div>
+      <div class="et-cal tabular">${m.calories}</div>
+      <div class="et-macros tabular">ب${Math.round(m.protein)} ك${Math.round(m.carbs)} د${Math.round(m.fat)}${qtyTag}</div>`;
     row.addEventListener('click', ()=> openEditMealSheet(m.id));
     wrap.appendChild(row);
   });

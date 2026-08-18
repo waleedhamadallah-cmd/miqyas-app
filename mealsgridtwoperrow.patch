@@ -1,0 +1,110 @@
+From 21fc518d4cf5011b5915625650a070018f26d7ed Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 18 Aug 2026 11:03:21 +0000
+Subject: [PATCH] Show today's logged meals as two-per-row compact tiles,
+ matching the Home water/steps mini-tile layout
+
+---
+ docs/css/styles.css | 23 +++++++++++++++++++++--
+ docs/js/food.js     | 17 +++++------------
+ docs/js/home.js     |  8 ++++----
+ 3 files changed, 30 insertions(+), 18 deletions(-)
+
+diff --git a/docs/css/styles.css b/docs/css/styles.css
+index eae3150..a79e601 100644
+--- a/docs/css/styles.css
++++ b/docs/css/styles.css
+@@ -167,7 +167,7 @@ input{font-family:inherit; color:inherit;}
+ .home-secondary .section-title:first-child{ margin-top:0; }
+ 
+ @keyframes rowIn{ from{opacity:0; transform:translateY(6px);} to{opacity:1; transform:none;} }
+-.entry-row, .lib-row{ animation:rowIn .3s ease both; }
++.entry-row, .entry-tile, .lib-row{ animation:rowIn .3s ease both; }
+ 
+ /* ============ DASHBOARD RING CARD ============ */
+ .hero-card{
+@@ -321,7 +321,26 @@ input{font-family:inherit; color:inherit;}
+ .empty-hint{ color:var(--text-mute); font-size:13px; padding:18px 4px; text-align:center; line-height:1.9; }
+ 
+ /* ============ LIST ITEMS (meals / workouts) ============ */
+-.entry-list{display:flex; flex-direction:column; gap:8px;}
++/* Two-per-row grid — same idea as the Home water/steps mini tiles (see
++   .mini-stats-row), applied here so today's logged meals take half the
++   vertical space. Each tile drops the always-visible edit-pencil/delete-X
++   icons the old full-width .entry-row had (no room for them at half
++   width) — tapping a tile still opens #sheetEditMeal (which has its own
++   delete action), and swipe-to-delete (attachSwipeToDelete()) still works
++   the same as before, so deleting a meal never became harder, just less
++   visually cluttered. See renderMealsToday()/renderTodaySummary() in
++   docs/js/food.js / docs/js/home.js. */
++.entry-list{display:grid; grid-template-columns:1fr 1fr; gap:8px;}
++.entry-list .empty-state{grid-column:1/-1;}
++.entry-tile{
++  cursor:pointer; min-width:0;
++  background:var(--surface); border:1px solid var(--border-soft);
++  border-radius:var(--r-md); padding:10px 12px; box-shadow:var(--shadow-2);
++}
++.entry-tile .et-name{font-size:12.5px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
++.entry-tile .et-cal{font-family:var(--font-d); font-weight:800; font-size:17px; color:var(--text-dim); margin-top:3px;}
++.entry-tile .et-macros{font-size:10.5px; color:var(--text-mute); margin-top:2px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis;}
++
+ .entry-row{
+   display:flex; align-items:center; gap:12px; cursor:pointer;
+   background:var(--surface); border:1px solid var(--border-soft);
+diff --git a/docs/js/food.js b/docs/js/food.js
+index a9cdafd..de7bb35 100644
+--- a/docs/js/food.js
++++ b/docs/js/food.js
+@@ -39,23 +39,16 @@ function renderMealsToday(){
+   if(state.log.meals.length===0){ wrap.innerHTML = emptyStateHtml('meal', 'ولا وجبة مسجلة اليوم بعد'); return; }
+   state.log.meals.forEach(m=>{
+     const row = document.createElement('div');
+-    row.className = 'entry-row';
++    row.className = 'entry-tile';
+     const qtyTag = (m.qty!==undefined && m.qty!==1) ? ` · ×${trimQtyDisplay(m.qty)}` : '';
+     row.innerHTML = `
+-      <div class="entry-main"><div class="t1">${escapeHtml(m.name)}</div><div class="t2">ب${Math.round(m.protein)} ك${Math.round(m.carbs)} د${Math.round(m.fat)}${qtyTag}</div></div>
+-      <div class="entry-side tabular">${m.calories}</div>
+-      <div class="entry-edit-hint">${ICON_PENCIL}</div>
+-      <div class="entry-del" data-del-meal="${m.id}" aria-label="حذف ${escapeHtml(m.name)}" role="button">${ICON_X}</div>`;
+-    row.addEventListener('click', (e)=>{
+-      if(e.target.closest('.entry-del')) return;
+-      openEditMealSheet(m.id);
+-    });
++      <div class="et-name">${escapeHtml(m.name)}</div>
++      <div class="et-cal tabular">${m.calories}</div>
++      <div class="et-macros tabular">ب${Math.round(m.protein)} ك${Math.round(m.carbs)} د${Math.round(m.fat)}${qtyTag}</div>`;
++    row.addEventListener('click', ()=> openEditMealSheet(m.id));
+     attachSwipeToDelete(row, ()=> deleteMealEntry(m.id));
+     wrap.appendChild(row);
+   });
+-  wrap.querySelectorAll('[data-del-meal]').forEach(btn=>{
+-    btn.addEventListener('click', (e)=>{ e.stopPropagation(); deleteMealEntry(btn.getAttribute('data-del-meal')); });
+-  });
+ }
+ 
+ function trimQtyDisplay(qty){
+diff --git a/docs/js/home.js b/docs/js/home.js
+index f83c858..2ae80ca 100644
+--- a/docs/js/home.js
++++ b/docs/js/home.js
+@@ -141,12 +141,12 @@ function renderTodaySummary(){
+   }
+   meals.forEach(m=>{
+     const row = document.createElement('div');
+-    row.className = 'entry-row';
++    row.className = 'entry-tile';
+     const qtyTag = (m.qty!==undefined && m.qty!==1) ? ` · ×${trimQtyDisplay(m.qty)}` : '';
+     row.innerHTML = `
+-      <div class="entry-main"><div class="t1">${escapeHtml(m.name)}</div><div class="t2">ب${Math.round(m.protein)} ك${Math.round(m.carbs)} د${Math.round(m.fat)}${qtyTag}</div></div>
+-      <div class="entry-side tabular">${m.calories}</div>
+-      <div class="entry-edit-hint">${ICON_PENCIL}</div>`;
++      <div class="et-name">${escapeHtml(m.name)}</div>
++      <div class="et-cal tabular">${m.calories}</div>
++      <div class="et-macros tabular">ب${Math.round(m.protein)} ك${Math.round(m.carbs)} د${Math.round(m.fat)}${qtyTag}</div>`;
+     row.addEventListener('click', ()=> openEditMealSheet(m.id));
+     wrap.appendChild(row);
+   });
+-- 
+2.43.0
+
