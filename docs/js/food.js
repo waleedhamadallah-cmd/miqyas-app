@@ -17,10 +17,19 @@ function deleteMealEntry(id){
   targetMeals.splice(idx,1);
   persist();
   renderAll();
+  // Removes the matching Health Connect record too (if this meal was ever
+  // synced there) — without this, deleting a meal in مِقياس left a
+  // permanently-stale record behind in Health Connect/Samsung Health that
+  // no longer matched anything in the user's actual log.
+  syncHealthConnectDeleteNutrition(removed.hcRecordId);
   showUndoToast(`حذفت ${removed.name}`, ()=>{
     targetMeals.splice(idx,0,removed);
     persist();
     renderAll();
+    // Re-syncs as a fresh record on undo — simpler and just as correct as
+    // trying to resurrect the exact deleted record, and syncHealthConnectNutrition()
+    // will overwrite removed.hcRecordId with the new record's own ID.
+    syncHealthConnectNutrition(removed);
   });
 }
 
@@ -125,10 +134,20 @@ function saveEditMealQty(){
   entry.fat = Math.round(base.baseFat*editMealQty);
   entry.fiber = Math.round(base.baseFiber*editMealQty);
   entry.sodium = Math.round(base.baseSodium*editMealQty);
+  // Health Connect has no "update a record in place" API — the correct way
+  // to reflect an edit is deleting the old record and writing a fresh one
+  // with the new macros (syncHealthConnectNutrition() below overwrites
+  // entry.hcRecordId with the new record's ID once it resolves). Entries
+  // logged before this feature existed simply have no hcRecordId yet, so
+  // the delete call below is a no-op for them and this just becomes a
+  // normal first-time sync.
+  const oldRecordId = entry.hcRecordId;
   persist();
   renderAll();
   closeAllSheets();
   showToast('تم تحديث الوجبة ✏️');
+  syncHealthConnectDeleteNutrition(oldRecordId);
+  syncHealthConnectNutrition(entry);
 }
 
 // Tie-break order once favorite/usageCount are equal (the common case for

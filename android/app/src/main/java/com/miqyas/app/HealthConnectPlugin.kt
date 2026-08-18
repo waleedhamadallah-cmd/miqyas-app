@@ -160,13 +160,61 @@ class HealthConnectPlugin : Plugin() {
                     endZoneOffset = zone.getOffset(end),
                     metadata = Metadata.activelyRecorded(device = Device(type = Device.TYPE_PHONE))
                 )
-                client.insertRecords(listOf(record))
+                val insertResponse = client.insertRecords(listOf(record))
                 val ret = JSObject()
                 ret.put("ok", true)
+                // Returned so the JS side (syncHealthConnectNutrition() in
+                // docs/js/core.js) can stash this specific record's ID on the
+                // meal entry — needed to find and remove/replace the exact
+                // right record later if that meal gets edited or deleted
+                // (see deleteNutrition below), instead of Health Connect
+                // silently accumulating an orphaned record per edit/delete.
+                ret.put("recordId", insertResponse.recordIdsList.firstOrNull())
                 call.resolve(ret)
             } catch (e: Exception) {
                 call.reject("writeNutrition failed: ${e.message}")
             }
+        }
+    }
+
+    // Removes a single previously-written NutritionRecord by its Health
+    // Connect record ID (see writeNutrition's returned "recordId" above).
+    // Called from docs/js/core.js's syncHealthConnectDeleteNutrition()
+    // whenever a synced meal is edited (delete-old + write-new) or deleted
+    // outright, so Health Connect (and anything reading from it, e.g.
+    // Samsung Health) stays in sync with مِقياس's own log instead of
+    // permanently keeping a record for a meal the user no longer has.
+    // Best-effort like every other call here: a recordId that's already
+    // gone (double-delete, older data from before this existed) is not
+    // treated as an error — there's nothing meaningful to surface to the
+    // user for a background sync's stale/missing record.
+    @PluginMethod
+    fun deleteNutrition(call: PluginCall) {
+        val client = getClientOrNull()
+        if (client == null) {
+            call.reject("Health Connect غير متوفر")
+            return
+        }
+        val recordId = call.getString("recordId")
+        if (recordId.isNullOrEmpty()) {
+            val ret = JSObject()
+            ret.put("ok", true)
+            call.resolve(ret)
+            return
+        }
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                client.deleteRecords(
+                    recordType = NutritionRecord::class,
+                    recordIdsList = listOf(recordId),
+                    clientRecordIdsList = emptyList()
+                )
+            } catch (e: Exception) {
+                // Swallowed on purpose — see method doc comment above.
+            }
+            val ret = JSObject()
+            ret.put("ok", true)
+            call.resolve(ret)
         }
     }
 

@@ -161,7 +161,32 @@ function syncHealthConnectNutrition(entry){
       protein: Math.round(entry.protein||0),
       carbs: Math.round(entry.carbs||0),
       fat: Math.round(entry.fat||0)
+    }).then(res=>{
+      // Stash Health Connect's own ID for this exact record on the meal
+      // entry (entry is the live object sitting inside appState.logs[...].
+      // meals, not a copy) so a later edit/delete can find and
+      // remove/replace this specific record — see
+      // syncHealthConnectDeleteNutrition() below, and its call sites in
+      // food.js (deleteMealEntry/saveEditMealQty). Without this, editing or
+      // deleting a logged meal only ever updated مِقياس's own log — the
+      // original Health Connect record (and anything reading from it, e.g.
+      // Samsung Health) silently kept showing the old/stale numbers forever.
+      if(res && res.recordId){ entry.hcRecordId = res.recordId; persist(); }
     }).catch(()=>{});
+  }catch(e){ /* no-op outside the native app / without permission */ }
+}
+
+// Removes a single previously-synced Health Connect nutrition record by ID
+// — the delete-side counterpart to syncHealthConnectNutrition() above.
+// Fire-and-forget/best-effort like every other Health Connect call in this
+// file: silently does nothing without a recordId, without permission, or
+// outside the native app.
+function syncHealthConnectDeleteNutrition(recordId){
+  try{
+    if(!appState || !appState.healthConnectGranted || !recordId) return;
+    const plugin = healthConnectPlugin();
+    if(!plugin || !plugin.deleteNutrition) return;
+    plugin.deleteNutrition({recordId}).catch(()=>{});
   }catch(e){ /* no-op outside the native app / without permission */ }
 }
 
