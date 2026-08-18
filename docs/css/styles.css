@@ -1010,23 +1010,6 @@ html[data-theme="light"] .entry-del, html[data-theme="light"] .tdel{ background:
 .steps-detail-stat .sd-label{font-size:11px; color:var(--text-mute); margin-bottom:4px;}
 .steps-detail-stat .sd-val{font-family:var(--font-d); font-weight:800; font-size:14px; color:var(--text);}
 
-/* ============ MEAL TEMPLATES ============ */
-.template-row{
-  display:flex; align-items:center; gap:12px; padding:12px 4px; border-bottom:1px solid var(--border-soft);
-}
-.template-row:last-child{border-bottom:none;}
-.template-row .tm{flex:1; min-width:0;}
-.template-row .tm .n{font-size:14px; font-weight:700;}
-.template-row .tm .d{font-size:11px; color:var(--text-mute); margin-top:2px;}
-.template-row .tbtn{
-  padding:7px 12px; border-radius:var(--r-pill); background:var(--accent); color:#161113; font-size:12px; font-weight:800; cursor:pointer; flex:0 0 auto;
-}
-/* Was 32px — smaller than every other "delete/remove a row" circle in the
-   app (.entry-del, .lib-delete, .sheet-close all use --tap-min/40px), for
-   no functional reason. Same class of tap-target inconsistency already
-   fixed once for .lib-add (see its comment above) — unified here too. */
-.template-row .tdel{width:var(--tap-min); height:var(--tap-min); border-radius:50%; background:var(--bg-elev); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; color:var(--text-mute); cursor:pointer; flex:0 0 auto;}
-
 /* ============ EDIT MEAL ENTRY (quantity + delete) ============ */
 .edit-meal-name{font-size:17px; font-weight:800; color:var(--text); margin-bottom:14px;}
 #editMealQtyCustom{margin-top:2px;}
@@ -1039,12 +1022,6 @@ html[data-theme="light"] .entry-del, html[data-theme="light"] .tdel{ background:
 #reminderMealTimeField, #reminderWaterFields{margin-right:30px; margin-top:6px;}
 #reminderMealTimeField.disabled, #reminderWaterFields.disabled{opacity:.4; pointer-events:none;}
 
-/* ============ RECIPE BUILDER ============ */
-.recipe-pick-row{display:flex; align-items:center; gap:10px; padding:10px 4px; border-bottom:1px solid var(--border-soft);}
-.recipe-pick-row input[type="checkbox"]{width:18px; height:18px; accent-color:var(--accent); flex:0 0 auto;}
-.recipe-pick-row .lm{flex:1; min-width:0;}
-.recipe-pick-row .lm .n{font-size:14px; font-weight:700;}
-.recipe-pick-row .lm .d{font-size:12px; color:var(--text-mute); margin-top:3px;}
 .recipe-totals{background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-lg); padding:14px 16px; margin:14px 0; box-shadow:var(--shadow-2);}
 .recipe-totals .rt-row{display:flex; justify-content:space-between; font-size:13px; padding:4px 0; color:var(--text-dim);}
 .recipe-totals .rt-row b{color:var(--text);}

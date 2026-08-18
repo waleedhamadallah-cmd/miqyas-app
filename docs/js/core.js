@@ -384,7 +384,7 @@ function computeStepsStreak(){
 function defaultAppState(){
   return {
     library:{foods:defaultFoods()}, goals:defaultGoals(), logs:{},
-    bodyWeights:{}, bodyFat:{}, bodyMeasurements:{}, mealTemplates:[],
+    bodyWeights:{}, bodyFat:{}, bodyMeasurements:{},
     theme:'dark', onboarded:false, updatedAt:0, healthConnectGranted:false,
     // Cache of {steps, fetchedAt} per dateKey, read from Health Connect —
     // see renderStepsCard()/refreshSteps() in docs/js/home.js. Just a
@@ -432,7 +432,6 @@ function rebindFromAppState(){
   if(!appState.bodyWeights) appState.bodyWeights = {};
   if(!appState.bodyFat) appState.bodyFat = {};
   if(!appState.bodyMeasurements) appState.bodyMeasurements = {};
-  if(!appState.mealTemplates) appState.mealTemplates = [];
   if(!appState.theme) appState.theme = 'dark';
   if(appState.onboarded===undefined) appState.onboarded = true; // existing users skip onboarding
   if(appState.goals.water===undefined) appState.goals.water = 2500;
@@ -1079,7 +1078,7 @@ function attachSwipeToDelete(rowEl, onConfirmDelete){
 
 const overlay = document.getElementById('overlay');
 
-const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetEditMeal','sheetApplyTemplate','sheetAiScan','sheetBarcodeScan','sheetSettings','sheetBodyWeight','sheetOnboarding','sheetRecipeBuilder','sheetMealTemplates','sheetShareCard','sheetReport','sheetStepsDetail','sheetWaterDetail'];
+const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetEditMeal','sheetAiScan','sheetBarcodeScan','sheetSettings','sheetBodyWeight','sheetOnboarding','sheetShareCard','sheetReport','sheetStepsDetail','sheetWaterDetail'];
 
 function openSheet(id){
   closeAllSheets();

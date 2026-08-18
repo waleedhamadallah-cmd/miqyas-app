@@ -289,19 +289,6 @@ function bindEvents(){
     closeAllSheets();
   });
 
-  /* ---------- Apply template with a chosen portion scale ---------- */
-  document.getElementById('applyTemplateQtyChips').addEventListener('click', (e)=>{
-    const chip = e.target.closest('.filter-chip');
-    if(!chip) return;
-    document.getElementById('applyTemplateQtyCustom').value = '';
-    setApplyTemplateQty(parseFloat(chip.getAttribute('data-qty')));
-  });
-  document.getElementById('applyTemplateQtyCustom').addEventListener('input', (e)=>{
-    const val = parseFloat(e.target.value);
-    if(val>0) setApplyTemplateQty(val);
-  });
-  document.getElementById('btnConfirmApplyTemplate').addEventListener('click', ()=> confirmApplyTemplate());
-
   // Scoped to the static Settings accordion only — the food library's
   // accordion headers are rendered dynamically and already bind their own
   // click listener per-element inside renderFoodLibList() (food.js). Binding
@@ -543,31 +530,6 @@ function bindEvents(){
     a.download = `miqyas-report-${reportPeriod}d-${state.today}.png`;
     document.body.appendChild(a); a.click(); document.body.removeChild(a);
   });
-
-  /* ---------- Meal templates ---------- */
-  document.getElementById('btnOpenTemplates').addEventListener('click', ()=>{
-    renderTemplateList();
-    openSheet('sheetMealTemplates');
-  });
-  document.getElementById('btnSaveTodayAsTemplate').addEventListener('click', ()=> saveTodayAsTemplate());
-
-  /* ---------- Recipe builder ---------- */
-  document.getElementById('btnOpenRecipeBuilder').addEventListener('click', ()=>{
-    recipeSelectedIds = [];
-    document.getElementById('recipeSearch').value = '';
-    // recipeName/recipeType were never reset anywhere except on a
-    // successful save, so closing the builder without saving, or saving
-    // once, left the next recipe silently starting from whatever the last
-    // one had. This is the "start fresh" moment, same idea as
-    // resetNewFoodSheet() for the food form.
-    document.getElementById('recipeName').value = '';
-    document.getElementById('recipeType').value = '';
-    renderRecipePickList();
-    renderRecipeTotals();
-    openSheet('sheetRecipeBuilder');
-  });
-  document.getElementById('recipeSearch').addEventListener('input', renderRecipePickList);
-  document.getElementById('btnSaveRecipe').addEventListener('click', ()=> saveRecipe());
 
   /* ---------- Body measurements ---------- */
   document.getElementById('btnSaveMeasurements').addEventListener('click', ()=> saveMeasurements());

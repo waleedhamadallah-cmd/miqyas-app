@@ -345,7 +345,7 @@ function renderAiScanResult(data){
 // already committed to the log. This turns a tap into a two-step
 // confirm: first tap swaps the chip for the same ½×/1×/1.5×/2× portion
 // picker used everywhere else in the app a quantity is chosen (see
-// sheetApplyTemplate/sheetEditMeal), and the food is only actually logged
+// sheetEditMeal), and the food is only actually logged
 // once the user taps its own confirm button — matching general mode's
 // "review before it's real" philosophy instead of auto-committing.
 function renderAiScanMatchedItem(row, food){
