@@ -348,8 +348,13 @@ function renderStepsDetail(){
 
   document.getElementById('stepsDetailDist').textContent = `${estimateStepsDistanceKm(todaySteps).toFixed(2)} كم`;
   document.getElementById('stepsDetailCal').textContent = Math.round(estimateStepsCalories(todaySteps)).toLocaleString('en-US');
+  // stepsFreshnessCaption() returns a full sentence ("آخر مزامنة: قبل 5
+  // دقائق") meant to stand alone as the Home card's caption line. Here it's
+  // shown under a ".sd-label" that already reads "آخر مزامنة", so the raw
+  // text would repeat the label twice — strip the redundant prefix, keeping
+  // just the value ("قبل 5 دقائق" / "الآن" / "لم تتم المزامنة اليوم بعد").
   const fresh = stepsFreshnessCaption(todayEntry ? todayEntry.fetchedAt : null);
-  document.getElementById('stepsDetailSync').textContent = fresh.text;
+  document.getElementById('stepsDetailSync').textContent = fresh.text.replace(/^آخر مزامنة:\s*/, '');
 
   const {bars} = stepsDetailPeriod===30 ? stepsMonthlyBars() : stepsBarsForRange(7);
   const chartWrap = document.getElementById('stepsDetailChart');
