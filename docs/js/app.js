@@ -156,6 +156,15 @@ function bindEvents(){
     }
     openSheet('sheetAiScan');
   });
+  document.getElementById('qaBarcode').addEventListener('click', ()=> openBarcodeScanSheet());
+  document.getElementById('btnBarcodeManualSubmit').addEventListener('click', ()=>{
+    const val = document.getElementById('barcodeManualInput').value.trim();
+    if(!val){ showToast('اكتب رقم الباركود أول'); return; }
+    handleScannedBarcode(val);
+  });
+  document.getElementById('barcodeManualInput').addEventListener('keydown', (e)=>{
+    if(e.key==='Enter'){ e.preventDefault(); document.getElementById('btnBarcodeManualSubmit').click(); }
+  });
   document.getElementById('aiScanCameraBtn').addEventListener('click', ()=> document.getElementById('aiScanCameraInput').click());
   document.getElementById('aiScanGalleryBtn').addEventListener('click', ()=> document.getElementById('aiScanGalleryInput').click());
   document.getElementById('aiScanCameraInput').addEventListener('change', (e)=>{
@@ -251,7 +260,13 @@ function bindEvents(){
       return;
     }
 
-    const food = {id:uid(), name, category:cat, foodType: type || undefined, calories:cal, protein:p, carbs:c, fat:f, fiber:0, sodium:0, favorite:false, usageCount:0, isCustom:true};
+    // Carries over the barcode (if this form was opened from a barcode
+    // scan — see applyBarcodeProductToNewFoodForm()/openBarcodeManualNewFood()
+    // in barcode.js) so scanning the same product again next time hits the
+    // "already in my library" instant-log path instead of doing another
+    // Open Food Facts lookup.
+    const food = {id:uid(), name, category:cat, foodType: type || undefined, calories:cal, protein:p, carbs:c, fat:f, fiber:0, sodium:0, favorite:false, usageCount:0, isCustom:true, barcode: pendingNewFoodBarcode || undefined};
+    pendingNewFoodBarcode = null;
     state.library.foods.push(food);
     resetNewFoodSheet();
     await quickAddFood(food, null);

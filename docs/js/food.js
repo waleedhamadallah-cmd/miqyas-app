@@ -278,6 +278,13 @@ function openEditFood(food){
 
 function resetNewFoodSheet(){
   state.editingFoodId = null;
+  // Cleared here (not just after a successful save) so opening this form
+  // from anywhere OTHER than a barcode scan — the library's own "+ إضافة
+  // وجبة جديدة", editing an existing food, or AI-scan's general-mode
+  // fallback — never accidentally attaches a stale barcode left over from
+  // an earlier scan. applyBarcodeProductToNewFoodForm()/openBarcodeManualNewFood()
+  // in barcode.js both call this first, then set the real value right after.
+  if(typeof pendingNewFoodBarcode!=='undefined') pendingNewFoodBarcode = null;
   document.getElementById('sheetNewFoodTitle').textContent = 'وجبة جديدة';
   document.getElementById('btnSaveNewFoodLabel').textContent = 'حفظ وإضافة لليوم';
   ['nfName','nfCal','nfP','nfC','nfF','nfType'].forEach(id=> document.getElementById(id).value='');

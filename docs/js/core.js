@@ -1086,7 +1086,7 @@ function attachSwipeToDelete(rowEl, onConfirmDelete){
 
 const overlay = document.getElementById('overlay');
 
-const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetEditMeal','sheetApplyTemplate','sheetAiScan','sheetSettings','sheetBodyWeight','sheetOnboarding','sheetRecipeBuilder','sheetMealTemplates','sheetShareCard','sheetReport','sheetStepsDetail'];
+const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetEditMeal','sheetApplyTemplate','sheetAiScan','sheetBarcodeScan','sheetSettings','sheetBodyWeight','sheetOnboarding','sheetRecipeBuilder','sheetMealTemplates','sheetShareCard','sheetReport','sheetStepsDetail'];
 
 function openSheet(id){
   closeAllSheets();
@@ -1098,6 +1098,12 @@ function closeAllSheets(){
   overlay.classList.remove('show');
   allSheets.forEach(id=>document.getElementById(id).classList.remove('show'));
   document.getElementById('fab').classList.remove('rot');
+  // The barcode sheet leaves a live camera stream running until this
+  // fires — every path that closes a sheet (backdrop tap, ✕ button, or
+  // navigating straight into sheetNewFood after a successful scan) goes
+  // through here, so this is the one place that reliably stops it instead
+  // of leaving the camera light on after the sheet is gone.
+  if(typeof stopBarcodeCamera==='function') stopBarcodeCamera();
 }
 
 /* ============================================================
