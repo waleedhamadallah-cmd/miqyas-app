@@ -392,10 +392,21 @@ function bindEvents(){
   /* ---------- Theme ---------- */
   document.getElementById('themeDarkBtn').addEventListener('click', ()=>{ if(appState.theme!=='dark') toggleTheme(); renderThemeButtons(); });
   document.getElementById('themeLightBtn').addEventListener('click', ()=>{ if(appState.theme!=='light') toggleTheme(); renderThemeButtons(); });
+  // role="button" divs (like aiScanModeToggle's .theme-opt buttons) need
+  // their own Enter/Space handling — a native <button> gets that for free,
+  // a div with just role="button" doesn't.
+  document.querySelectorAll('#sheetSettings .theme-toggle .theme-opt').forEach(btn=>{
+    btn.addEventListener('keydown', (e)=>{
+      if(e.key==='Enter' || e.key===' '){ e.preventDefault(); btn.click(); }
+    });
+  });
 
   /* ---------- Water tracker ---------- */
   document.querySelectorAll('[data-water]').forEach(btn=>{
     btn.addEventListener('click', ()=> addWater(parseInt(btn.getAttribute('data-water'),10)));
+    btn.addEventListener('keydown', (e)=>{
+      if(e.key==='Enter' || e.key===' '){ e.preventDefault(); btn.click(); }
+    });
   });
   document.getElementById('btnAddCustomWater').addEventListener('click', ()=>{
     const input = document.getElementById('waterCustomInput');
@@ -403,6 +414,9 @@ function bindEvents(){
     if(!val || val<=0){ showToast('اكتب كمية صحيحة بالمل'); return; }
     addWater(val);
     input.value = '';
+  });
+  document.getElementById('btnAddCustomWater').addEventListener('keydown', (e)=>{
+    if(e.key==='Enter' || e.key===' '){ e.preventDefault(); e.target.click(); }
   });
 
   /* ---------- Smart goal calculator (opens onboarding flow) ---------- */
@@ -569,8 +583,15 @@ function updateReminderFieldStates(){
    THEME BUTTONS
    ============================================================ */
 function renderThemeButtons(){
-  document.getElementById('themeDarkBtn').classList.toggle('active', appState.theme!=='light');
-  document.getElementById('themeLightBtn').classList.toggle('active', appState.theme==='light');
+  const darkBtn = document.getElementById('themeDarkBtn');
+  const lightBtn = document.getElementById('themeLightBtn');
+  darkBtn.classList.toggle('active', appState.theme!=='light');
+  lightBtn.classList.toggle('active', appState.theme==='light');
+  // Kept in sync with .active — see renderAiScanModeToggle() in ai.js for
+  // the same pattern on the other theme-opt toggle in this app (the AI scan
+  // mode switch), which already did this correctly.
+  darkBtn.setAttribute('aria-pressed', appState.theme!=='light');
+  lightBtn.setAttribute('aria-pressed', appState.theme==='light');
 }
 
 /* ============================================================
