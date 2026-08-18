@@ -276,7 +276,6 @@
       <input type="text" id="sheetFoodSearch" placeholder="ابحث عن وجبة...">
       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
     </div>
-    <div class="chipbar" id="sheetFoodCatBar"></div>
     <div id="sheetFoodList"></div>
     <button class="btn-secondary" id="btnAddCustomFood2">+ إضافة وجبة جديدة للمكتبة</button>
   </div>
@@ -287,14 +286,6 @@
   <div class="sheet-head"><h3 id="sheetNewFoodTitle">وجبة جديدة</h3><div class="sheet-close" data-close aria-label="إغلاق" role="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></div></div>
   <div class="sheet-body">
     <div class="form-field"><label for="nfName">اسم الوجبة</label><input type="text" id="nfName" placeholder="مثال: صدر دجاج مشوي"></div>
-    <div class="form-field"><label for="nfCat">الفئة</label>
-      <select id="nfCat">
-        <option value="فطور">فطور</option>
-        <option value="غدا">غدا</option>
-        <option value="عشا">عشا</option>
-        <option value="سناك">سناك</option>
-      </select>
-    </div>
     <div class="form-field"><label for="nfType">النوع (يظهرها في بادئ الوجبة السريعة)</label>
       <select id="nfType">
         <option value="">غير محدد</option>
@@ -634,9 +625,6 @@
     <div id="recipePickList"></div>
     <div class="recipe-totals" id="recipeTotals"></div>
     <div class="form-field"><label for="recipeName">اسم الوصفة</label><input type="text" id="recipeName" placeholder="مثال: صحن الدجاج والرز"></div>
-    <div class="form-field"><label for="recipeCat">الفئة</label>
-      <select id="recipeCat"><option value="فطور">فطور</option><option value="غدا">غدا</option><option value="عشا">عشا</option><option value="سناك">سناك</option></select>
-    </div>
     <div class="form-field"><label for="recipeType">النوع (يظهرها في بادئ الوجبة السريعة)</label>
       <select id="recipeType">
         <option value="">غير محدد</option>

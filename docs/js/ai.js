@@ -380,7 +380,7 @@ function renderAiScanMatchedItem(row, food){
     });
     row.querySelector('.ai-scan-qty-confirm-btn').addEventListener('click', async ()=>{
       food.usageCount = (food.usageCount||0)+1;
-      const entry = makeMealEntry(food.name, food.category, food.id,
+      const entry = makeMealEntry(food.name, food.id,
         Math.round(food.calories*qty), Math.round(food.protein*qty), Math.round(food.carbs*qty), Math.round(food.fat*qty),
         Math.round((food.fiber||0)*qty), Math.round((food.sodium||0)*qty));
       state.log.meals.push(entry);

@@ -40,10 +40,9 @@ function renderMealsToday(){
   state.log.meals.forEach(m=>{
     const row = document.createElement('div');
     row.className = 'entry-row';
-    const dotColor = MEAL_CAT_COLORS[m.category] || 'var(--protein)';
     const qtyTag = (m.qty!==undefined && m.qty!==1) ? ` · ×${trimQtyDisplay(m.qty)}` : '';
-    row.innerHTML = `<div class="entry-dot" style="background:${dotColor}"></div>
-      <div class="entry-main"><div class="t1">${escapeHtml(m.name)}</div><div class="t2">${m.category} · ب${Math.round(m.protein)} ك${Math.round(m.carbs)} د${Math.round(m.fat)}${qtyTag}</div></div>
+    row.innerHTML = `
+      <div class="entry-main"><div class="t1">${escapeHtml(m.name)}</div><div class="t2">ب${Math.round(m.protein)} ك${Math.round(m.carbs)} د${Math.round(m.fat)}${qtyTag}</div></div>
       <div class="entry-side tabular">${m.calories}</div>
       <div class="entry-edit-hint">${ICON_PENCIL}</div>
       <div class="entry-del" data-del-meal="${m.id}" aria-label="حذف ${escapeHtml(m.name)}" role="button">${ICON_X}</div>`;
@@ -202,7 +201,7 @@ function buildLibRow(food){
   const row = document.createElement('div');
   row.className = 'lib-row';
   const customTag = food.isCustom ? '<span class="custom-tag">مخصصة</span>' : '';
-  row.innerHTML = `<div class="lm"><div class="n">${escapeHtml(food.name)}${customTag}</div><div class="d">${food.category} · ${food.calories} سعرة · ب${food.protein} ك${food.carbs} د${food.fat}</div></div>
+  row.innerHTML = `<div class="lm"><div class="n">${escapeHtml(food.name)}${customTag}</div><div class="d">${food.calories} سعرة · ب${food.protein} ك${food.carbs} د${food.fat}</div></div>
     <div class="lib-actions">
       <div class="fav-star${food.favorite?' on':''}" data-fav-food="${food.id}" aria-label="${food.favorite?'إزالة من المفضلة':'إضافة للمفضلة'}" role="button">${food.favorite?ICON_STAR_FILLED:ICON_STAR_OUTLINE}</div>
       ${food.isCustom ? `<div class="lib-edit" data-edit-food="${food.id}" aria-label="تعديل" role="button">${ICON_PENCIL}</div>` : ''}
@@ -267,7 +266,6 @@ function openEditFood(food){
   document.getElementById('sheetNewFoodTitle').textContent = 'تعديل الوجبة';
   document.getElementById('btnSaveNewFoodLabel').textContent = 'حفظ التعديلات';
   document.getElementById('nfName').value = food.name;
-  document.getElementById('nfCat').value = food.category;
   document.getElementById('nfType').value = food.foodType || '';
   document.getElementById('nfCal').value = food.calories;
   document.getElementById('nfP').value = food.protein;
@@ -288,12 +286,6 @@ function resetNewFoodSheet(){
   document.getElementById('sheetNewFoodTitle').textContent = 'وجبة جديدة';
   document.getElementById('btnSaveNewFoodLabel').textContent = 'حفظ وإضافة لليوم';
   ['nfName','nfCal','nfP','nfC','nfF','nfType'].forEach(id=> document.getElementById(id).value='');
-  // nfCat has no empty option (unlike nfType), so `.value=''` wouldn't
-  // actually change a <select> that's currently on "عشا"/"سناك"/etc from a
-  // previous edit — openEditFood() sets it explicitly, but nothing was
-  // resetting it back, so a brand-new food silently inherited whatever
-  // category the last-EDITED food happened to have.
-  document.getElementById('nfCat').selectedIndex = 0;
 }
 
 function deleteCustomFood(food){
@@ -321,17 +313,13 @@ function renderWeeklyFoodSummary(){
     d.setDate(d.getDate()-i);
     days.push(todayKey(d));
   }
-  const catSums = {'فطور':0,'غدا':0,'عشا':0,'سناك':0};
   let totalCal = 0, loggedDays = 0;
   days.forEach(dateKey=>{
     const dayLog = appState.logs[dateKey];
     const meals = dayLog ? (dayLog.meals||[]) : [];
     if(meals.length===0) return;
     loggedDays++;
-    meals.forEach(m=>{
-      totalCal += m.calories;
-      if(catSums[m.category]!==undefined) catSums[m.category] += m.calories;
-    });
+    meals.forEach(m=> totalCal += m.calories);
   });
 
   if(loggedDays===0){
@@ -344,12 +332,7 @@ function renderWeeklyFoodSummary(){
   const avgHtml = `<div class="insight-row"><div class="insight-icon" style="background:var(--protein-soft); color:var(--protein-text);">${ICON_BAR_CHART}</div>
     <div class="insight-tx"><div class="it1">متوسط سعراتك ${avgCal.toLocaleString('en-US')} سعرة باليوم</div><div class="it2">على أساس ${loggedDays} من آخر 7 أيام سجلتها</div></div></div>`;
 
-  const topCat = Object.keys(catSums).reduce((a,b)=> catSums[b]>catSums[a] ? b : a);
-  const topCatPct = totalCal ? Math.round((catSums[topCat]/totalCal)*100) : 0;
-  const catHtml = totalCal ? `<div class="insight-row"><div class="insight-icon" style="background:var(--fat-soft); color:var(--fat-text);">${ICON_MEAL}</div>
-    <div class="insight-tx"><div class="it1">أكثر فئة تاكل منها: ${topCat}</div><div class="it2">${topCatPct}٪ من سعرات الأسبوع</div></div></div>` : '';
-
-  wrap.innerHTML = avgHtml + catHtml;
+  wrap.innerHTML = avgHtml;
 }
 
 // Builds a logged-meal entry with qty=1 and its base-serving macros saved
@@ -357,9 +340,9 @@ function renderWeeklyFoodSummary(){
 // values separate from the scaled ones lets the edit-meal sheet rescale a
 // logged entry later (½×, 1.5×, a custom multiplier, ...) without losing
 // precision from repeatedly scaling an already-scaled number.
-function makeMealEntry(name, category, foodId, calories, protein, carbs, fat, fiber, sodium){
+function makeMealEntry(name, foodId, calories, protein, carbs, fat, fiber, sodium){
   return {
-    id:uid(), foodId, name, category, qty:1,
+    id:uid(), foodId, name, qty:1,
     baseCalories:calories, baseProtein:protein, baseCarbs:carbs, baseFat:fat,
     baseFiber:fiber||0, baseSodium:sodium||0,
     calories, protein, carbs, fat, fiber:fiber||0, sodium:sodium||0,
@@ -368,7 +351,7 @@ function makeMealEntry(name, category, foodId, calories, protein, carbs, fat, fi
 }
 
 async function quickAddFood(food, chipEl){
-  const entry = makeMealEntry(food.name, food.category, food.id, food.calories, food.protein, food.carbs, food.fat, food.fiber, food.sodium);
+  const entry = makeMealEntry(food.name, food.id, food.calories, food.protein, food.carbs, food.fat, food.fiber, food.sodium);
   state.log.meals.push(entry);
   food.usageCount = (food.usageCount||0)+1;
   persist();
@@ -490,7 +473,7 @@ function confirmApplyTemplate(){
   // way editing one of these entries afterward behaves exactly like any
   // other logged meal.
   t.foods.forEach(f=>{
-    const entry = makeMealEntry(f.name, f.category, f.foodId,
+    const entry = makeMealEntry(f.name, f.foodId,
       Math.round(f.calories*qty), Math.round(f.protein*qty), Math.round(f.carbs*qty), Math.round(f.fat*qty),
       Math.round((f.fiber||0)*qty), Math.round((f.sodium||0)*qty));
     state.log.meals.push(entry);
@@ -506,7 +489,7 @@ function saveTodayAsTemplate(){
   if(state.log.meals.length===0){ showToast('ما فيه وجبات اليوم للحفظ'); return; }
   const name = prompt('اسم القالب:', 'وجباتي المعتادة');
   if(!name) return;
-  const foods = state.log.meals.map(m=>({foodId:m.foodId, name:m.name, category:m.category, calories:m.calories, protein:m.protein, carbs:m.carbs, fat:m.fat, fiber:m.fiber||0, sodium:m.sodium||0}));
+  const foods = state.log.meals.map(m=>({foodId:m.foodId, name:m.name, calories:m.calories, protein:m.protein, carbs:m.carbs, fat:m.fat, fiber:m.fiber||0, sodium:m.sodium||0}));
   if(!appState.mealTemplates) appState.mealTemplates = [];
   appState.mealTemplates.push({id:uid(), name, foods});
   persist();
@@ -553,7 +536,6 @@ function renderRecipeTotals(){
 }
 function saveRecipe(){
   const name = (document.getElementById('recipeName').value||'').trim();
-  const cat = document.getElementById('recipeCat').value;
   const type = document.getElementById('recipeType').value;
   if(!name){ showToast('اكتب اسم الوصفة أول'); return; }
   if(recipeSelectedIds.length===0){ showToast('اختر مكوّن وحد على الأقل'); return; }
@@ -562,7 +544,7 @@ function saveRecipe(){
     calories:acc.calories+f.calories, protein:acc.protein+f.protein, carbs:acc.carbs+f.carbs,
     fat:acc.fat+f.fat, fiber:acc.fiber+(f.fiber||0), sodium:acc.sodium+(f.sodium||0)
   }), {calories:0,protein:0,carbs:0,fat:0,fiber:0,sodium:0});
-  const food = {id:uid(), name, category:cat, foodType: type || undefined, calories:Math.round(totals.calories), protein:Math.round(totals.protein),
+  const food = {id:uid(), name, foodType: type || undefined, calories:Math.round(totals.calories), protein:Math.round(totals.protein),
     carbs:Math.round(totals.carbs), fat:Math.round(totals.fat), fiber:Math.round(totals.fiber), sodium:Math.round(totals.sodium),
     favorite:false, usageCount:0, isCustom:true};
   state.library.foods.push(food);
@@ -575,20 +557,6 @@ function saveRecipe(){
   showToast(`تم حفظ وصفة ${name} 🍲`);
 }
 
-function renderSheetFoodCatBar(){
-  const bar = document.getElementById('sheetFoodCatBar');
-  if(state.mealBuilderMode){ bar.innerHTML=''; bar.style.display='none'; return; }
-  bar.style.display='';
-  bar.innerHTML = '';
-  FOOD_CATS.forEach(cat=>{
-    const chip = document.createElement('div');
-    chip.className = 'filter-chip'+(state.activeSheetFoodCat===cat?' active':'');
-    chip.textContent = cat;
-    chip.addEventListener('click', ()=>{ state.activeSheetFoodCat = cat; renderSheetFoodCatBar(); renderSheetFoodList(); });
-    bar.appendChild(chip);
-  });
-}
-
 function renderSheetFoodList(){
   const wrap = document.getElementById('sheetFoodList');
   const q = (document.getElementById('sheetFoodSearch').value||'').trim();
@@ -596,8 +564,6 @@ function renderSheetFoodList(){
   let list = state.library.foods;
   if(state.mealBuilderMode){
     list = list.filter(f=>f.foodType===state.mealBuilderStep);
-  } else if(state.activeSheetFoodCat!=='الكل'){
-    list = list.filter(f=>f.category===state.activeSheetFoodCat);
   }
   if(q) list = list.filter(f=>f.name.includes(q));
   list = sortFoodList(list);
@@ -610,7 +576,7 @@ function renderSheetFoodList(){
     // means instant add. Showing the same "+" in both modes used to imply
     // the food was logged the moment you tapped it, even mid-pick.
     const marker = state.mealBuilderMode ? '›' : '+';
-    row.innerHTML = `<div class="lm"><div class="n">${escapeHtml(food.name)}</div><div class="d">${food.category} · ${food.calories} سعرة · ب${food.protein} ك${food.carbs} د${food.fat}</div></div>
+    row.innerHTML = `<div class="lm"><div class="n">${escapeHtml(food.name)}</div><div class="d">${food.calories} سعرة · ب${food.protein} ك${food.carbs} د${food.fat}</div></div>
       <div class="lib-add">${marker}</div>`;
     row.addEventListener('click', async ()=>{
       if(state.mealBuilderMode){ pickMealBuilderFood(food); }
@@ -628,7 +594,6 @@ function toggleMealBuilder(){
   state.mealBuilderStep = 'protein';
   state.mealBuilderPicks = {protein:null, carb:null};
   document.getElementById('mealBuilderToggle').classList.toggle('on', state.mealBuilderMode);
-  renderSheetFoodCatBar();
   renderMealBuilderBar();
   renderSheetFoodList();
 }
@@ -672,7 +637,7 @@ async function finishMealBuilder(){
     calories:acc.calories+f.calories, protein:acc.protein+f.protein, carbs:acc.carbs+f.carbs,
     fat:acc.fat+f.fat, fiber:acc.fiber+(f.fiber||0), sodium:acc.sodium+(f.sodium||0)
   }), {calories:0,protein:0,carbs:0,fat:0,fiber:0,sodium:0});
-  const entry = makeMealEntry(name, 'غدا', null,
+  const entry = makeMealEntry(name, null,
     Math.round(totals.calories), Math.round(totals.protein), Math.round(totals.carbs),
     Math.round(totals.fat), Math.round(totals.fiber), Math.round(totals.sodium));
   state.log.meals.push(entry);

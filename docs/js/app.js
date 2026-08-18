@@ -132,13 +132,12 @@ function bindEvents(){
   document.querySelectorAll('[data-close]').forEach(b=> b.addEventListener('click', closeAllSheets));
 
   document.getElementById('qaFood').addEventListener('click', ()=>{
-    state.activeSheetFoodCat='الكل';
     state.mealBuilderMode = false;
     state.mealBuilderStep = 'protein';
     state.mealBuilderPicks = {protein:null, carb:null};
     document.getElementById('sheetFoodSearch').value='';
     document.getElementById('mealBuilderToggle').classList.remove('on');
-    renderSheetFoodCatBar(); renderMealBuilderBar(); renderSheetFoodList();
+    renderMealBuilderBar(); renderSheetFoodList();
     openSheet('sheetFood');
   });
   document.getElementById('mealBuilderToggle').addEventListener('click', toggleMealBuilder);
@@ -236,7 +235,6 @@ function bindEvents(){
 
   document.getElementById('btnSaveNewFood').addEventListener('click', async ()=>{
     const name = document.getElementById('nfName').value.trim();
-    const cat = document.getElementById('nfCat').value;
     const type = document.getElementById('nfType').value;
     const cal = parseFloat(document.getElementById('nfCal').value)||0;
     const p = parseFloat(document.getElementById('nfP').value)||0;
@@ -250,7 +248,7 @@ function bindEvents(){
         // fiber/sodium intentionally left untouched here — the fields were
         // removed from this form, so whatever value the food already had
         // (usually 0 from defaultFoods()) just carries forward as-is.
-        Object.assign(food, {name, category:cat, foodType: type || undefined, calories:cal, protein:p, carbs:c, fat:f});
+        Object.assign(food, {name, foodType: type || undefined, calories:cal, protein:p, carbs:c, fat:f});
         persist();
         showToast(`تم تحديث ${name} ✏️`);
       }
@@ -265,7 +263,7 @@ function bindEvents(){
     // in barcode.js) so scanning the same product again next time hits the
     // "already in my library" instant-log path instead of doing another
     // Open Food Facts lookup.
-    const food = {id:uid(), name, category:cat, foodType: type || undefined, calories:cal, protein:p, carbs:c, fat:f, fiber:0, sodium:0, favorite:false, usageCount:0, isCustom:true, barcode: pendingNewFoodBarcode || undefined};
+    const food = {id:uid(), name, foodType: type || undefined, calories:cal, protein:p, carbs:c, fat:f, fiber:0, sodium:0, favorite:false, usageCount:0, isCustom:true, barcode: pendingNewFoodBarcode || undefined};
     pendingNewFoodBarcode = null;
     state.library.foods.push(food);
     resetNewFoodSheet();
@@ -557,13 +555,12 @@ function bindEvents(){
   document.getElementById('btnOpenRecipeBuilder').addEventListener('click', ()=>{
     recipeSelectedIds = [];
     document.getElementById('recipeSearch').value = '';
-    // recipeCat/recipeName/recipeType were never reset anywhere (only
-    // recipeName/recipeType got cleared, and only on a successful save) —
-    // so closing the builder without saving, or saving once, left the next
-    // recipe silently starting from whatever the last one had. This is the
-    // "start fresh" moment, same idea as resetNewFoodSheet() for the food form.
+    // recipeName/recipeType were never reset anywhere except on a
+    // successful save, so closing the builder without saving, or saving
+    // once, left the next recipe silently starting from whatever the last
+    // one had. This is the "start fresh" moment, same idea as
+    // resetNewFoodSheet() for the food form.
     document.getElementById('recipeName').value = '';
-    document.getElementById('recipeCat').selectedIndex = 0;
     document.getElementById('recipeType').value = '';
     renderRecipePickList();
     renderRecipeTotals();
