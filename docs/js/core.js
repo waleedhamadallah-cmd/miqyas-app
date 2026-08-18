@@ -126,11 +126,161 @@ function syncHealthConnectHydration(ml){
   }catch(e){ /* no-op outside the native app / without permission */ }
 }
 
+/* ============================================================
+   HEALTH CONNECT — read-only bridge (steps).
+   Read-only, steps-only, up to the trailing 30 days — see
+   HealthConnectPlugin.kt's class doc for the permission-scope rationale.
+   Both fetch functions below are plain fetch-and-cache helpers: they never
+   touch the DOM themselves (that's renderStepsCard()/renderStepsDetail()
+   in home.js) and they always resolve (never throw) so a caller can
+   safely fire-and-forget them.
+   ============================================================ */
+
+// Writes {steps, fetchedAt} into appState.stepsCache[dateKey] and persists.
+// Shared by both read helpers below so the cache always has a consistent
+// shape regardless of which one last touched a given day.
+//
+// Also the single choke point every steps value (today or historical)
+// passes through, so it's the natural place to fire the one-off "goal
+// reached" notification the moment TODAY's synced count first crosses the
+// goal — gated on appState.stepsGoalNotifiedDate so re-fetching an
+// already-met day (e.g. every app resume) doesn't re-notify, and scoped to
+// dateKey===today so a bulk 30-day history fetch never fires it for a past
+// day that happened to meet the goal.
+function cacheSteps(dateKey, steps){
+  if(!appState) return;
+  if(!appState.stepsCache) appState.stepsCache = {};
+  const roundedSteps = Math.max(0, Math.round(steps||0));
+  const prev = appState.stepsCache[dateKey];
+  appState.stepsCache[dateKey] = {steps: roundedSteps, fetchedAt: Date.now()};
+  const goal = (appState.goals && appState.goals.steps) || 8000;
+  const isToday = dateKey === todayKey(new Date());
+  const justCrossedGoal = roundedSteps >= goal && (!prev || prev.steps < goal);
+  if(isToday && justCrossedGoal && appState.stepsGoalNotifiedDate !== dateKey){
+    appState.stepsGoalNotifiedDate = dateKey;
+    if(typeof notifyStepsGoalReached==='function') notifyStepsGoalReached(roundedSteps, goal);
+  }
+  persist();
+}
+
+// Refreshes *today's* step count only. Cheap, meant to be called often
+// (app resume, pull-to-refresh, right after granting access) — mirrors
+// readTodaySteps() on the native side, which re-aggregates from local
+// midnight to now every time (no server round-trip, Health Connect is a
+// local on-device store).
+async function healthConnectReadTodaySteps(){
+  try{
+    if(!appState || !appState.healthConnectGranted) return null;
+    const plugin = healthConnectPlugin();
+    if(!plugin) return null;
+    const res = await plugin.readTodaySteps();
+    const steps = (res && typeof res.steps==='number') ? res.steps : 0;
+    cacheSteps(todayKey(new Date()), steps);
+    return steps;
+  }catch(e){ return null; /* no-op outside the native app / without permission */ }
+}
+
+// Refreshes a trailing N-day window (today + previous N-1 days, capped at
+// 30 — Health Connect's own default access window without the extra
+// READ_HEALTH_DATA_HISTORY permission this app deliberately doesn't
+// request) in one native call. Used for both the Home card's 7-day
+// preview and the steps-detail sheet's 30-day monthly view/streak — see
+// refreshStepsWeek()/refreshStepsMonth() in progress.js. Fills every day
+// in the cache, including days Health Connect returned no record for
+// (real zero, not "unknown") — see readStepsHistory() on the native side.
+async function healthConnectReadStepsHistory(days){
+  try{
+    if(!appState || !appState.healthConnectGranted) return null;
+    const plugin = healthConnectPlugin();
+    if(!plugin) return null;
+    const n = Math.max(1, Math.min(30, days||7));
+    const res = await plugin.readStepsHistory({days: n});
+    const list = (res && Array.isArray(res.days)) ? res.days : [];
+    list.forEach(d=>{ if(d && d.date) cacheSteps(d.date, d.steps||0); });
+    return list;
+  }catch(e){ return null; /* no-op outside the native app / without permission */ }
+}
+
+// Most recent recorded body weight (kg) — falls back to a population
+// average (70kg) if the user hasn't logged one yet, purely so the steps
+// distance/calorie estimates below are never blank for a brand-new user.
+// Never itself shown as if it were a real logged weight.
+function latestBodyWeightKg(){
+  const weights = appState && appState.bodyWeights;
+  if(!weights) return 70;
+  const dates = Object.keys(weights).sort();
+  if(dates.length===0) return 70;
+  return weights[dates[dates.length-1]] || 70;
+}
+
+// Distance/calorie estimates from a step count. StepsRecord carries no
+// distance/energy fields of its own (a raw count is all any source,
+// including Zepp, is required to report to Health Connect), so these are
+// computed client-side the same way most pedometer apps do:
+//  - stride length personalized from height (heightCm * 0.414 / 100),
+//    falling back to an average adult height (170cm) if the user hasn't
+//    filled in Settings' profile.
+//  - calories via the standard MET-based walking energy-expenditure
+//    formula (an "average pace" MET of 3.5, ~4.8km/h — the same method
+//    used by widely-cited steps-to-calories calculators), scaled by the
+//    user's own latest logged weight.
+// Deliberately NOT wired into the main calorie ring/goal math anywhere —
+// that ring tracks food *intake* against a fixed target, and folding an
+// estimated *expenditure* number into it would silently change what
+// "سعرة متبقية" means for every existing user. These are shown purely as
+// their own informational stats on the steps card/detail sheet.
+function estimateStepsDistanceKm(steps){
+  const heightCm = (appState && appState.profile && appState.profile.heightCm) || 170;
+  const strideM = (heightCm/100) * 0.414;
+  return (Math.max(0,steps) * strideM) / 1000;
+}
+function estimateStepsCalories(steps){
+  const AVG_WALK_KMH = 4.824; // ~1.34 m/s, the "average pace" reference speed
+  const MET = 3.5;
+  const distanceKm = estimateStepsDistanceKm(steps);
+  const hours = distanceKm / AVG_WALK_KMH;
+  return hours * 60 * (MET * 3.5 * latestBodyWeightKg() / 200);
+}
+
+// Consecutive days (most recent backwards, up to the 30-day cache window)
+// meeting the daily steps goal — separate from the meal-logging streak
+// above. Today doesn't break an existing streak just for not being over
+// the goal *yet*; it simply isn't counted until it is, matching how
+// StepsApp and most pedometer apps treat a still-in-progress "today".
+// Only reflects whatever's in appState.stepsCache, so it's only as deep as
+// the last healthConnectReadStepsHistory(30) call reached — see
+// refreshStepsMonth() in progress.js.
+function computeStepsStreak(){
+  const goal = (state.goals && state.goals.steps) || 8000;
+  const cache = (appState && appState.stepsCache) || {};
+  let streak = 0;
+  for(let i=0;i<30;i++){
+    const key = dateKeyOffset(i);
+    const entry = cache[key];
+    const met = !!(entry && entry.steps >= goal);
+    if(i===0){ if(met) streak++; continue; }
+    if(met) streak++; else break;
+  }
+  return streak;
+}
+
 function defaultAppState(){
   return {
     library:{foods:defaultFoods()}, goals:defaultGoals(), logs:{},
     bodyWeights:{}, bodyFat:{}, bodyMeasurements:{}, mealTemplates:[],
     theme:'dark', onboarded:false, updatedAt:0, healthConnectGranted:false,
+    // Cache of {steps, fetchedAt} per dateKey, read from Health Connect —
+    // see renderStepsCard()/refreshSteps() in docs/js/home.js. Just a
+    // re-fetchable snapshot (not user-entered data), so it's fine if it
+    // rides along in a cloud sync payload like the rest of appState — the
+    // steps card itself only ever renders on a device with the native
+    // Health Connect plugin available, which re-fetches fresh on its own
+    // right after any pull, so a stale/foreign value never lingers visibly.
+    stepsCache:{},
+    // dateKey of the last day a "goal reached" steps notification already
+    // fired for — see cacheSteps() in this file — so re-fetching an
+    // already-met day doesn't re-notify every refresh.
+    stepsGoalNotifiedDate:null,
     aiProxyUrl:'', aiProxySecret:'',
     // 'library' matches only against the user's own saved foods (fast,
     // trusted, no macros shown for a non-match); 'general' asks the AI to
@@ -167,7 +317,10 @@ function rebindFromAppState(){
   if(appState.goals.water===undefined) appState.goals.water = 2500;
   if(appState.goals.fiber===undefined) appState.goals.fiber = 30;
   if(appState.goals.sodium===undefined) appState.goals.sodium = 2300;
+  if(appState.goals.steps===undefined) appState.goals.steps = 8000;
   if(appState.healthConnectGranted===undefined) appState.healthConnectGranted = false;
+  if(!appState.stepsCache) appState.stepsCache = {};
+  if(appState.stepsGoalNotifiedDate===undefined) appState.stepsGoalNotifiedDate = null;
   if(appState.aiProxyUrl===undefined) appState.aiProxyUrl = '';
   if(appState.aiProxySecret===undefined) appState.aiProxySecret = '';
   if(appState.aiScanMode!=='library' && appState.aiScanMode!=='general') appState.aiScanMode = 'library';
@@ -385,7 +538,14 @@ function defaultFoods(){
   ];
 }
 
-function defaultGoals(){ return {calories:2200, protein:150, carbs:220, fat:70, water:2500, fiber:30, sodium:2300}; }
+// 8,000 (not the "10,000 steps" myth — that number traces back to 1960s
+// pedometer marketing, not a health guideline) — current step-count
+// research (e.g. the 2023 meta-analysis covered by Harvard Health) shows
+// mortality-risk reduction accruing up to roughly 7,000-8,000 steps/day,
+// after which the benefit curve flattens; picked as a realistic, still
+// evidence-backed default rather than an inflated one. User-editable in
+// Settings same as every other goal here.
+function defaultGoals(){ return {calories:2200, protein:150, carbs:220, fat:70, water:2500, fiber:30, sodium:2300, steps:8000}; }
 
 const state = {
   library: {foods:[]},
@@ -612,6 +772,48 @@ function buildDualChartSvg(pointsA, pointsB, opts){
   </div>`;
 }
 
+// Steps are a discrete per-day total (not a continuously-sampled value like
+// weight), so a bar chart reads more honestly than a line chart connecting
+// day-to-day dots that implies a trend between them that isn't really
+// there. `days` is exactly 7 entries {date, steps}, oldest first (as
+// returned by readWeekSteps()/the stepsCache) — every day always present,
+// zero-filled rather than sparse, so bar heights are never misleadingly
+// skipped. Dashed reference line marks the daily goal.
+// Generic bars = [{label, value}], oldest first (leftmost) — same
+// left-to-right-is-chronological convention as every other chart in this
+// file (SVG coordinate space isn't mirrored by the page's RTL direction,
+// so leftmost=oldest reads correctly regardless). Used both for a plain
+// daily view (bars.length===7, label = weekday) and a monthly view where
+// the caller has already pre-bucketed 30 days into a handful of weekly
+// averages (label = a short date) — this function itself doesn't care
+// which, it just draws whatever bars it's given against one goal
+// reference line.
+function buildStepsBarChart(bars, goal){
+  if(!bars || bars.length===0) return emptyStateHtml('chart', 'وصّل Health Connect عشان يبين هنا اتجاه خطواتك');
+  const w = 300, h = 140, pad = 18, padBottom = 30;
+  const maxVal = Math.max(goal, ...bars.map(b=>b.value), 1);
+  const plotH = h - pad - padBottom;
+  const barSlot = (w - pad*2) / bars.length;
+  const barW = Math.min(barSlot*0.55, 26);
+  const yFor = v => pad + plotH - (v/maxVal)*plotH;
+  const rects = bars.map((b,i)=>{
+    const cx = pad + barSlot*i + barSlot/2;
+    const y = yFor(b.value);
+    const barH = Math.max(pad + plotH - y, b.value>0 ? 2 : 0);
+    const met = b.value >= goal;
+    return `<g>
+      <rect x="${(cx-barW/2).toFixed(1)}" y="${y.toFixed(1)}" width="${barW.toFixed(1)}" height="${barH.toFixed(1)}" rx="4"
+        fill="${met ? 'var(--steps)' : 'var(--steps-soft)'}" stroke="${met ? 'none' : 'var(--steps)'}" stroke-width="${met?0:1.5}"/>
+      <text x="${cx.toFixed(1)}" y="${h-14}" text-anchor="middle" font-size="9" fill="var(--text-mute)">${escapeHtml(b.label)}</text>
+    </g>`;
+  }).join('');
+  const goalY = yFor(goal).toFixed(1);
+  return `<svg viewBox="0 0 ${w} ${h}" width="100%" height="140">
+    <line x1="${pad}" y1="${goalY}" x2="${w-pad}" y2="${goalY}" stroke="var(--text-mute)" stroke-width="1" stroke-dasharray="4,3"/>
+    ${rects}
+  </svg>`;
+}
+
 function showToast(msg){
   const t = document.getElementById('toast');
   document.getElementById('toastMsg').textContent = msg;
@@ -755,7 +957,7 @@ function attachSwipeToDelete(rowEl, onConfirmDelete){
 
 const overlay = document.getElementById('overlay');
 
-const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetEditMeal','sheetAiScan','sheetSettings','sheetBodyWeight','sheetOnboarding','sheetRecipeBuilder','sheetMealTemplates','sheetShareCard','sheetReport'];
+const allSheets = ['sheetQuick','sheetFood','sheetNewFood','sheetEditMeal','sheetAiScan','sheetSettings','sheetBodyWeight','sheetOnboarding','sheetRecipeBuilder','sheetMealTemplates','sheetShareCard','sheetReport','sheetStepsDetail'];
 
 function openSheet(id){
   closeAllSheets();
@@ -790,6 +992,11 @@ function switchTab(tab){
   if(fab) fab.classList.toggle('fab-hidden', !showFab);
   const appEl = document.getElementById('app');
   if(appEl) appEl.classList.toggle('has-fab', showFab);
+  // Opening Progress re-fetches the weekly steps trend — a heavier native
+  // aggregate call than the Home card's today-only refresh, so it only
+  // happens when the user is actually about to look at it, not on every
+  // app resume.
+  if(tab==='progress' && appState && appState.healthConnectGranted && typeof refreshStepsHistory==='function') refreshStepsHistory();
 }
 
 /* ============================================================
@@ -869,12 +1076,22 @@ function checkDateRollover(){
   renderAll();
 }
 
+// Runs on every return-to-foreground, not just a date rollover — steps are
+// "as of last sync" data (Zepp/the watch push to Health Connect on their
+// own schedule, mِقياس doesn't stream it), so re-checking on resume is the
+// cheapest way to keep the Home card from ever looking too stale without
+// polling in the background.
+function onAppForeground(){
+  checkDateRollover();
+  if(appState && appState.healthConnectGranted && typeof refreshSteps==='function') refreshSteps();
+}
+
 function bindDateRolloverCheck(){
-  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) checkDateRollover(); });
+  document.addEventListener('visibilitychange', ()=>{ if(!document.hidden) onAppForeground(); });
   const appPlugin = window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.App;
   if(appPlugin && appPlugin.addListener){
-    appPlugin.addListener('appStateChange', ({isActive})=>{ if(isActive) checkDateRollover(); });
-    appPlugin.addListener('resume', ()=> checkDateRollover());
+    appPlugin.addListener('appStateChange', ({isActive})=>{ if(isActive) onAppForeground(); });
+    appPlugin.addListener('resume', ()=> onAppForeground());
   }
 }
 

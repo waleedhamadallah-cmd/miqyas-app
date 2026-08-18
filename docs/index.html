@@ -107,8 +107,42 @@
       </div>
     </div>
 
+    <!-- "نشاطك اليوم": steps + streak + week-progress share one card shell
+         instead of three separate ones — same information, just grouped
+         (shorter page, tidier stack of boxes). Steps row: read-only,
+         synced from Health Connect (written there by a wearable's
+         companion app, e.g. Zepp) — never shown at all outside the native
+         Android app (no step sensor exists on plain web/PWA), and shown as
+         a lightweight inline "connect" prompt instead of the real row
+         until the user grants access. Compact single-line ring here on
+         purpose — distance/calories/goal detail live one tap away in
+         #sheetStepsDetail, not duplicated on Home. See renderStepsCard() /
+         renderStepsDetail() in docs/js/home.js. -->
     <div class="stats-combo">
-      <div class="streak-card">
+      <div class="activity-row steps-row" id="stepsCard" style="display:none;">
+        <div id="stepsCardConnect" style="display:none;">
+          <div class="steps-connect-row" id="stepsConnectPrompt">
+            <span class="steps-connect-ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3 4 14h7l-1 7 9-11h-7l1-7z"></path></svg></span>
+            <span class="steps-connect-tx">اربط Health Connect عشان نعرض خطواتك هنا (من تطبيق ساعتك، مثل Zepp)</span>
+          </div>
+        </div>
+        <div id="stepsCardData" class="steps-mini-row" style="display:none;" role="button" tabindex="0" aria-label="افتح تفاصيل الخطوات">
+          <div class="steps-ring-wrap sm">
+            <svg class="steps-ring-svg" viewBox="0 0 100 100">
+              <circle class="steps-ring-track" cx="50" cy="50" r="42" fill="none" stroke-width="10"/>
+              <circle id="stepsRingProgress" class="steps-ring-progress" cx="50" cy="50" r="42" fill="none" stroke-width="10" stroke-linecap="round" transform="rotate(-90 50 50)"/>
+            </svg>
+          </div>
+          <div class="steps-mini-info">
+            <div class="steps-mini-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3 4 14h7l-1 7 9-11h-7l1-7z"></path></svg>خطوات</div>
+            <div class="steps-mini-val tabular"><span id="stepsValText">0</span> / <span id="stepsGoalText">8,000</span></div>
+          </div>
+          <div class="steps-mini-caption" id="stepsCaption">—</div>
+          <div class="steps-open-hint">‹</div>
+        </div>
+      </div>
+
+      <div class="activity-row streak-card">
         <div class="streak-flame" id="streakFlame"><svg viewBox="0 0 24 24"><path d="M12 2c1.2 3.4-3 4.6-3 8.6a3 3 0 0 0 6 0c0-1-.6-1.8-.6-1.8.8 2.2-.6 3-.6 3 .8-2.2-1.4-3.6-1.4-5.4 0 1.4-2 2.2-2 4.4a3.6 3.6 0 0 0 7.2 0c0-4.2-2.9-6.2-5.6-8.8z"></path></svg></div>
         <div class="streak-info">
           <div class="n"><span id="streakN">0</span> أيام متتالية</div>
@@ -155,6 +189,14 @@
 
     <div class="section-title"><span class="st-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="18" y1="20" x2="18" y2="14"></line></svg>الوزن مقابل السعرات</span></div>
     <div class="insight-card" id="weightCalTrendCard"></div>
+
+    <!-- Steps: read-only, from Health Connect — hidden entirely outside the
+         native app (see renderStepsTrendCard() in progress.js), since
+         there's no step data source on the plain web/PWA. -->
+    <div id="stepsTrendSection" style="display:none;">
+      <div class="section-title"><span class="st-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3 4 14h7l-1 7 9-11h-7l1-7z"></path></svg>خطوات الأسبوع</span></div>
+      <div class="insight-card" id="stepsTrendCard"></div>
+    </div>
 
     <div class="section-title"><span class="st-title"><svg class="title-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="6" y1="20" x2="6" y2="10"></line><line x1="12" y1="20" x2="12" y2="4"></line><line x1="18" y1="20" x2="18" y2="14"></line></svg>نظرة على الشهر</span></div>
     <div class="insight-card" id="insightCard"></div>
@@ -332,6 +374,7 @@
             <div class="form-field"><label>كارب (غ)</label><input type="number" id="goalC" inputmode="numeric"></div>
             <div class="form-field"><label>دهون (غ)</label><input type="number" id="goalF" inputmode="numeric"></div>
             <div class="form-field"><label>ماء (مل)</label><input type="number" id="goalWater" inputmode="numeric"></div>
+            <div class="form-field"><label>خطوات</label><input type="number" id="goalSteps" inputmode="numeric" min="0"></div>
           </div>
           <button class="btn-primary" id="btnSaveGoals">حفظ الأهداف</button>
         </div>
@@ -424,7 +467,7 @@
           <span class="acc-side"><span class="acc-chevron">⌄</span></span>
         </div>
         <div class="acc-body">
-          <div class="empty-hint" style="padding:0 0 10px; text-align:right;">اربط مِقياس بـ Health Connect عشان تطبيقات زي Samsung Health تشوف السعرات والماكروز والماء اللي تسجّلها. إرسال فقط — مِقياس ما يقرأ أي شي من تطبيقات ثانية.</div>
+          <div class="empty-hint" style="padding:0 0 10px; text-align:right;">اربط مِقياس بـ Health Connect عشان تطبيقات زي Samsung Health تشوف السعرات والماكروز والماء اللي تسجّلها، ونعرض لك خطواتك من تطبيق ساعتك (مثل Zepp) هنا بالتطبيق. الشي الوحيد اللي نقرأه هو الخطوات — ما نقرأ أي بيانات ثانية من أي تطبيق آخر.</div>
           <div id="healthConnectStatusBox" style="margin-bottom:10px;"></div>
           <button class="btn-secondary" id="btnHealthConnectConnect" style="margin-top:0;">ربط مع Health Connect</button>
         </div>
@@ -588,6 +631,44 @@
     </div>
     <div class="share-preview"><canvas id="reportCanvas" width="700" height="1160"></canvas></div>
     <button class="btn-primary" id="btnDownloadReport"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3v12"></path><polyline points="7 10 12 15 17 10"></polyline><line x1="4" y1="20" x2="20" y2="20"></line></svg>تحميل التقرير</button>
+  </div>
+</div>
+
+<!-- Steps detail: opened by tapping the Home steps card or the Progress-tab
+     weekly preview — see openStepsDetail()/renderStepsDetail() in
+     docs/js/home.js. Only ever populated on a device with Health Connect
+     access granted (nothing opens this sheet otherwise). -->
+<div class="sheet" id="sheetStepsDetail" style="max-height:92vh;">
+  <div class="sheet-handle"></div>
+  <div class="sheet-head"><h3><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3 4 14h7l-1 7 9-11h-7l1-7z"></path></svg>الخطوات</h3><div class="sheet-close" data-close aria-label="إغلاق" role="button"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><line x1="6" y1="6" x2="18" y2="18"></line><line x1="18" y1="6" x2="6" y2="18"></line></svg></div></div>
+  <div class="sheet-body">
+    <div class="steps-detail-hero">
+      <div class="steps-ring-wrap lg">
+        <svg class="steps-ring-svg" viewBox="0 0 100 100">
+          <circle class="steps-ring-track" cx="50" cy="50" r="42" fill="none" stroke-width="8"/>
+          <circle id="stepsDetailRingProgress" class="steps-ring-progress" cx="50" cy="50" r="42" fill="none" stroke-width="8" stroke-linecap="round" transform="rotate(-90 50 50)"/>
+        </svg>
+        <div class="steps-ring-center">
+          <div class="v tabular" id="stepsDetailValText">0</div>
+          <div class="g tabular" id="stepsDetailGoalText">من 8,000</div>
+        </div>
+      </div>
+      <div class="steps-streak-badge">
+        <div class="streak-flame sm" id="stepsStreakFlame"><svg viewBox="0 0 24 24"><path d="M12 2c1.2 3.4-3 4.6-3 8.6a3 3 0 0 0 6 0c0-1-.6-1.8-.6-1.8.8 2.2-.6 3-.6 3 .8-2.2-1.4-3.6-1.4-5.4 0 1.4-2 2.2-2 4.4a3.6 3.6 0 0 0 7.2 0c0-4.2-2.9-6.2-5.6-8.8z"></path></svg></div>
+        <div class="steps-streak-tx"><span id="stepsStreakN">0</span> يوم متتالي وصلت هدفك 🎯</div>
+      </div>
+    </div>
+    <div class="steps-detail-stats">
+      <div class="steps-detail-stat"><div class="sd-label">المسافة</div><div class="sd-val tabular" id="stepsDetailDist">0.00 كم</div></div>
+      <div class="steps-detail-stat"><div class="sd-label">سعرات محروقة</div><div class="sd-val tabular" id="stepsDetailCal">0</div></div>
+      <div class="steps-detail-stat"><div class="sd-label">آخر مزامنة</div><div class="sd-val" id="stepsDetailSync">—</div></div>
+    </div>
+    <div class="chipbar" id="stepsPeriodBar">
+      <div class="filter-chip active" data-period="7">آخر 7 أيام</div>
+      <div class="filter-chip" data-period="30">آخر 30 يوم</div>
+    </div>
+    <div class="chart-wrap" id="stepsDetailChart"></div>
+    <div class="empty-hint" id="stepsDetailHint" style="padding-top:8px;"></div>
   </div>
 </div>
 

@@ -18,6 +18,10 @@
   --fat-soft:rgba(242,184,75,.14);
   --shoulder:#5B9DFF;
   --shoulder-soft:rgba(91,157,255,.14);
+  /* Steps — a distinct violet, deliberately not blue (water already owns
+     that hue and the two cards sit right next to each other on Home). */
+  --steps:#9B7BFF;
+  --steps-soft:rgba(155,123,255,.14);
   /* Text/border-safe variants of the four macro colors above — same hue,
      darkened so they clear WCAG AA (4.5:1 text / 3:1 UI-component) on this
      theme's surfaces. Equal to the vivid base color here (dark theme
@@ -31,6 +35,7 @@
   --carb-text:#2FD3A6;
   --fat-text:#F2B84B;
   --shoulder-text:#5B9DFF;
+  --steps-text:#9B7BFF;
 
   /* Brand identity — matches the app icon's teal→blue mark. Kept separate
      from the food-macro colors above (protein/carb/fat/etc. stay put) so
@@ -167,7 +172,7 @@ input{font-family:inherit; color:inherit;}
 /* ============ DASHBOARD RING CARD ============ */
 .hero-card{
   background:linear-gradient(165deg, var(--surface) 0%, var(--bg-elev) 100%);
-  border:1px solid var(--border-soft); border-radius:var(--r-xl); padding:30px 22px 24px;
+  border:1px solid var(--border-soft); border-radius:var(--r-xl); padding:18px 18px 16px;
   box-shadow:var(--shadow-soft); position:relative; overflow:hidden;
 }
 .hero-card::before{
@@ -175,22 +180,25 @@ input{font-family:inherit; color:inherit;}
   background:radial-gradient(420px 220px at 50% -25%, rgba(47,211,166,.12), transparent 62%);
   pointer-events:none;
 }
-.ring-wrap{ display:flex; justify-content:center; position:relative; margin-bottom:10px; }
-#ringSvg{ filter:drop-shadow(0 4px 16px rgba(47,211,166,.18)); transition:filter .3s ease; }
+.ring-wrap{ display:flex; justify-content:center; position:relative; margin-bottom:8px; }
+/* viewBox is 200x200 internally (matches the r=86 circumference math in
+   renderRing()/home.js, untouched) — this just scales the rendered box
+   down a bit smaller so the hero card takes less vertical room. */
+#ringSvg{ width:172px; height:172px; filter:drop-shadow(0 4px 16px rgba(47,211,166,.18)); transition:filter .3s ease; }
 #ringSvg.over-goal{ filter:drop-shadow(0 4px 16px rgba(229,85,91,.22)); }
 /* Unfilled portion of the calorie ring. Used to be a hardcoded #232B32 SVG
    attribute — fine on the dark theme (a near-black bg), but on the light
    theme that same dark-slate track read as a bold black ring dominating
    the whole home screen. var(--border-soft) makes it theme-aware. */
 .ring-track{ stroke:var(--border-soft); }
-.ring-center{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px; }
-.ring-center .num{ font-family:var(--font-d); font-weight:900; font-size:42px; line-height:1; letter-spacing:-.5px; transition:color .2s ease; }
-.ring-center .lbl{font-size:13px; color:var(--text-mute); font-weight:500;}
-.ring-center .sub{font-size:12px; color:var(--text-mute); margin-top:5px;}
+.ring-center{ position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
+.ring-center .num{ font-family:var(--font-d); font-weight:900; font-size:37px; line-height:1; letter-spacing:-.5px; transition:color .2s ease; }
+.ring-center .lbl{font-size:12px; color:var(--text-mute); font-weight:500;}
+.ring-center .sub{font-size:11px; color:var(--text-mute); margin-top:4px;}
 .ring-center.over-goal .num{ color:var(--danger-text); }
 
-.macro-row{display:flex; gap:10px; margin-top:22px;}
-.macro-pill{ flex:1; background:var(--bg-elev); border:1px solid var(--border-soft); border-radius:var(--r-md); padding:11px 12px 10px; transition:background .2s ease, border-color .2s ease; }
+.macro-row{display:flex; gap:10px; margin-top:14px;}
+.macro-pill{ flex:1; background:var(--bg-elev); border:1px solid var(--border-soft); border-radius:var(--r-md); padding:9px 11px 8px; transition:background .2s ease, border-color .2s ease; }
 .macro-pill .top{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:8px;}
 .macro-pill .name{font-size:12px; color:var(--text-dim); font-weight:600;}
 .macro-pill .val{font-size:12px; font-weight:700; font-family:var(--font-d); transition:color .2s ease;}
@@ -212,13 +220,19 @@ input{font-family:inherit; color:inherit;}
 .empty-illo{ width:52px; height:52px; color:var(--text-mute); opacity:.5; }
 .empty-state-text{ font-size:12.5px; color:var(--text-mute); font-weight:600; max-width:260px; line-height:1.7; }
 
-/* ============ STREAK & WEEK PROGRESS (combined card) ============ */
+/* ============ "نشاطك اليوم": steps + streak + week-progress ============
+   One card shell shared by all three rows (was three separate cards) —
+   same information, fewer boxes stacked on the page. Each row after the
+   first gets border-top as its divider (matching .week-progress's existing
+   convention below), so a hidden steps-row (no plugin/no permission yet)
+   just collapses away instead of leaving a gap. */
 .stats-combo{
-  margin-top:16px; background:var(--surface); border:1px solid var(--border-soft);
+  margin-top:12px; background:var(--surface); border:1px solid var(--border-soft);
   border-radius:var(--r-lg); box-shadow:var(--shadow-2); overflow:hidden;
 }
+.activity-row.steps-row{ padding:0; }
 .streak-card{
-  padding:17px 18px; display:flex; align-items:center; gap:14px;
+  padding:14px 18px; display:flex; align-items:center; gap:14px; border-top:1px solid var(--border-soft);
 }
 .streak-flame{
   width:26px; height:26px; flex:0 0 auto; display:flex; align-items:center; justify-content:center;
@@ -299,17 +313,17 @@ input{font-family:inherit; color:inherit;}
 }
 
 /* ============ DAYS STRIP (home — jump to another day) ============ */
-.date-strip{ display:flex; gap:8px; overflow-x:auto; padding:2px 2px 6px; margin-bottom:8px; scrollbar-width:none; }
+.date-strip{ display:flex; gap:7px; overflow-x:auto; padding:2px 2px 6px; margin-bottom:6px; scrollbar-width:none; }
 .date-strip::-webkit-scrollbar{display:none;}
 .date-pill{
-  flex:0 0 auto; width:52px; padding:10px 0 9px; border-radius:16px; background:var(--surface);
+  flex:0 0 auto; width:44px; padding:7px 0 6px; border-radius:14px; background:var(--surface);
   border:1px solid var(--border-soft); text-align:center; cursor:pointer; box-shadow:var(--shadow-2);
   transition:border-color .15s, background .15s, transform .12s;
 }
 .date-pill:active{transform:scale(.95);}
-.date-pill .dpl{font-size:11px; color:var(--text-mute); font-weight:700; margin-bottom:5px;}
-.date-pill .dpn{font-family:var(--font-d); font-weight:800; font-size:15px;}
-.date-pill .dpdot{width:5px; height:5px; border-radius:50%; background:var(--accent); margin:6px auto 0; opacity:0;}
+.date-pill .dpl{font-size:10px; color:var(--text-mute); font-weight:700; margin-bottom:3px;}
+.date-pill .dpn{font-family:var(--font-d); font-weight:800; font-size:13px;}
+.date-pill .dpdot{width:4px; height:4px; border-radius:50%; background:var(--accent); margin:4px auto 0; opacity:0;}
 .date-pill.logged .dpdot{opacity:1;}
 .date-pill.today{ border-color:var(--accent); background:var(--accent-soft); }
 .date-pill.today .dpl{color:var(--accent-text);}
@@ -744,6 +758,7 @@ html[data-theme="light"]{
   --carb-text:#1C8568;
   --fat-text:#9E6B0B;
   --shoulder-text:#096CFF;
+  --steps-text:#7C4DFF;
   --danger-text:#DF2D35;
 }
 html[data-theme="light"] body{
@@ -846,13 +861,13 @@ html[data-theme="light"] .entry-del, html[data-theme="light"] .tdel{ background:
 
 /* ============ WATER TRACKER ============ */
 .water-card{
-  margin-top:16px; background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-lg);
-  padding:16px 18px; box-shadow:var(--shadow-2);
+  margin-top:12px; background:var(--surface); border:1px solid var(--border-soft); border-radius:var(--r-lg);
+  padding:13px 18px; box-shadow:var(--shadow-2);
 }
-.water-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:11px;}
+.water-head{display:flex; align-items:center; justify-content:space-between; margin-bottom:9px;}
 .water-head .wh-title{font-size:13px; font-weight:700; color:var(--text-dim); display:flex; align-items:center; gap:6px;}
 .water-head .wh-val{font-family:var(--font-d); font-weight:800; font-size:14px; color:var(--shoulder-text);}
-.water-track{height:8px; background:var(--border-soft); border-radius:var(--r-pill); overflow:hidden; margin-bottom:13px;}
+.water-track{height:8px; background:var(--border-soft); border-radius:var(--r-pill); overflow:hidden; margin-bottom:10px;}
 .water-fill{height:100%; background:linear-gradient(90deg,var(--shoulder),#8ec2ff); border-radius:var(--r-pill); transition:width .5s ease;}
 .water-btns{display:flex; gap:8px;}
 .water-btn{
@@ -872,6 +887,59 @@ html[data-theme="light"] .entry-del, html[data-theme="light"] .tdel{ background:
   transition:transform .12s ease;
 }
 .water-custom-btn:active{transform:scale(.95);}
+
+/* ============ STEPS (Health Connect, read-only) ============
+   Ring-based like a dedicated step-counter app's dashboard (e.g.
+   StepsApp) rather than a flat bar — the ring is what makes the number
+   read as a first-class stat instead of an afterthought. On Home this is
+   a single compact row inside the shared "نشاطك اليوم" card (see
+   .stats-combo above) — just the ring + count/goal, tappable into
+   #sheetStepsDetail for the fuller picture (streak, distance, calories,
+   week/month history). See renderStepsCard()/renderStepsDetail() in
+   docs/js/home.js. */
+.steps-mini-row{ display:flex; align-items:center; gap:12px; padding:12px 18px; cursor:pointer; }
+.steps-ring-wrap{position:relative; width:72px; height:72px; flex:0 0 auto;}
+.steps-ring-wrap.sm{width:40px; height:40px;}
+.steps-ring-wrap.lg{width:150px; height:150px; margin:0 auto;}
+.steps-ring-svg{width:100%; height:100%;}
+.steps-ring-track{stroke:var(--border-soft);}
+.steps-ring-progress{stroke:var(--steps); stroke-dasharray:264; stroke-dashoffset:264;}
+.steps-ring-center{
+  position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center;
+}
+.steps-ring-center .v{font-family:var(--font-d); font-weight:800; font-size:15px; color:var(--steps-text);}
+.steps-ring-wrap.lg .steps-ring-center .v{font-size:28px;}
+.steps-ring-center .g{font-size:10px; color:var(--text-mute); margin-top:2px;}
+.steps-mini-info{flex:1; min-width:0;}
+.steps-mini-title{font-size:11px; font-weight:700; color:var(--text-mute); display:flex; align-items:center; gap:5px;}
+.steps-mini-title svg{width:12px; height:12px; flex:0 0 auto;}
+.steps-mini-val{font-family:var(--font-d); font-weight:800; font-size:14px; color:var(--text); margin-top:2px;}
+.steps-mini-caption{font-size:10.5px; color:var(--text-mute); flex:0 0 auto; max-width:92px; text-align:left; line-height:1.4;}
+.steps-mini-caption.stale{color:var(--fat-text);}
+.steps-open-hint{font-size:13px; color:var(--text-mute); flex:0 0 auto;}
+/* "Connect Health Connect" one-liner — only ever shown pre-connection,
+   inline inside this row (never a popup/banner), see renderStepsCard() in
+   docs/js/home.js. */
+.steps-connect-row{display:flex; align-items:center; gap:10px; cursor:pointer; padding:12px 18px;}
+.steps-connect-ic{
+  flex:0 0 auto; width:34px; height:34px; border-radius:50%; background:var(--steps-soft); color:var(--steps-text);
+  display:flex; align-items:center; justify-content:center;
+}
+.steps-connect-ic svg{width:17px; height:17px;}
+.steps-connect-tx{font-size:12.5px; color:var(--text-dim); line-height:1.5;}
+
+/* ---- Steps detail sheet ---- */
+.steps-detail-hero{display:flex; flex-direction:column; align-items:center; gap:14px; padding:6px 0 4px;}
+.steps-streak-badge{display:flex; align-items:center; gap:8px; background:var(--steps-soft); border-radius:var(--r-pill); padding:7px 14px;}
+.steps-streak-badge .streak-flame.sm{width:19px; height:19px;}
+.steps-streak-tx{font-size:12.5px; font-weight:700; color:var(--steps-text);}
+.steps-detail-stats{display:grid; grid-template-columns:repeat(3,1fr); gap:10px; margin:16px 0;}
+.steps-detail-stat{
+  background:var(--bg-elev); border:1px solid var(--border-soft); border-radius:var(--r-md);
+  padding:10px 8px; text-align:center;
+}
+.steps-detail-stat .sd-label{font-size:11px; color:var(--text-mute); margin-bottom:4px;}
+.steps-detail-stat .sd-val{font-family:var(--font-d); font-weight:800; font-size:14px; color:var(--text);}
 
 /* ============ MEAL TEMPLATES ============ */
 .template-row{

@@ -173,6 +173,197 @@ function addWater(deltaMl){
 }
 
 /* ============================================================
+   STEPS — read-only, synced from Health Connect (written there by a
+   wearable's companion app, e.g. Zepp). The Home row always shows
+   TODAY's count regardless of state.viewDate — Health Connect step
+   history for an arbitrary past day isn't wired (only the trailing
+   30-day window used by the detail sheet/Progress trend is), and steps
+   aren't something the user backdates/edits like a meal, so "today" is
+   the only day the row itself ever needs to represent.
+
+   Modeled on how a dedicated step-counter app (e.g. StepsApp) presents
+   this: a ring (not a flat bar — a ring reads as "this is a real,
+   first-class number" the way the calorie ring does), tappable into a
+   full detail sheet with a bigger ring, distance, estimated calories
+   burned, a goal-day streak, and a week/month history chart. On Home
+   itself this is kept to ONE compact row — just the ring + count/goal —
+   sharing a single card shell with the streak/week-progress rows (see
+   .stats-combo in styles.css) instead of being its own separate card;
+   distance/calories/streak only ever show in the detail sheet, so the
+   Home screen doesn't repeat information across two places just to stay
+   "complete".
+
+   Three connection states, purely a function of (a) whether the native
+   plugin exists at all and (b) appState.healthConnectGranted — rendering
+   never fetches, only reads whatever core.js's healthConnectReadTodaySteps()/
+   healthConnectReadStepsHistory() already cached, so these are always
+   safe/cheap to call from renderAll():
+     A) no plugin (plain web/PWA)      -> hide the row entirely
+     B) plugin, not granted yet        -> lightweight inline connect prompt
+     C) granted                        -> real row (cached count/goal ring +
+                                           honest last-synced caption; a
+                                           day with no fetch yet today reads
+                                           as "لم تتم المزامنة اليوم بعد",
+                                           never silently shown as state B)
+   ============================================================ */
+function stepsFreshnessCaption(fetchedAt){
+  if(!fetchedAt) return {text:'لم تتم المزامنة اليوم بعد', stale:false};
+  const diffMs = Date.now() - fetchedAt;
+  const diffMin = Math.floor(diffMs/60000);
+  let text;
+  if(diffMin < 1) text = 'آخر مزامنة: الآن';
+  else if(diffMin < 60) text = `آخر مزامنة: قبل ${diffMin} دقيقة`;
+  else{
+    const diffHr = Math.floor(diffMin/60);
+    if(diffHr < 24) text = `آخر مزامنة: قبل ${diffHr} ساعة`;
+    else text = `آخر مزامنة: قبل ${Math.floor(diffHr/24)} يوم`;
+  }
+  return {text, stale: diffMs > 24*60*60*1000};
+}
+
+// Shared by the Home card's small ring and the detail sheet's big ring —
+// same technique renderRing() uses for the main calorie ring (stroke-dasharray
+// trick on an SVG <circle>), just parameterized by element id + radius so
+// both sizes share one implementation.
+function paintStepsRing(elId, r, pct){
+  const el = document.getElementById(elId);
+  if(!el) return;
+  const circumference = 2*Math.PI*r;
+  el.style.strokeDasharray = `${circumference}`;
+  el.style.strokeDashoffset = `${circumference * (1-pct)}`;
+  el.style.transition = 'stroke-dashoffset .6s cubic-bezier(.2,.8,.2,1)';
+}
+
+function renderStepsCard(){
+  const card = document.getElementById('stepsCard');
+  if(!card) return;
+  const connectWrap = document.getElementById('stepsCardConnect');
+  const dataWrap = document.getElementById('stepsCardData');
+  const plugin = healthConnectPlugin();
+  if(!plugin){
+    // No step data source exists at all here (plain web/PWA, or a native
+    // build missing the plugin) — hide the whole card rather than show a
+    // connect prompt that could never do anything.
+    card.style.display = 'none';
+    return;
+  }
+  card.style.display = '';
+  if(!appState.healthConnectGranted){
+    connectWrap.style.display = '';
+    dataWrap.style.display = 'none';
+    return;
+  }
+  connectWrap.style.display = 'none';
+  dataWrap.style.display = '';
+  const cached = (appState.stepsCache && appState.stepsCache[todayKey(new Date())]) || null;
+  const steps = cached ? cached.steps : 0;
+  const goal = state.goals.steps || 8000;
+  const pct = Math.min(steps/Math.max(goal,1), 1);
+
+  paintStepsRing('stepsRingProgress', 42, pct);
+  document.getElementById('stepsValText').textContent = steps.toLocaleString('en-US');
+  document.getElementById('stepsGoalText').textContent = goal.toLocaleString('en-US');
+  // Distance/calories are deliberately NOT duplicated on this compact Home
+  // row (that's what made the old design tall) — they're one tap away in
+  // #sheetStepsDetail via renderStepsDetail().
+
+  const fresh = stepsFreshnessCaption(cached ? cached.fetchedAt : null);
+  const captionEl = document.getElementById('stepsCaption');
+  captionEl.textContent = fresh.text;
+  captionEl.classList.toggle('stale', fresh.stale);
+}
+
+// Fire-and-forget: fetch today's real count from Health Connect, then
+// re-render. Safe to call whenever (init, app resume, right after the
+// user grants access) — healthConnectReadTodaySteps() itself is a no-op
+// that resolves null outside the native app / without permission.
+async function refreshSteps(){
+  await healthConnectReadTodaySteps();
+  renderStepsCard();
+  if(typeof renderStepsDetail==='function') renderStepsDetail();
+}
+
+/* ============================================================
+   STEPS DETAIL SHEET — opened by tapping the Home steps card (or the
+   Progress-tab weekly preview). Bigger ring + streak badge, distance and
+   estimated calories, and a week/7-day ↔ month/30-day chart toggle —
+   see stepsBarsForRange()/refreshStepsHistory() in progress.js for how
+   the 30-day cache backing all of this gets populated.
+   ============================================================ */
+let stepsDetailPeriod = 7;
+
+// 30 cached days grouped into 5 six-day buckets, most-recent-day-of-each-
+// bucket used as its label (short d/m, not a weekday name — a bucket
+// spans multiple weekdays so a single weekday label would be misleading).
+// Each bar is that bucket's daily AVERAGE, compared against the same daily
+// goal line the 7-day view uses — matches how StepsApp's own "monthly"
+// view reads (weekly averages, not 30 illegibly-thin daily bars).
+function stepsMonthlyBars(){
+  const goal = state.goals.steps || 8000;
+  const bucketSize = 6, bucketCount = 5;
+  const bars = [];
+  for(let b=bucketCount-1; b>=0; b--){
+    let sum = 0, have = 0;
+    for(let d=0; d<bucketSize; d++){
+      const key = dateKeyOffset(b*bucketSize + d);
+      const entry = appState.stepsCache && appState.stepsCache[key];
+      if(entry){ sum += entry.steps; have++; }
+    }
+    const repDate = new Date(dateKeyOffset(b*bucketSize)+'T00:00:00');
+    bars.push({label: `${repDate.getDate()}/${repDate.getMonth()+1}`, value: have ? Math.round(sum/bucketSize) : 0});
+  }
+  return {bars, goal};
+}
+
+function openStepsDetail(){
+  stepsDetailPeriod = 7;
+  document.querySelectorAll('#stepsPeriodBar .filter-chip').forEach(c=> c.classList.toggle('active', c.getAttribute('data-period')==='7'));
+  renderStepsDetail();
+  openSheet('sheetStepsDetail');
+  // The sheet's own 30-day fetch — cheap to call every open since it's a
+  // single native aggregate call, and keeps the streak/monthly view from
+  // ever silently going stale across sessions.
+  if(typeof refreshStepsHistory==='function') refreshStepsHistory();
+}
+
+function renderStepsDetail(){
+  const sheet = document.getElementById('sheetStepsDetail');
+  if(!sheet) return;
+  const goal = state.goals.steps || 8000;
+  const todayEntry = (appState.stepsCache && appState.stepsCache[todayKey(new Date())]) || null;
+  const todaySteps = todayEntry ? todayEntry.steps : 0;
+  const pct = Math.min(todaySteps/Math.max(goal,1), 1);
+
+  paintStepsRing('stepsDetailRingProgress', 42, pct);
+  document.getElementById('stepsDetailValText').textContent = todaySteps.toLocaleString('en-US');
+  document.getElementById('stepsDetailGoalText').textContent = `من ${goal.toLocaleString('en-US')}`;
+
+  const streak = typeof computeStepsStreak==='function' ? computeStepsStreak() : 0;
+  document.getElementById('stepsStreakN').textContent = streak;
+  const flameEl = document.getElementById('stepsStreakFlame');
+  if(flameEl){
+    for(let t=0;t<=4;t++) flameEl.classList.remove('tier-'+t);
+    flameEl.classList.add('tier-'+streakFlameTier(streak));
+  }
+
+  document.getElementById('stepsDetailDist').textContent = `${estimateStepsDistanceKm(todaySteps).toFixed(2)} كم`;
+  document.getElementById('stepsDetailCal').textContent = Math.round(estimateStepsCalories(todaySteps)).toLocaleString('en-US');
+  const fresh = stepsFreshnessCaption(todayEntry ? todayEntry.fetchedAt : null);
+  document.getElementById('stepsDetailSync').textContent = fresh.text;
+
+  const {bars} = stepsDetailPeriod===30 ? stepsMonthlyBars() : stepsBarsForRange(7);
+  const chartWrap = document.getElementById('stepsDetailChart');
+  if(chartWrap) chartWrap.innerHTML = buildStepsBarChart(bars, goal);
+  const avg = bars.length ? Math.round(bars.reduce((s,b)=>s+b.value,0)/bars.length) : 0;
+  const hintEl = document.getElementById('stepsDetailHint');
+  if(hintEl){
+    hintEl.textContent = stepsDetailPeriod===30
+      ? `متوسط الشهر: ${avg.toLocaleString('en-US')} خطوة/يوم`
+      : `متوسط الأسبوع: ${avg.toLocaleString('en-US')} خطوة/يوم`;
+  }
+}
+
+/* ============================================================
    DAYS STRIP — jump the whole app into viewing/editing another
    day (past or future), right = past, left = today → coming days
    ============================================================ */

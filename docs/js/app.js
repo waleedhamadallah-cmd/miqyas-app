@@ -33,6 +33,11 @@ async function init(){
   syncWidget();
   applyReminderSettings();
 
+  // Non-blocking: the card already rendered instantly from yesterday's
+  // cache above, this just fetches a fresh number in the background so it
+  // doesn't hold up the splash screen or the rest of init().
+  if(appState.healthConnectGranted) refreshSteps();
+
   if(!appState.onboarded){
     setTimeout(()=>{ startOnboarding(); }, 400);
   }
@@ -99,7 +104,9 @@ function renderAll(){
   renderWeeklyFoodSummary();
   renderWeightCard();
   renderWeightCalorieTrend();
+  renderStepsTrendCard();
   renderWaterCard();
+  renderStepsCard();
   renderTodaySummary();
   renderPastDaysStrip();
   renderMealsToday();
@@ -286,13 +293,21 @@ function bindEvents(){
     document.getElementById('goalC').value = state.goals.carbs;
     document.getElementById('goalF').value = state.goals.fat;
     document.getElementById('goalWater').value = state.goals.water;
+    document.getElementById('goalSteps').value = state.goals.steps;
     document.getElementById('aiProxyUrlInput').value = appState.aiProxyUrl || '';
     document.getElementById('aiProxySecretInput').value = appState.aiProxySecret || '';
     renderReminderSettings();
     renderSyncStatus();
     renderThemeButtons();
     renderHealthConnectStatus();
-    healthConnectRefreshStatus().then(renderHealthConnectStatus);
+    // Also re-checks steps access: the user could've flipped the Health
+    // Connect permission from Android's own system settings since the last
+    // time this sheet was open, outside anything this app controls.
+    healthConnectRefreshStatus().then(()=>{
+      renderHealthConnectStatus();
+      renderStepsCard();
+      if(appState.healthConnectGranted) refreshSteps();
+    });
     const syncItem = document.querySelector('.acc-item[data-acc="sync"]');
     if(syncItem) syncItem.classList.toggle('open', !!getSyncConfig());
 
@@ -305,6 +320,7 @@ function bindEvents(){
       carbs: parseInt(document.getElementById('goalC').value,10) || defaultGoals().carbs,
       fat: parseInt(document.getElementById('goalF').value,10) || defaultGoals().fat,
       water: parseInt(document.getElementById('goalWater').value,10) || defaultGoals().water,
+      steps: parseInt(document.getElementById('goalSteps').value,10) || defaultGoals().steps,
       // No longer user-editable (fields removed from Settings) — keep
       // whatever was already set so old data/goals reports don't break.
       fiber: state.goals.fiber,
@@ -371,6 +387,41 @@ function bindEvents(){
   document.getElementById('btnExportData').addEventListener('click', ()=> exportDataFile());
   document.getElementById('btnImportData').addEventListener('click', ()=> document.getElementById('importFileInput').click());
 
+  // Tapping the Home steps-card's inline "connect" prompt jumps straight to
+  // Settings with the Health Connect accordion already open, instead of
+  // making the user hunt for it themselves.
+  const stepsConnectPromptEl = document.getElementById('stepsConnectPrompt');
+  if(stepsConnectPromptEl){
+    stepsConnectPromptEl.addEventListener('click', ()=>{
+      document.getElementById('btnSettings').click();
+      const healthItem = document.querySelector('.acc-item[data-acc="health"]');
+      if(healthItem) healthItem.classList.add('open');
+    });
+  }
+
+  // Tapping the connected steps card opens the full detail sheet (ring +
+  // streak + distance/calories + week/month chart) — role="button" so it
+  // also needs the Enter/Space keydown handling every other custom
+  // "button"-role element in this app gets.
+  const stepsCardDataEl = document.getElementById('stepsCardData');
+  if(stepsCardDataEl){
+    stepsCardDataEl.addEventListener('click', ()=> openStepsDetail());
+    stepsCardDataEl.addEventListener('keydown', (e)=>{
+      if(e.key==='Enter' || e.key===' '){ e.preventDefault(); openStepsDetail(); }
+    });
+  }
+  const stepsPeriodBarEl = document.getElementById('stepsPeriodBar');
+  if(stepsPeriodBarEl){
+    stepsPeriodBarEl.addEventListener('click', (e)=>{
+      const chip = e.target.closest('.filter-chip');
+      if(!chip) return;
+      document.querySelectorAll('#stepsPeriodBar .filter-chip').forEach(c=> c.classList.remove('active'));
+      chip.classList.add('active');
+      stepsDetailPeriod = parseInt(chip.getAttribute('data-period'),10) || 7;
+      renderStepsDetail();
+    });
+  }
+
   document.getElementById('btnHealthConnectConnect').addEventListener('click', async ()=>{
     const btn = document.getElementById('btnHealthConnectConnect');
     const oldLabel = btn.textContent;
@@ -380,6 +431,7 @@ function bindEvents(){
     renderHealthConnectStatus();
     if(res.ok){
       showToast('تم الربط مع Health Connect ✅');
+      refreshSteps();
       return;
     }
     const msgs = {

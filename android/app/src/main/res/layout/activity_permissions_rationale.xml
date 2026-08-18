@@ -23,7 +23,7 @@
         <TextView
             android:layout_width="match_parent"
             android:layout_height="wrap_content"
-            android:text="مِقياس يكتب فقط بيانات التغذية (السعرات والماكروز) والماء اللي تسجّلها داخل التطبيق إلى Health Connect، عشان تقدر تطبيقات ثانية متربطة بـHealth Connect تشوفها.\n\nمِقياس ما يقرأ أي بيانات من Health Connect ولا من أي تطبيق ثاني — الاتجاه من مِقياس إلى Health Connect بس.\n\nتقدر توقف هذا الربط أي وقت من إعدادات Health Connect بجهازك، أو من إعدادات مِقياس."
+            android:text="مِقياس يكتب بيانات التغذية (السعرات والماكروز) والماء اللي تسجّلها داخل التطبيق إلى Health Connect، عشان تقدر تطبيقات ثانية متربطة بـHealth Connect تشوفها.\n\nالشي الوحيد اللي يقرأه مِقياس من Health Connect هو عدد خطواتك (اللي يجيك من تطبيق ساعتك، مثل Zepp) — عشان يعرضه لك داخل التطبيق بس. آخر ٧ أيام فقط، ومِقياس ما يخزنها ولا يشاركها مع أي جهة ثانية.\n\nما فيه أي قراءة لأي بيانات ثانية (تغذية، وزن، نوم، إلخ) من أي تطبيق آخر.\n\nتقدر توقف هذا الربط أي وقت من إعدادات Health Connect بجهازك، أو من إعدادات مِقياس."
             android:textColor="#B7BEC6"
             android:textSize="14sp"
             android:lineSpacingMultiplier="1.5"

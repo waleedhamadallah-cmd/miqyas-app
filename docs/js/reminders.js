@@ -14,6 +14,7 @@
 const REMINDER_ID_MEAL = 9001;
 const REMINDER_ID_WATER_BASE = 9100;
 const REMINDER_WATER_MAX_SLOTS = 12;
+const REMINDER_ID_STEPS_GOAL = 9200;
 
 function localNotificationsPlugin(){
   return (window.Capacitor && Capacitor.Plugins && Capacitor.Plugins.LocalNotifications)
@@ -126,6 +127,29 @@ async function scheduleWaterReminders(startStr, endStr, intervalHours){
     t += interval*60;
   }
   try{ await plugin.schedule({ notifications }); }catch(e){ console.error('scheduleWaterReminders failed', e); }
+}
+
+// One-off, near-immediate notification (no repeating `on:` schedule like
+// the meal/water reminders above) — called from cacheSteps() in core.js
+// the moment today's synced step count first crosses the daily goal.
+// Silently does nothing without notification permission already granted
+// (never prompts for it on its own — that only ever happens from the
+// Reminders section in Settings, same as the meal/water reminders).
+async function notifyStepsGoalReached(steps, goal){
+  const plugin = localNotificationsPlugin();
+  if(!plugin) return;
+  try{
+    if(!(await hasReminderPermission())) return;
+    await plugin.schedule({
+      notifications: [{
+        id: REMINDER_ID_STEPS_GOAL,
+        title: 'وصلت هدف خطواتك اليوم 🎉',
+        body: `${Math.round(steps).toLocaleString('en-US')} خطوة من ${Math.round(goal).toLocaleString('en-US')} — أحسنت!`,
+        schedule: { at: new Date(Date.now() + 500), allowWhileIdle: true },
+        smallIcon: 'ic_stat_icon'
+      }]
+    });
+  }catch(e){ console.error('notifyStepsGoalReached failed', e); }
 }
 
 // Single entry point: reads appState.reminders and (re)applies everything —

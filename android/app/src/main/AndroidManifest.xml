@@ -75,6 +75,10 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.health.WRITE_NUTRITION" />
     <uses-permission android:name="android.permission.health.WRITE_HYDRATION" />
+    <!-- Steps only, read-only, last 7 days, foreground/on-demand — see
+         HealthConnectPlugin.kt's class doc. No history/background-read
+         permission needed for that narrow a scope. -->
+    <uses-permission android:name="android.permission.health.READ_STEPS" />
 
     <!-- Reminders: runtime permission required on Android 13+ before any
          local notification (meal/water reminders) can be shown. -->

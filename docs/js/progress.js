@@ -225,6 +225,65 @@ function renderWeightCalorieTrend(){
 }
 
 /* ============================================================
+   STEPS — weekly trend preview (Health Connect, read-only). Just the last
+   7 cached days as a quick glance on the Progress tab; the full week/month
+   toggle + streak + distance/calories live in the steps-detail sheet (see
+   renderStepsDetail() in home.js), opened by tapping this card.
+   ============================================================ */
+function stepsBarsForRange(nDays){
+  const goal = state.goals.steps || 8000;
+  const bars = [];
+  for(let i=nDays-1;i>=0;i--){
+    const key = dateKeyOffset(i);
+    const cached = appState.stepsCache && appState.stepsCache[key];
+    const d = new Date(key+'T00:00:00');
+    bars.push({label: DAY_LABELS[d.getDay()], value: cached ? cached.steps : 0});
+  }
+  return {bars, goal};
+}
+
+function renderStepsTrendCard(){
+  const section = document.getElementById('stepsTrendSection');
+  const wrap = document.getElementById('stepsTrendCard');
+  if(!wrap) return;
+  const plugin = healthConnectPlugin();
+  if(!plugin){
+    // Plain web/PWA — no step data source exists at all, hide the whole
+    // section instead of showing a permanently-unusable empty state.
+    if(section) section.style.display = 'none';
+    return;
+  }
+  if(section) section.style.display = '';
+  if(!appState.healthConnectGranted){
+    wrap.innerHTML = emptyStateHtml('chart', 'اربط Health Connect من الإعدادات عشان يبين هنا اتجاه خطواتك بالأسبوع (من تطبيق ساعتك، مثل Zepp)');
+    return;
+  }
+  const {bars, goal} = stepsBarsForRange(7);
+  const total = bars.reduce((s,b)=>s+b.value,0);
+  const avg = Math.round(total/7);
+  const chart = buildStepsBarChart(bars, goal);
+  wrap.innerHTML = `<div class="chart-wrap">${chart}</div>
+    <div class="empty-hint" style="padding-top:8px;">متوسط الأسبوع: <span class="ltr-num">${avg.toLocaleString('en-US')}</span> خطوة / يوم — اضغط عشان تشوف التفاصيل، المسافة، والسعرات</div>`;
+  wrap.onclick = ()=>{
+    if(typeof openStepsDetail==='function') openStepsDetail();
+  };
+}
+
+// Fire-and-forget: fetch the trailing 30-day window from Health Connect in
+// one native call, then re-render both the Progress-tab weekly preview
+// above AND the steps-detail sheet (safe to call even while it's closed —
+// renderStepsDetail() just no-ops if its elements aren't relevant/present).
+// Called when the Progress tab is opened or the steps-detail sheet is
+// opened (see switchTab()'s hook in core.js and openStepsDetail() in
+// home.js) rather than on every app resume — historical days don't move,
+// and a 30-day aggregate is a heavier native call than readTodaySteps().
+async function refreshStepsHistory(){
+  await healthConnectReadStepsHistory(30);
+  renderStepsTrendCard();
+  if(typeof renderStepsDetail==='function') renderStepsDetail();
+}
+
+/* ============================================================
    BODY MEASUREMENTS (arm / waist / chest)
    ============================================================ */
 const MEASUREMENT_KEYS = {arm:'الذراع', waist:'الخصر', chest:'الصدر'};
