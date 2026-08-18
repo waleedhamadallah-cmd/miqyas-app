@@ -190,6 +190,36 @@ function syncHealthConnectDeleteNutrition(recordId){
   }catch(e){ /* no-op outside the native app / without permission */ }
 }
 
+// Body weight — mirrors syncHealthConnectNutrition()'s delete-old/write-new
+// pattern above, since a weight entry for a given day can be overwritten
+// (re-saving that day with a corrected number) and Health Connect has no
+// "update in place" API either. appState.bodyWeightHcRecordIds tracks the
+// per-date record ID the same way entry.hcRecordId tracks it per-meal —
+// bodyWeights itself is just {dateKey: number}, with no object to stash an
+// ID on directly.
+function syncHealthConnectWeight(dateKey, weightKg){
+  try{
+    if(!appState || !appState.healthConnectGranted || !weightKg) return;
+    const plugin = healthConnectPlugin();
+    if(!plugin || !plugin.writeWeight) return;
+    if(!appState.bodyWeightHcRecordIds) appState.bodyWeightHcRecordIds = {};
+    const oldRecordId = appState.bodyWeightHcRecordIds[dateKey];
+    const writeFresh = ()=>{
+      plugin.writeWeight({weightKg, dateKey}).then(res=>{
+        if(res && res.recordId){
+          appState.bodyWeightHcRecordIds[dateKey] = res.recordId;
+          persist();
+        }
+      }).catch(()=>{});
+    };
+    if(oldRecordId && plugin.deleteWeight){
+      plugin.deleteWeight({recordId: oldRecordId}).catch(()=>{}).then(writeFresh);
+    } else {
+      writeFresh();
+    }
+  }catch(e){ /* no-op outside the native app / without permission */ }
+}
+
 function syncHealthConnectHydration(ml){
   try{
     if(!appState || !appState.healthConnectGranted) return;
@@ -368,6 +398,10 @@ function defaultAppState(){
     // fired for — see cacheSteps() in this file — so re-fetching an
     // already-met day doesn't re-notify every refresh.
     stepsGoalNotifiedDate:null,
+    // {dateKey: Health Connect record ID} for synced body-weight entries —
+    // see syncHealthConnectWeight() in this file — so a re-saved day can
+    // delete its old record instead of leaving a stale duplicate behind.
+    bodyWeightHcRecordIds:{},
     aiProxyUrl:'', aiProxySecret:'',
     // 'library' matches only against the user's own saved foods (fast,
     // trusted, no macros shown for a non-match); 'general' asks the AI to
@@ -408,6 +442,7 @@ function rebindFromAppState(){
   if(appState.healthConnectGranted===undefined) appState.healthConnectGranted = false;
   if(!appState.stepsCache) appState.stepsCache = {};
   if(appState.stepsGoalNotifiedDate===undefined) appState.stepsGoalNotifiedDate = null;
+  if(!appState.bodyWeightHcRecordIds) appState.bodyWeightHcRecordIds = {};
   if(appState.aiProxyUrl===undefined) appState.aiProxyUrl = '';
   if(appState.aiProxySecret===undefined) appState.aiProxySecret = '';
   if(appState.aiScanMode!=='library' && appState.aiScanMode!=='general') appState.aiScanMode = 'library';

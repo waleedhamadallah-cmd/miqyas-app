@@ -7,6 +7,7 @@ import androidx.health.connect.client.permission.HealthPermission
 import androidx.health.connect.client.records.HydrationRecord
 import androidx.health.connect.client.records.NutritionRecord
 import androidx.health.connect.client.records.StepsRecord
+import androidx.health.connect.client.records.WeightRecord
 import androidx.health.connect.client.records.metadata.Device
 import androidx.health.connect.client.records.metadata.Metadata
 import androidx.health.connect.client.request.AggregateGroupByPeriodRequest
@@ -14,6 +15,7 @@ import androidx.health.connect.client.request.AggregateRequest
 import androidx.health.connect.client.time.TimeRangeFilter
 import androidx.health.connect.client.units.grams
 import androidx.health.connect.client.units.kilocalories
+import androidx.health.connect.client.units.kilograms
 import androidx.health.connect.client.units.milliliters
 import com.getcapacitor.JSArray
 import com.getcapacitor.JSObject
@@ -60,6 +62,7 @@ class HealthConnectPlugin : Plugin() {
     private val healthPermissions = setOf(
         HealthPermission.getWritePermission(NutritionRecord::class),
         HealthPermission.getWritePermission(HydrationRecord::class),
+        HealthPermission.getWritePermission(WeightRecord::class),
         HealthPermission.getReadPermission(StepsRecord::class)
     )
 
@@ -251,6 +254,99 @@ class HealthConnectPlugin : Plugin() {
             } catch (e: Exception) {
                 call.reject("writeHydration failed: ${e.message}")
             }
+        }
+    }
+
+    // Body weight — called from docs/js/progress.js's syncHealthConnectWeight(),
+    // itself invoked from the Progress-tab weight sheet's save handler and
+    // from onboarding's first-weight step, same as nutrition/hydration are
+    // called from the exact spots the user actually logs something.
+    //
+    // Unlike nutrition/hydration (always "just now"), a weight entry can be
+    // for a past date (the weight sheet lets you edit an earlier day) — an
+    // optional "dateKey" ("yyyy-MM-dd") lets the JS side say which day this
+    // measurement is actually for. Today's own entry still uses the real
+    // current instant (so same-day edits keep updating "now"); a past date
+    // is recorded at local noon that day — an arbitrary but reasonable
+    // placeholder time, since مِقياس only ever captures a date for body
+    // weight, never a time of day.
+    @PluginMethod
+    fun writeWeight(call: PluginCall) {
+        val client = getClientOrNull()
+        if (client == null) {
+            call.reject("Health Connect غير متوفر")
+            return
+        }
+        val weightKg = call.getDouble("weightKg") ?: 0.0
+        if (weightKg <= 0.0) {
+            call.reject("weightKg must be positive")
+            return
+        }
+        val dateKey = call.getString("dateKey")
+
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                val zone = ZoneId.systemDefault()
+                val today = LocalDate.now(zone)
+                val time = if (dateKey.isNullOrEmpty()) {
+                    Instant.now()
+                } else {
+                    try {
+                        val date = LocalDate.parse(dateKey, DateTimeFormatter.ISO_LOCAL_DATE)
+                        if (date == today) Instant.now() else date.atTime(12, 0).atZone(zone).toInstant()
+                    } catch (e: Exception) {
+                        Instant.now()
+                    }
+                }
+                val record = WeightRecord(
+                    weight = weightKg.kilograms,
+                    time = time,
+                    zoneOffset = zone.rules.getOffset(time),
+                    metadata = Metadata.activelyRecorded(device = Device(type = Device.TYPE_PHONE))
+                )
+                val insertResponse = client.insertRecords(listOf(record))
+                val ret = JSObject()
+                ret.put("ok", true)
+                ret.put("recordId", insertResponse.recordIdsList.firstOrNull())
+                call.resolve(ret)
+            } catch (e: Exception) {
+                call.reject("writeWeight failed: ${e.message}")
+            }
+        }
+    }
+
+    // Delete-side counterpart to writeWeight, mirroring deleteNutrition
+    // above — a weight entry logged for a given day can be overwritten
+    // (re-saving that same day with a new number), which needs the old
+    // Health Connect record removed first or it'd leave a stale duplicate
+    // behind forever. Same best-effort semantics as deleteNutrition.
+    @PluginMethod
+    fun deleteWeight(call: PluginCall) {
+        val client = getClientOrNull()
+        if (client == null) {
+            call.reject("Health Connect غير متوفر")
+            return
+        }
+        val recordId = call.getString("recordId")
+        if (recordId.isNullOrEmpty()) {
+            val ret = JSObject()
+            ret.put("ok", true)
+            call.resolve(ret)
+            return
+        }
+        CoroutineScope(Dispatchers.IO).launch {
+            try {
+                client.deleteRecords(
+                    recordType = WeightRecord::class,
+                    recordIdsList = listOf(recordId),
+                    clientRecordIdsList = emptyList()
+                )
+            } catch (e: Exception) {
+                // Swallowed on purpose — see deleteNutrition's doc comment above.
+            }
+            val ret = JSObject()
+            ret.put("ok", true)
+            call.resolve(ret)
         }
     }
 

@@ -190,6 +190,7 @@ function bindEvents(){
     const val = parseFloat(document.getElementById('bwInput').value);
     if(!val || val<=0){ showToast('اكتب وزن صحيح أول'); return; }
     appState.bodyWeights[dateKey] = Math.round(val*10)/10;
+    syncHealthConnectWeight(dateKey, appState.bodyWeights[dateKey]);
     const bfVal = parseFloat(document.getElementById('bfInput').value);
     if(bfVal && bfVal>0){
       if(!appState.bodyFat) appState.bodyFat = {};
@@ -720,7 +721,10 @@ function bindOnboardingEvents(){
     state.goals = {...state.goals, ...goals};
     appState.goals = state.goals;
     appState.onboarded = true;
-    if(weightKg) appState.bodyWeights[state.today] = weightKg;
+    if(weightKg){
+      appState.bodyWeights[state.today] = weightKg;
+      syncHealthConnectWeight(state.today, weightKg);
+    }
     // Height was already being collected here for the calorie calc above —
     // it just wasn't kept afterwards. Persisting it now is what lets the
     // Progress tab's weight card show a BMI gauge without asking again.
