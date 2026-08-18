@@ -311,6 +311,14 @@ input{font-family:inherit; color:inherit;}
   width:var(--tap-min); height:var(--tap-min); border-radius:50%; background:var(--bg-elev); border:1px solid var(--border);
   display:flex; align-items:center; justify-content:center; color:var(--text-mute); cursor:pointer; flex:0 0 auto;
 }
+/* ICON_X has no width/height of its own (just a viewBox), and unlike every
+   other icon button in this file (.sheet-close svg, .icon-btn svg, etc.)
+   this one never got its own size rule — so the browser stretched it to
+   fill almost the entire 40px circle edge-to-edge instead of sitting as a
+   normal small glyph inside it, which is what made it look oversized and
+   blobby. 16px matches .sheet-close svg, the other var(--tap-min) circle
+   that uses this exact same icon. */
+.entry-del svg, .tdel svg{width:16px; height:16px;}
 
 /* ============ DAYS STRIP (home — jump to another day) ============ */
 .date-strip{ display:flex; gap:7px; overflow-x:auto; padding:2px 2px 6px; margin-bottom:6px; scrollbar-width:none; }
