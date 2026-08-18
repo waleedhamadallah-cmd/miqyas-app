@@ -1,0 +1,72 @@
+From f1c7d4605ef8ecb43c40c3b154234e1317f8c61e Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 18 Aug 2026 02:17:43 +0000
+Subject: [PATCH] Fix oversized/mis-sized icons and inconsistent tap targets
+ across food library and templates
+
+- .fav-star, .lib-edit, .lib-delete, .food-chip .plus svgs had no CSS
+  size rule (same missing-size bug already found and fixed once for
+  .entry-del/.tdel), so they stretched to fill their containers instead
+  of sitting as normal small glyphs.
+- .template-row .tdel was 32px while every other delete/remove circle
+  in the app (.entry-del, .lib-delete, .sheet-close) uses --tap-min
+  (40px) -- unified for consistent tap targets.
+---
+ docs/css/styles.css | 20 +++++++++++++++++++-
+ 1 file changed, 19 insertions(+), 1 deletion(-)
+
+diff --git a/docs/css/styles.css b/docs/css/styles.css
+index fb757a0..c4a73c2 100644
+--- a/docs/css/styles.css
++++ b/docs/css/styles.css
+@@ -281,6 +281,10 @@ input{font-family:inherit; color:inherit;}
+   background:var(--accent); color:#12161A; display:flex; align-items:center; justify-content:center;
+   font-size:14px; font-weight:800; line-height:1;
+ }
++/* Same missing-size bug as .entry-del/.lib-edit/.fav-star — ICON_PENCIL has
++   no width/height of its own, so without this it stretched to fill the
++   whole 20px badge instead of sitting as a small glyph inside it. */
++.food-chip .plus svg{width:12px; height:12px;}
+ .food-chip.pulse{animation:pulseAdd .4s ease;}
+ @keyframes pulseAdd{
+   0%{box-shadow:0 0 0 0 rgba(47,211,166,.5);}
+@@ -525,6 +529,12 @@ input{font-family:inherit; color:inherit;}
+   width:var(--tap-min); height:var(--tap-min); border-radius:50%; background:var(--bg-elev); border:1px solid var(--border);
+   display:flex; align-items:center; justify-content:center; cursor:pointer; font-size:13px; flex:0 0 auto; color:var(--text-dim);
+ }
++/* Same missing-size bug as .entry-del/.tdel (see that comment) — ICON_PENCIL
++   and ICON_TRASH have no width/height of their own, so without this they
++   stretch to ~38px inside the 40px circle instead of sitting as a normal
++   small glyph. 16px matches .entry-del svg/.sheet-close svg, the other
++   var(--tap-min) circles in this file. */
++.lib-edit svg, .lib-delete svg{width:16px; height:16px;}
+ .custom-tag{font-size:10px; font-weight:700; color:var(--accent-text); background:var(--carb-soft); border-radius:6px; padding:1px 6px; margin-inline-start:2px;}
+ 
+ /* ============ FOOD PAGE LAYOUT ============ */
+@@ -619,6 +629,10 @@ input{font-family:inherit; color:inherit;}
+   font-size:19px; color:var(--text-mute); cursor:pointer; flex:0 0 auto; line-height:1; transition:transform .12s ease;
+   width:var(--tap-min); height:var(--tap-min); display:flex; align-items:center; justify-content:center;
+ }
++/* Same missing-size bug again — ICON_STAR_FILLED/OUTLINE have no
++   width/height of their own, so this rendered at a full 40x40px (the whole
++   tap circle) instead of a normal star glyph. */
++.fav-star svg{width:18px; height:18px;}
+ .fav-star.on{color:var(--fat-text);}
+ .fav-star:active{transform:scale(1.3);}
+ 
+@@ -970,7 +984,11 @@ html[data-theme="light"] .entry-del, html[data-theme="light"] .tdel{ background:
+ .template-row .tbtn{
+   padding:7px 12px; border-radius:var(--r-pill); background:var(--accent); color:#161113; font-size:12px; font-weight:800; cursor:pointer; flex:0 0 auto;
+ }
+-.template-row .tdel{width:32px; height:32px; border-radius:50%; background:var(--bg-elev); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; color:var(--text-mute); cursor:pointer; flex:0 0 auto;}
++/* Was 32px — smaller than every other "delete/remove a row" circle in the
++   app (.entry-del, .lib-delete, .sheet-close all use --tap-min/40px), for
++   no functional reason. Same class of tap-target inconsistency already
++   fixed once for .lib-add (see its comment above) — unified here too. */
++.template-row .tdel{width:var(--tap-min); height:var(--tap-min); border-radius:50%; background:var(--bg-elev); border:1px solid var(--border); display:flex; align-items:center; justify-content:center; color:var(--text-mute); cursor:pointer; flex:0 0 auto;}
+ 
+ /* ============ EDIT MEAL ENTRY (quantity + delete) ============ */
+ .edit-meal-name{font-size:17px; font-weight:800; color:var(--text); margin-bottom:14px;}
+-- 
+2.43.0
+
