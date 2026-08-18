@@ -1,17 +1,25 @@
 <?xml version="1.0" encoding="utf-8"?>
-<!-- Steps widget, inspired by the reference "Updated H:MM / ring / distance
-     & calories pills" layout the user shared. Data comes from
-     SharedPreferences written by MiqyasWidgetPlugin (same mechanism as
-     CalorieWaterWidgetProvider — see that class's doc comment), which the
-     web app calls whenever it re-syncs steps from Health Connect. The ring
-     itself is drawn as a Bitmap in StepsWidgetProvider (RemoteViews has no
-     native arc/ring view), then layered under the text via the FrameLayout
-     below.
+<!-- Steps widget, redesigned to match the reference screenshot the user
+     shared (header sync-time + refresh grouped on one side, a static
+     "خطوات اليوم" badge on the other; a plain divided stat list instead of
+     colored pill rows; a translucent bordered footer pill instead of a
+     solid gradient one). Validated first as an HTML/CSS mockup
+     (widget_mockup2.html) before being ported here 1:1.
+
+     Data comes from SharedPreferences written by MiqyasWidgetPlugin (same
+     mechanism as CalorieWaterWidgetProvider — see that class's doc
+     comment), which the web app calls whenever it re-syncs steps from
+     Health Connect. The ring itself is drawn as a Bitmap in
+     StepsWidgetProvider (RemoteViews has no native arc/ring view), then
+     layered under the text via the FrameLayout below.
 
      Uses layoutDirection="locale" + start/end gravity throughout (matching
      the existing widget_calorie_water.xml convention) so the whole thing
      mirrors correctly for the app's Arabic/RTL locale instead of needing a
-     separate RTL layout. -->
+     separate RTL layout. Element order below follows the validated mockup's
+     source order (first child = right side in RTL, matching the reference
+     image): header badge before the sync/refresh group, stats column
+     before the ring, pill value before its label. -->
 <LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
     android:id="@+id/widgetStepsRoot"
     android:layout_width="match_parent"
@@ -21,7 +29,7 @@
     android:background="@drawable/widget_bg"
     android:padding="14dp">
 
-    <!-- Header: last-sync caption + manual refresh button -->
+    <!-- Header: static "today's steps" badge + sync time/refresh group -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
@@ -29,34 +37,161 @@
         android:gravity="center_vertical">
 
         <TextView
-            android:id="@+id/widgetStepsSyncText"
-            android:layout_width="0dp"
+            android:layout_width="wrap_content"
             android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:text="لم تتم المزامنة اليوم بعد"
-            android:textColor="#7C858F"
+            android:text="خطوات اليوم"
+            android:background="@drawable/widget_badge_bg"
+            android:paddingStart="14dp"
+            android:paddingEnd="14dp"
+            android:paddingTop="6dp"
+            android:paddingBottom="6dp"
+            android:textColor="#5EE6C9"
             android:textSize="11sp"
-            android:gravity="start"
-            android:maxLines="1"
-            android:ellipsize="end"/>
+            android:textStyle="bold"/>
 
-        <ImageView
-            android:id="@+id/widgetStepsRefresh"
-            android:layout_width="30dp"
-            android:layout_height="30dp"
-            android:padding="5dp"
-            android:src="@drawable/ic_widget_refresh"
-            android:contentDescription="تحديث"/>
+        <View
+            android:layout_width="0dp"
+            android:layout_height="1dp"
+            android:layout_weight="1"/>
+
+        <LinearLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:orientation="horizontal"
+            android:gravity="center_vertical">
+
+            <TextView
+                android:id="@+id/widgetStepsSyncText"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_marginEnd="4dp"
+                android:text="--:--"
+                android:textColor="#7C858F"
+                android:textSize="12sp"
+                android:maxLines="1"
+                android:ellipsize="end"/>
+
+            <ImageView
+                android:id="@+id/widgetStepsRefresh"
+                android:layout_width="26dp"
+                android:layout_height="26dp"
+                android:padding="4dp"
+                android:src="@drawable/ic_widget_refresh"
+                android:contentDescription="تحديث"/>
+
+        </LinearLayout>
 
     </LinearLayout>
 
-    <!-- Body: steps ring (left/start) + distance & calories pills (right/end) -->
+    <!-- Body: distance/calories stat list (start/right) + steps ring (end/left) -->
     <LinearLayout
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="14dp"
         android:orientation="horizontal"
         android:gravity="center_vertical">
+
+        <LinearLayout
+            android:layout_width="0dp"
+            android:layout_height="wrap_content"
+            android:layout_weight="1"
+            android:layout_marginEnd="10dp"
+            android:orientation="vertical">
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <ImageView
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:padding="6dp"
+                        android:background="@drawable/widget_icon_badge_bg"
+                        android:src="@drawable/ic_widget_pin"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="المسافة"
+                        android:textColor="#B7C0C7"
+                        android:textSize="12sp"/>
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/widgetStepsDistance"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="end"
+                    android:text="0.00 كم"
+                    android:textColor="#F3F1EA"
+                    android:textSize="16sp"
+                    android:textStyle="bold"/>
+
+            </LinearLayout>
+
+            <View
+                android:layout_width="match_parent"
+                android:layout_height="1dp"
+                android:background="@drawable/widget_divider_bg"/>
+
+            <LinearLayout
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:orientation="horizontal"
+                android:gravity="center_vertical"
+                android:paddingTop="8dp"
+                android:paddingBottom="8dp">
+
+                <LinearLayout
+                    android:layout_width="wrap_content"
+                    android:layout_height="wrap_content"
+                    android:orientation="horizontal"
+                    android:gravity="center_vertical">
+
+                    <ImageView
+                        android:layout_width="26dp"
+                        android:layout_height="26dp"
+                        android:padding="6dp"
+                        android:background="@drawable/widget_icon_badge_bg_flame"
+                        android:src="@drawable/ic_widget_flame"/>
+
+                    <TextView
+                        android:layout_width="wrap_content"
+                        android:layout_height="wrap_content"
+                        android:layout_marginStart="8dp"
+                        android:text="سعرات محروقة"
+                        android:textColor="#B7C0C7"
+                        android:textSize="12sp"/>
+
+                </LinearLayout>
+
+                <TextView
+                    android:id="@+id/widgetStepsCalories"
+                    android:layout_width="0dp"
+                    android:layout_height="wrap_content"
+                    android:layout_weight="1"
+                    android:gravity="end"
+                    android:text="0"
+                    android:textColor="#F3F1EA"
+                    android:textSize="16sp"
+                    android:textStyle="bold"/>
+
+            </LinearLayout>
+
+        </LinearLayout>
 
         <FrameLayout
             android:layout_width="100dp"
@@ -74,26 +209,19 @@
                 android:gravity="center">
 
                 <TextView
-                    android:id="@+id/widgetStepsLabel"
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:text="خطوات"
-                    android:textColor="#B7C0C7"
-                    android:textSize="11sp"/>
-
-                <TextView
                     android:id="@+id/widgetStepsValue"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
                     android:text="0"
                     android:textColor="#F3F1EA"
-                    android:textSize="21sp"
+                    android:textSize="22sp"
                     android:textStyle="bold"/>
 
                 <TextView
                     android:id="@+id/widgetStepsGoalText"
                     android:layout_width="wrap_content"
                     android:layout_height="wrap_content"
+                    android:layout_marginTop="2dp"
                     android:text="من 8,000"
                     android:textColor="#7C858F"
                     android:textSize="10sp"/>
@@ -102,150 +230,46 @@
 
         </FrameLayout>
 
-        <LinearLayout
-            android:layout_width="0dp"
-            android:layout_height="wrap_content"
-            android:layout_weight="1"
-            android:layout_marginStart="14dp"
-            android:orientation="vertical"
-            android:gravity="center_vertical">
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:background="@drawable/widget_stat_pill_bg"
-                android:padding="8dp"
-                android:layout_marginBottom="8dp">
-
-                <ImageView
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
-                    android:padding="6dp"
-                    android:background="@drawable/widget_icon_badge_bg"
-                    android:src="@drawable/ic_widget_pin"/>
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="المسافة"
-                        android:textColor="#08201A"
-                        android:textSize="10sp"/>
-
-                    <TextView
-                        android:id="@+id/widgetStepsDistance"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0.00 كم"
-                        android:textColor="#08201A"
-                        android:textSize="15sp"
-                        android:textStyle="bold"/>
-
-                </LinearLayout>
-
-            </LinearLayout>
-
-            <LinearLayout
-                android:layout_width="match_parent"
-                android:layout_height="wrap_content"
-                android:orientation="horizontal"
-                android:gravity="center_vertical"
-                android:background="@drawable/widget_stat_pill_bg"
-                android:padding="8dp">
-
-                <ImageView
-                    android:layout_width="28dp"
-                    android:layout_height="28dp"
-                    android:padding="6dp"
-                    android:background="@drawable/widget_icon_badge_bg"
-                    android:src="@drawable/ic_widget_flame"/>
-
-                <LinearLayout
-                    android:layout_width="wrap_content"
-                    android:layout_height="wrap_content"
-                    android:layout_marginStart="8dp"
-                    android:orientation="vertical">
-
-                    <TextView
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="سعرات محروقة"
-                        android:textColor="#08201A"
-                        android:textSize="10sp"/>
-
-                    <TextView
-                        android:id="@+id/widgetStepsCalories"
-                        android:layout_width="wrap_content"
-                        android:layout_height="wrap_content"
-                        android:text="0"
-                        android:textColor="#08201A"
-                        android:textSize="15sp"
-                        android:textStyle="bold"/>
-
-                </LinearLayout>
-
-            </LinearLayout>
-
-        </LinearLayout>
-
     </LinearLayout>
 
     <!-- Footer: today's remaining/over food calories (from the app's own
          dietary tracking — dateKey/calCurrent/calGoal, the same fields the
-         calorie/water widget already uses), full-width since it's the
-         app's headline number. Background + label flip to the "over goal"
-         red look — see widget_stat_pill_bg_warn.xml — the same way the
-         app's own hero ring does (see renderRing()'s `over` toggle in
-         docs/js/home.js). -->
+         calorie/water widget already uses), as a translucent bordered pill
+         (teal when still under goal, maroon when over — see
+         widget_pill_ok_translucent.xml / widget_pill_warn_translucent.xml)
+         instead of the old solid-gradient pill. Value stays start/right,
+         label end/left, matching the reference image's over-goal state. -->
     <LinearLayout
         android:id="@+id/widgetStepsCalEatenPill"
         android:layout_width="match_parent"
         android:layout_height="wrap_content"
-        android:layout_marginTop="8dp"
+        android:layout_marginTop="14dp"
         android:orientation="horizontal"
         android:gravity="center_vertical"
-        android:background="@drawable/widget_stat_pill_bg"
-        android:padding="8dp">
+        android:background="@drawable/widget_pill_ok_translucent"
+        android:paddingStart="14dp"
+        android:paddingEnd="14dp"
+        android:paddingTop="12dp"
+        android:paddingBottom="12dp">
 
-        <ImageView
-            android:layout_width="28dp"
-            android:layout_height="28dp"
-            android:padding="6dp"
-            android:background="@drawable/widget_icon_badge_bg"
-            android:src="@drawable/ic_widget_meal"/>
+        <TextView
+            android:id="@+id/widgetStepsCalEatenValue"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:text="0"
+            android:textColor="#5EE6C9"
+            android:textSize="15sp"
+            android:textStyle="bold"/>
 
-        <LinearLayout
+        <TextView
+            android:id="@+id/widgetStepsCalEatenLabel"
             android:layout_width="0dp"
             android:layout_height="wrap_content"
             android:layout_weight="1"
-            android:layout_marginStart="8dp"
-            android:orientation="vertical">
-
-            <TextView
-                android:id="@+id/widgetStepsCalEatenLabel"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="سعرة متبقية"
-                android:textColor="#08201A"
-                android:textSize="10sp"/>
-
-            <TextView
-                android:id="@+id/widgetStepsCalEatenValue"
-                android:layout_width="wrap_content"
-                android:layout_height="wrap_content"
-                android:text="0"
-                android:textColor="#08201A"
-                android:textSize="15sp"
-                android:textStyle="bold"/>
-
-        </LinearLayout>
+            android:gravity="end"
+            android:text="متبقية"
+            android:textColor="#8FD9C6"
+            android:textSize="12sp"/>
 
     </LinearLayout>
 

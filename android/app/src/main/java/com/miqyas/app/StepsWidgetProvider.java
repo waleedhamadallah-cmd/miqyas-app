@@ -63,10 +63,14 @@ public class StepsWidgetProvider extends AppWidgetProvider {
     private static final int RING_STROKE_DP = 9;
     private static final int RING_TRACK_COLOR = Color.parseColor("#2A3138");
 
-    // In-progress ring: the app's own --steps purple, as a light-to-solid
-    // gradient for a bit more depth than a flat stroke.
-    private static final int[] RING_COLORS_PROGRESS = {Color.parseColor("#C2AFFF"), Color.parseColor("#9B7BFF")};
-    // Goal-reached ring: the app's own #ringGrad ("good") gradient.
+    // In-progress ring: teal-to-blue-to-purple sweep matching the reference
+    // design's visible arc coloring (was a flat purple gradient before).
+    private static final int[] RING_COLORS_PROGRESS = {
+            Color.parseColor("#5EE6C9"), Color.parseColor("#4F8FE0"), Color.parseColor("#B98CF2")
+    };
+    private static final float[] RING_COLORS_PROGRESS_POS = {0f, 0.5f, 1f};
+    // Goal-reached ring: the app's own #ringGrad ("good") gradient — left
+    // untouched, the reference image only showed the in-progress state.
     private static final int[] RING_COLORS_ACHIEVED = {Color.parseColor("#5EE6C9"), Color.parseColor("#2F6FE0")};
 
     @Override
@@ -107,17 +111,24 @@ public class StepsWidgetProvider extends AppWidgetProvider {
         // calRemaining can be negative once over goal — the label switches
         // (matching the app's own hero ring wording) and the value shows a
         // plain positive magnitude either way, since the label already says
-        // which direction it is.
-        views.setTextViewText(R.id.widgetStepsCalEatenLabel, calOver ? "سعرة زيادة عن الهدف" : "سعرة متبقية");
-        views.setTextViewText(R.id.widgetStepsCalEatenValue, String.format(Locale.US, "%,d", Math.abs(calRemaining)));
+        // which direction it is. Colors + background swap between the
+        // translucent teal ("still under goal") and maroon ("over goal")
+        // treatments, matching the reference image's over-goal pill.
+        views.setTextViewText(R.id.widgetStepsCalEatenValue,
+                String.format(Locale.US, "%,d سعرة", Math.abs(calRemaining)));
+        views.setTextViewText(R.id.widgetStepsCalEatenLabel, calOver ? "⚠ زيادة عن الهدف" : "متبقية");
         views.setInt(R.id.widgetStepsCalEatenPill, "setBackgroundResource",
-                calOver ? R.drawable.widget_stat_pill_bg_warn : R.drawable.widget_stat_pill_bg);
+                calOver ? R.drawable.widget_pill_warn_translucent : R.drawable.widget_pill_ok_translucent);
+        views.setTextColor(R.id.widgetStepsCalEatenValue,
+                Color.parseColor(calOver ? "#FF6B72" : "#5EE6C9"));
+        views.setTextColor(R.id.widgetStepsCalEatenLabel,
+                Color.parseColor(calOver ? "#E5959A" : "#8FD9C6"));
 
         if (syncedAt > 0) {
             String time = new SimpleDateFormat("HH:mm", Locale.US).format(new Date(syncedAt));
-            views.setTextViewText(R.id.widgetStepsSyncText, "آخر مزامنة " + time);
+            views.setTextViewText(R.id.widgetStepsSyncText, time);
         } else {
-            views.setTextViewText(R.id.widgetStepsSyncText, "لم تتم المزامنة اليوم بعد");
+            views.setTextViewText(R.id.widgetStepsSyncText, "--:--");
         }
 
         int flags = PendingIntent.FLAG_UPDATE_CURRENT | (Build.VERSION.SDK_INT >= Build.VERSION_CODES.M ? PendingIntent.FLAG_IMMUTABLE : 0);
@@ -163,8 +174,16 @@ public class StepsWidgetProvider extends AppWidgetProvider {
 
         float sweep = 360f * Math.max(0f, Math.min(1f, pct));
         if (sweep > 0f) {
-            int[] colors = achieved ? RING_COLORS_ACHIEVED : RING_COLORS_PROGRESS;
-            paint.setShader(new LinearGradient(0, 0, sizePx, sizePx, colors[0], colors[1], Shader.TileMode.CLAMP));
+            if (achieved) {
+                paint.setShader(new LinearGradient(0, 0, sizePx, sizePx,
+                        RING_COLORS_ACHIEVED[0], RING_COLORS_ACHIEVED[1], Shader.TileMode.CLAMP));
+            } else {
+                // Bottom-left-to-top-right sweep (matching the reference
+                // image's visible arc coloring), unlike the achieved state's
+                // top-left-to-bottom-right diagonal above.
+                paint.setShader(new LinearGradient(0, sizePx, sizePx, 0,
+                        RING_COLORS_PROGRESS, RING_COLORS_PROGRESS_POS, Shader.TileMode.CLAMP));
+            }
             canvas.drawArc(rect, -90, sweep, false, paint);
         }
 

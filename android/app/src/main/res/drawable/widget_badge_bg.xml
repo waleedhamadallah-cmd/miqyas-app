@@ -1,0 +1,8 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Teal "خطوات اليوم" pill badge in the steps widget header, matching the
+     reference design the user shared (see widget_mockup2.html this was
+     validated against before porting to native XML). -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#0E3B31"/>
+    <corners android:radius="20dp"/>
+</shape>

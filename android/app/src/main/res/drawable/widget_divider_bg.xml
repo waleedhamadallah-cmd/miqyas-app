@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Hairline divider between the distance/calories stat rows in the steps
+     widget, replacing the old solid-pill row backgrounds per the reference
+     design's plain divided-list look. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="rectangle">
+    <solid android:color="#14FFFFFF"/>
+</shape>

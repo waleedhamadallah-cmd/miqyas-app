@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Orange/brown circle badge behind the calories-burned flame icon, distinct
+     from the teal widget_icon_badge_bg.xml used for the distance pin — per
+     the reference design's per-stat icon badge colors. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="#3A2412"/>
+</shape>
