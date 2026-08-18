@@ -36,10 +36,12 @@ function persist(){
 }
 
 // Pushes today's real calorie/water totals (never whatever day the user
-// happens to be *viewing* via switchViewedDay) to the native home-screen
-// widget, if the app is running inside the installed Android build (this
-// plugin doesn't exist on the plain web/PWA, so it's a silent no-op there).
-// Runs after every persist() (i.e. after almost any action), so it stays
+// happens to be *viewing* via switchViewedDay) — and, if Health Connect is
+// connected, today's steps/distance/calories-burned too — to the native
+// home-screen widgets, if the app is running inside the installed Android
+// build (this plugin doesn't exist on the plain web/PWA, so it's a silent
+// no-op there). Runs after every persist() (i.e. after almost any action,
+// including a fresh steps sync — see cacheSteps() below), so it stays
 // completely silent on success/failure — errors just go to the console —
 // instead of interrupting the user with a toast on every unrelated tap.
 function syncWidget(){
@@ -57,6 +59,21 @@ function syncWidget(){
       waterCurrent: Math.round(water),
       waterGoal: Math.round(goals.water || 2500)
     };
+
+    // Steps widget fields — only meaningful once Health Connect is granted
+    // and today's steps have actually been cached at least once; otherwise
+    // stepsDateKey stays '' and the widget provider shows its own honest
+    // "not synced yet" empty state instead of a fake zero.
+    const stepsEntry = appState && appState.healthConnectGranted && appState.stepsCache ? appState.stepsCache[key] : null;
+    if(stepsEntry){
+      payload.stepsDateKey = key;
+      payload.stepsCurrent = Math.round(stepsEntry.steps || 0);
+      payload.stepsGoal = Math.round(goals.steps || 8000);
+      payload.stepsDistanceKm = estimateStepsDistanceKm(stepsEntry.steps || 0);
+      payload.stepsCalories = Math.round(estimateStepsCalories(stepsEntry.steps || 0));
+      payload.stepsSyncedAt = stepsEntry.fetchedAt || 0;
+    }
+
     Capacitor.Plugins.MiqyasWidget.update(payload)
       .catch((e)=> console.error('widget update failed', e));
   }catch(e){ console.error('syncWidget failed', e); }

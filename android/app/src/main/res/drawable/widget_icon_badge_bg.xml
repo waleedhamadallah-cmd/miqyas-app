@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Small solid-circle badge behind each stat icon (distance pin / calories
+     flame) in the steps widget's stat pills. -->
+<shape xmlns:android="http://schemas.android.com/apk/res/android" android:shape="oval">
+    <solid android:color="#0E3B31"/>
+</shape>

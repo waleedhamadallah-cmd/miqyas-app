@@ -46,6 +46,18 @@
                 android:resource="@xml/calorie_water_widget_info" />
         </receiver>
 
+        <receiver
+            android:name=".StepsWidgetProvider"
+            android:exported="true"
+            android:label="مِقياس — الخطوات">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_UPDATE" />
+            </intent-filter>
+            <meta-data
+                android:name="android.appwidget.provider"
+                android:resource="@xml/steps_widget_info" />
+        </receiver>
+
         <!-- Health Connect: shown when the user taps "privacy policy" on the
              system permission dialog. Required for Android 13 and below. -->
         <activity
