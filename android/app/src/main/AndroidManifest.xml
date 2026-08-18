@@ -87,6 +87,14 @@
     <uses-permission android:name="android.permission.INTERNET" />
     <uses-permission android:name="android.permission.health.WRITE_NUTRITION" />
     <uses-permission android:name="android.permission.health.WRITE_HYDRATION" />
+    <!-- Body weight, written from the app's own weight-log entries — see
+         syncHealthConnectWeight() in docs/js/core.js and writeWeight()/
+         deleteWeight() in HealthConnectPlugin.kt. Without this manifest
+         declaration, Health Connect never offers it as a grantable
+         permission at all (it just silently doesn't appear in the app's
+         "App access" screen), even though the Kotlin code already requests
+         it in healthPermissions. -->
+    <uses-permission android:name="android.permission.health.WRITE_WEIGHT" />
     <!-- Steps only, read-only, last 7 days, foreground/on-demand — see
          HealthConnectPlugin.kt's class doc. No history/background-read
          permission needed for that narrow a scope. -->
