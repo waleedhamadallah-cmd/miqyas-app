@@ -1,0 +1,46 @@
+From 0cba690ff5a8b9c5694b325939f91027a4eea48f Mon Sep 17 00:00:00 2001
+From: Claude <noreply@anthropic.com>
+Date: Tue, 18 Aug 2026 08:08:24 +0000
+Subject: [PATCH] Fix steps widget failing to add: RemoteViews doesn't support
+ plain View, swap spacer/divider for supported widgets
+
+---
+ android/app/src/main/res/layout/widget_steps.xml | 12 ++++--------
+ 1 file changed, 4 insertions(+), 8 deletions(-)
+
+diff --git a/android/app/src/main/res/layout/widget_steps.xml b/android/app/src/main/res/layout/widget_steps.xml
+index 1c062fd..99078e9 100644
+--- a/android/app/src/main/res/layout/widget_steps.xml
++++ b/android/app/src/main/res/layout/widget_steps.xml
+@@ -49,16 +49,12 @@
+             android:textSize="11sp"
+             android:textStyle="bold"/>
+ 
+-        <View
+-            android:layout_width="0dp"
+-            android:layout_height="1dp"
+-            android:layout_weight="1"/>
+-
+         <LinearLayout
+-            android:layout_width="wrap_content"
++            android:layout_width="0dp"
+             android:layout_height="wrap_content"
++            android:layout_weight="1"
+             android:orientation="horizontal"
+-            android:gravity="center_vertical">
++            android:gravity="center_vertical|end">
+ 
+             <TextView
+                 android:id="@+id/widgetStepsSyncText"
+@@ -142,7 +138,7 @@
+ 
+             </LinearLayout>
+ 
+-            <View
++            <ImageView
+                 android:layout_width="match_parent"
+                 android:layout_height="1dp"
+                 android:background="@drawable/widget_divider_bg"/>
+-- 
+2.43.0
+
